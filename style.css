@@ -270,7 +270,36 @@ body.pip #sel-name { color: #e9e3da; }
 .tabs {
   display: flex;
   gap: 4px;
+  min-width: 0;
+  overflow-x: auto;
 }
+
+.shop-head { gap: 8px; }
+
+.shop-section {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+  color: var(--sub);
+  font-size: 12px;
+}
+
+.swatches {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 8px;
+  padding: 3px;
+}
+
+.swatch {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.swatch.active { box-shadow: 0 0 0 2px #7a5034; }
 
 .shop-list {
   display: grid;

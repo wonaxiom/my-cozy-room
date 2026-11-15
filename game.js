@@ -348,6 +348,7 @@ function setRoom(id) {
   save.roomId = room.id;
   Save.save(save);
   placeHeroInRoom();
+  placePet();
   updateLock();
 }
 
@@ -1186,12 +1187,38 @@ function heroScreen() {
   return { x: Math.round(p.x), y: Math.round(p.y) };
 }
 
+// ---- 캐릭터 꾸미기 ----
+// 머리 모양과 옷 무늬를 기본 글자 그림에 더합니다.
+function heroRows(name, look = save.look) {
+  const rows = (CHARACTER[name] || CHARACTER.idle).map((r) => r.split(""));
+  const put = (r, c, ch) => { if (rows[r] && rows[r][c] !== undefined) rows[r][c] = ch; };
+  if (look.hair === "long") {
+    for (let r = 6; r <= 8; r++) { put(r, 1, "H"); put(r, 8, "H"); }
+  } else if (look.hair === "pigtails") {
+    for (let r = 3; r <= 6; r++) { put(r, 0, "H"); put(r, 9, "H"); }
+  }
+  const outfit = OUTFITS.find((o) => o.id === look.outfit);
+  if (outfit && outfit.stripe) {
+    for (const r of [8, 10]) if (rows[r]) rows[r] = rows[r].map((ch) => (ch === "C" ? "D" : ch));
+  }
+  const out = rows.map((r) => r.join(""));
+  if (look.hair === "bun") out.unshift("....HH....");
+  return out;
+}
+
+function heroColors(look = save.look) {
+  const hair = (HAIR_COLORS.find((h) => h.id === look.hairColor) || HAIR_COLORS[0]).color;
+  const outfit = OUTFITS.find((o) => o.id === look.outfit) || OUTFITS[0];
+  return Object.assign({}, CHAR_COLORS, { H: hair, C: outfit.shirt, P: outfit.pants, D: outfit.stripe || outfit.shirt });
+}
+
 // 캐릭터 크기 (그림 파일이 있으면 그 크기, 없으면 글자 그림 크기)
 function heroSize() {
   if (readyImage(CHARACTER_SHEET && CHARACTER_SHEET.image)) {
     return { w: CHARACTER_SHEET.frameWidth, h: CHARACTER_SHEET.frameHeight };
   }
-  return { w: CHARACTER.idle[0].length, h: CHARACTER.idle.length };
+  const rows = heroRows("idle");
+  return { w: rows[0].length, h: rows.length };
 }
 
 // 동작 이름(idle, blink, walk1, walk2, sleep)에 맞는 그림을 그립니다.
@@ -1211,8 +1238,8 @@ function drawHeroFrame(name, centerX, bottomY, flip) {
     ctx.restore();
     return;
   }
-  const rows = CHARACTER[name] || CHARACTER.idle;
-  drawSprite(rows, centerX - Math.floor(rows[0].length / 2), bottomY - rows.length, CHAR_COLORS, flip);
+  const rows = heroRows(name);
+  drawSprite(rows, centerX - Math.floor(rows[0].length / 2), bottomY - rows.length, heroColors(), flip);
 }
 
 function drawHero() {
@@ -1239,6 +1266,108 @@ function drawSleeper() {
   drawHeroFrame("sleep", Math.round(p.x), Math.round(p.y), false);
 }
 
+// ---- 반려동물 ----------------------------------------------------
+const pet = { x: 20, y: 50, dir: 1, mode: "idle", timer: 1, target: null, walkT: 0, heartT: 0, jumpT: 0 };
+const PET_SPEED = 10;
+
+function petDef() {
+  return PETS.find((p) => p.id === save.pet) || null;
+}
+
+function petVisible() {
+  return !!petDef() && ownsRoom();
+}
+
+function placePet() {
+  for (let i = 0; i < 200; i++) {
+    const x = 6 + Math.random() * (RW() - 12);
+    const y = 6 + Math.random() * (RD() - 12);
+    if (isFree(x, y) && Math.hypot(x - hero.x, y - hero.y) > 6) { pet.x = x; pet.y = y; break; }
+  }
+  pet.mode = "idle";
+  pet.timer = 1;
+}
+
+// 반려동물이 갈 곳: 절반쯤은 캐릭터 근처, 나머지는 아무 데나
+function petTarget() {
+  for (let i = 0; i < 20; i++) {
+    let x, y;
+    if (Math.random() < 0.5) {
+      const a = Math.random() * Math.PI * 2;
+      x = hero.x + Math.cos(a) * 6;
+      y = hero.y + Math.sin(a) * 6;
+    } else {
+      x = 4 + Math.random() * (RW() - 8);
+      y = 4 + Math.random() * (RD() - 8);
+    }
+    if (pathIsFree(pet.x, pet.y, x, y)) return { x, y };
+  }
+  return null;
+}
+
+function updatePet(dt, h) {
+  if (!petVisible()) return;
+  pet.heartT = Math.max(0, pet.heartT - dt);
+  pet.jumpT = Math.max(0, pet.jumpT - dt);
+  if (pet.mode === "idle") {
+    pet.timer -= dt;
+    if (pet.timer <= 0) {
+      if (isSleepTime(h) || Math.random() < 0.2) {
+        pet.mode = "sleep"; // 낮잠 (밤에는 계속 잠)
+        pet.timer = 8 + Math.random() * 12;
+      } else {
+        const t = petTarget();
+        if (t) { pet.target = t; pet.mode = "walk"; } else pet.timer = 2;
+      }
+    }
+  } else if (pet.mode === "sleep") {
+    pet.timer -= dt;
+    if (pet.timer <= 0) {
+      if (isSleepTime(h)) pet.timer = 10;
+      else { pet.mode = "idle"; pet.timer = 1; }
+    }
+  } else if (pet.mode === "walk") {
+    const dx = pet.target.x - pet.x, dy = pet.target.y - pet.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 0.3) {
+      pet.mode = "idle";
+      pet.timer = 1.5 + Math.random() * 3;
+    } else {
+      const step = Math.min(dist, PET_SPEED * dt);
+      pet.x += (dx / dist) * step;
+      pet.y += (dy / dist) * step;
+      if (Math.abs(dx - dy) > 0.01) pet.dir = Math.sign(dx - dy);
+      pet.walkT += dt;
+    }
+  }
+}
+
+function petScreen() {
+  const p = project(pet.x, pet.y, 0);
+  return { x: Math.round(p.x), y: Math.round(p.y) };
+}
+
+function petRows() {
+  const frames = PET_FRAMES[petDef().kind];
+  if (pet.mode === "sleep") return frames.sleep;
+  if (pet.mode === "walk") return [frames.walk1, frames.idle, frames.walk2, frames.idle][Math.floor(pet.walkT * 10) % 4];
+  return frames.idle;
+}
+
+function drawPet() {
+  const p = petScreen();
+  const rows = petRows();
+  const jump = pet.jumpT > 0 ? Math.round(Math.sin((1 - pet.jumpT / 0.3) * Math.PI) * 3) : 0;
+  ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
+  ctx.fillRect(p.x - 4, p.y - 1, 8, 1);
+  drawSprite(rows, p.x - 4, p.y - rows.length - jump, petDef().colors, pet.dir < 0);
+}
+
+function petBounds() {
+  const p = petScreen();
+  return { x: p.x - 5, y: p.y - 8, w: 10, h: 9 };
+}
+
 // 가구와 캐릭터를 뒤에서 앞 순서로 그립니다.
 let drawOrder = []; // 그려진 순서 (클릭한 가구를 찾을 때 사용)
 function drawObjects() {
@@ -1252,6 +1381,9 @@ function drawObjects() {
   } }));
   if (hero.mode !== "sleep" && ownsRoom()) {
     list.push({ fp: { x: hero.x - 1.5, y: hero.y - 1.5, w: 3, d: 3 }, draw: drawHero });
+  }
+  if (petVisible()) {
+    list.push({ fp: { x: pet.x - 1, y: pet.y - 1, w: 2, d: 2 }, draw: drawPet });
   }
 
   const behind = (a, b) => a.x + a.w <= b.x || a.y + a.d <= b.y;
@@ -1317,6 +1449,12 @@ function drawEffects() {
       ctx.fillRect(p.x - 3 + i * 3, p.y - heroSize().h - 4, 1, 1);
     }
   }
+  if (petVisible() && pet.heartT > 0) {
+    const p = petScreen();
+    ctx.globalAlpha = Math.min(1, pet.heartT * 2);
+    drawSprite(EFFECTS.heart, p.x - 2, Math.round(p.y - 14 - (1.2 - pet.heartT) * 6), { H: "heart" }, false);
+    ctx.globalAlpha = 1;
+  }
   if (hero.heartT > 0) {
     const p = heroScreen();
     const rise = (1.2 - hero.heartT) * 6;
@@ -1356,6 +1494,12 @@ function lampItem(p) {
 view.addEventListener("click", (e) => {
   if (editing) return;
   const p = toGamePos(e);
+  if (petVisible() && inside(p, petBounds())) {
+    pet.heartT = 1.2;
+    pet.jumpT = 0.3;
+    if (pet.mode === "sleep") { pet.mode = "idle"; pet.timer = 2; } // 쓰다듬으면 깸
+    return;
+  }
   if (hero.mode !== "sleep" && inside(p, heroBounds())) {
     hero.heartT = 1.2;
     hero.jumpT = 0.35;
@@ -1379,7 +1523,7 @@ view.addEventListener("pointermove", (e) => {
     view.style.cursor = drag ? "grabbing" : hoverItem ? "grab" : "default";
     return;
   }
-  const hit = (hero.mode !== "sleep" && inside(p, heroBounds())) || lampItem(p);
+  const hit = (hero.mode !== "sleep" && inside(p, heroBounds())) || (petVisible() && inside(p, petBounds())) || lampItem(p);
   view.style.cursor = hit ? "pointer" : "default";
 });
 
@@ -2011,10 +2155,124 @@ function renderRooms() {
   }
 }
 
+// 글자 그림 미리보기 (캐릭터, 반려동물)
+function makeSpritePreview(rows, colors, flip = false) {
+  const size = Math.max(rows[0].length, rows.length) + 3; // 작은 그림은 더 크게 보이도록
+  const c = document.createElement("canvas");
+  c.width = size;
+  c.height = size;
+  c.className = "preview";
+  const prev = ctx;
+  ctx = c.getContext("2d");
+  drawSprite(rows, Math.floor((size - rows[0].length) / 2), size - rows.length - 1, colors, flip);
+  ctx = prev;
+  return c;
+}
+
+function sectionTitle(text) {
+  const h = document.createElement("div");
+  h.className = "shop-section";
+  h.textContent = text;
+  shopList.append(h);
+}
+
+function setLook(change) {
+  save.look = Object.assign({}, save.look, change);
+  Save.save(save);
+  renderShop();
+}
+
+// 캐릭터 탭: 머리 모양(무료), 머리색(무료), 옷(구매)
+function renderLook() {
+  sectionTitle("머리 모양");
+  for (const st of HAIR_STYLES) {
+    const look = Object.assign({}, save.look, { hair: st.id });
+    const on = save.look.hair === st.id;
+    shopList.append(makeCard(makeSpritePreview(heroRows("idle", look), heroColors(look)), st.name, "<span>무료</span>",
+      makeButton(on ? "사용 중" : "적용", on ? null : () => setLook({ hair: st.id }), on)));
+  }
+
+  sectionTitle("머리색");
+  const row = document.createElement("div");
+  row.className = "swatches";
+  for (const hc of HAIR_COLORS) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "swatch" + (save.look.hairColor === hc.id ? " active" : "");
+    b.title = hc.name;
+    b.style.background = hc.color;
+    b.addEventListener("click", () => setLook({ hairColor: hc.id }));
+    row.append(b);
+  }
+  shopList.append(row);
+
+  sectionTitle("옷");
+  for (const o of OUTFITS) {
+    const look = Object.assign({}, save.look, { outfit: o.id });
+    const owned = o.price === 0 || save.outfits.includes(o.id);
+    const on = save.look.outfit === o.id;
+    let btn;
+    if (!owned) {
+      btn = makeButton("구매", () => {
+        if (save.coins < o.price) return;
+        save.coins -= o.price;
+        save.outfits.push(o.id);
+        updateCoins();
+        setLook({ outfit: o.id });
+        toast(`${withObject(o.name)} 샀어요.`);
+      });
+      btn.dataset.price = o.price;
+    } else {
+      btn = makeButton(on ? "입는 중" : "입기", on ? null : () => setLook({ outfit: o.id }), on);
+    }
+    shopList.append(makeCard(makeSpritePreview(heroRows("idle", look), heroColors(look)), o.name,
+      priceHtml(o.price) + (owned && o.price ? "<span>보유</span>" : ""), btn));
+  }
+}
+
+// 친구 탭: 반려동물
+function renderPets() {
+  for (const pd of PETS) {
+    const owned = save.pets.includes(pd.id);
+    const on = save.pet === pd.id;
+    let btn;
+    if (!owned) {
+      btn = makeButton("데려오기", () => {
+        if (save.coins < pd.price) return;
+        save.coins -= pd.price;
+        save.pets.push(pd.id);
+        save.pet = pd.id;
+        Save.save(save);
+        updateCoins();
+        placePet();
+        renderShop();
+        toast(`${pd.name}${(pd.name.charCodeAt(pd.name.length - 1) - 0xac00) % 28 ? "이" : "가"} 함께하게 됐어요. 클릭하면 반가워해요.`);
+      });
+      btn.dataset.price = pd.price;
+    } else if (on) {
+      btn = makeButton("쉬게 하기", () => { save.pet = null; Save.save(save); renderShop(); });
+    } else {
+      btn = makeButton("함께하기", () => { save.pet = pd.id; Save.save(save); placePet(); renderShop(); });
+    }
+    const meta = owned ? (on ? "<span>함께하는 중</span>" : "<span>보유</span>") : priceHtml(pd.price);
+    shopList.append(makeCard(makeSpritePreview(PET_FRAMES[pd.kind].idle, pd.colors), pd.name, meta, btn));
+  }
+}
+
 function renderShop() {
   shopEl.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.cat === shopCategory));
   shopList.innerHTML = "";
   shopList.classList.toggle("wide", ["wall", "floor", "room"].includes(shopCategory));
+  if (shopCategory === "look") {
+    renderLook();
+    updateShopButtons();
+    return;
+  }
+  if (shopCategory === "pet") {
+    renderPets();
+    updateShopButtons();
+    return;
+  }
   if (shopCategory === "wall" || shopCategory === "floor") {
     renderStyles(shopCategory);
     updateShopButtons();
@@ -2205,6 +2463,7 @@ function tick(dt) {
   const phase = phaseOf(h);
 
   updateHero(dt, h);
+  updatePet(dt, h);
 
   ctx.clearRect(0, 0, W, H);
   drawShell();

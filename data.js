@@ -211,6 +211,115 @@ const CHARACTER = {
 // };
 const CHARACTER_SHEET = null;
 
+// ---- 캐릭터 꾸미기 -----------------------------------------------
+// 머리 모양: 위의 기본 그림(짧은 머리)에 머리카락을 더해서 만듭니다.
+const HAIR_STYLES = [
+  { id: "short", name: "짧은 머리" },
+  { id: "long", name: "긴 머리" },
+  { id: "bun", name: "올림머리" },
+  { id: "pigtails", name: "양갈래" },
+];
+
+const HAIR_COLORS = [
+  { id: "brown", name: "갈색", color: "#4a3226" },
+  { id: "black", name: "검정", color: "#26211f" },
+  { id: "blonde", name: "금발", color: "#d9b25c" },
+  { id: "pink", name: "분홍", color: "#d98aa0" },
+  { id: "silver", name: "은발", color: "#b9b4ae" },
+];
+
+// 옷: shirt(윗옷), pants(바지), stripe(줄무늬 색, 선택)
+const OUTFITS = [
+  { id: "basic", name: "기본 옷", price: 0, shirt: "#f2e3b3", pants: "#5b6b8c" },
+  { id: "mint", name: "민트 셔츠", price: 80, shirt: "#a8d8c2", pants: "#4f5a66" },
+  { id: "pinkHoodie", name: "분홍 후드", price: 100, shirt: "#efb3c2", pants: "#6b5a7a" },
+  { id: "stripe", name: "줄무늬 티", price: 100, shirt: "#f4f1ec", stripe: "#5b7fb5", pants: "#3f4a5c" },
+  { id: "blackKnit", name: "검정 니트", price: 120, shirt: "#3a3a3f", pants: "#7a6a58" },
+  { id: "raincoat", name: "노란 우비", price: 150, shirt: "#f2c84b", pants: "#4a6a8a" },
+];
+
+// ---- 반려동물 -----------------------------------------------------
+// K: 몸, D: 무늬·귀, E: 눈, N: 코. 그림은 오른쪽을 보고 있고, 왼쪽으로 갈 때는 뒤집힙니다.
+const PET_FRAMES = {
+  cat: {
+    idle: [
+      "......K.K",
+      "K.....KKK",
+      "K.....KEK",
+      ".KKKKKKKN",
+      "..KDKDKK.",
+      "..K.K.K.K",
+    ],
+    walk1: [
+      "......K.K",
+      "K.....KKK",
+      "K.....KEK",
+      ".KKKKKKKN",
+      "..KDKDKK.",
+      "..K..K.K.",
+    ],
+    walk2: [
+      "......K.K",
+      "K.....KKK",
+      "K.....KEK",
+      ".KKKKKKKN",
+      "..KDKDKK.",
+      "...K.K..K",
+    ],
+    sleep: [
+      ".........",
+      ".........",
+      "......K.K",
+      "..KKKKKKK",
+      ".KKDKDKKK",
+      "KKKKKKKK.",
+    ],
+  },
+  dog: {
+    idle: [
+      ".........",
+      "K.....KKK",
+      "K.....KEK",
+      ".KKKKKDKN",
+      "..KKKKKK.",
+      "..K.K.K.K",
+    ],
+    walk1: [
+      ".........",
+      "K.....KKK",
+      "K.....KEK",
+      ".KKKKKDKN",
+      "..KKKKKK.",
+      "..K..K.K.",
+    ],
+    walk2: [
+      ".........",
+      "K.....KKK",
+      "K.....KEK",
+      ".KKKKKDKN",
+      "..KKKKKK.",
+      "...K.K..K",
+    ],
+    sleep: [
+      ".........",
+      ".........",
+      "......KDK",
+      "..KKKKKKN",
+      ".KKKKKKKK",
+      "KKKKKKKK.",
+    ],
+  },
+};
+
+const PETS = [
+  { id: "cheeseCat", name: "치즈 고양이", kind: "cat", price: 300,
+    colors: { K: "#e3a857", D: "#c98a3e", E: "#2b2b2b", N: "#e48a8a" } },
+  { id: "blackCat", name: "검은 고양이", kind: "cat", price: 300,
+    colors: { K: "#3a3a42", D: "#2a2a30", E: "#e8d36a", N: "#d88a9a" } },
+  { id: "whiteDog", name: "하얀 강아지", kind: "dog", price: 350,
+    colors: { K: "#ebe3d5", D: "#c9a27a", E: "#2b2b2b", N: "#3a3030" } },
+];
+
 const EFFECTS = {
   heart: [
     ".H.H.",

@@ -20,6 +20,10 @@ const Save = {
       ownedRooms: ["studio"], // 연 방
       ownedStyles: [],        // 산 벽지·바닥
       roomStyles: {},         // 방마다 고른 벽지·바닥 { 방: { wall, floor } }
+      look: { hair: "short", hairColor: "brown", outfit: "basic" }, // 캐릭터 꾸미기
+      outfits: [],            // 산 옷
+      pets: [],               // 데려온 반려동물
+      pet: null,              // 함께 있는 반려동물
       owner: null,            // 이 저장 데이터의 주인 (구글 계정 id)
       savedAt: 0,             // 마지막으로 저장한 시각
     };
