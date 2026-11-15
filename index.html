@@ -26,6 +26,7 @@
           <!-- 코인과 시계 -->
           <div class="hud">
             <span class="pill"><i class="coin"></i><span id="coins">0</span><span id="coin-pop" class="coin-pop"></span></span>
+            <button type="button" class="pill timer-pill" id="timer-pill" hidden></button>
             <span class="pill" id="clock">--:--</span>
           </div>
 
@@ -42,6 +43,41 @@
               <button id="shop-close" type="button">닫기</button>
             </div>
             <div id="shop-list" class="shop-list"></div>
+          </div>
+
+          <!-- 집중 타이머 · 오늘 할 일 -->
+          <div id="focus" class="panel" hidden>
+            <div class="panel-head">
+              <strong>집중</strong>
+              <button id="focus-close" type="button">닫기</button>
+            </div>
+            <div class="panel-body">
+              <section class="timer">
+                <div id="timer-time" class="timer-time">25:00</div>
+                <div class="chips">
+                  <button type="button" data-min="15">15분</button>
+                  <button type="button" data-min="25">25분</button>
+                  <button type="button" data-min="50">50분</button>
+                </div>
+                <div class="timer-actions">
+                  <button id="timer-start" type="button">시작</button>
+                  <button id="timer-stop" type="button" hidden>그만두기</button>
+                </div>
+                <p id="timer-info" class="muted"></p>
+              </section>
+              <section class="todos">
+                <h3>오늘 할 일</h3>
+                <form id="todo-form" class="todo-form">
+                  <input id="todo-input" type="text" maxlength="60" placeholder="할 일을 적어 보세요" autocomplete="off">
+                  <button type="submit">추가</button>
+                </form>
+                <ul id="todo-list" class="todo-list"></ul>
+                <div class="todo-foot">
+                  <span id="todo-info" class="muted"></span>
+                  <button id="todo-clear" type="button" hidden>끝낸 일 지우기</button>
+                </div>
+              </section>
+            </div>
           </div>
 
           <!-- 아직 열지 않은 방 -->
@@ -63,6 +99,7 @@
             <button id="room-next" type="button" aria-label="다음 방">›</button>
           </div>
           <div class="actions">
+            <button id="focus-btn" type="button">집중</button>
             <button id="shop-btn" type="button">상점</button>
             <button id="edit-btn" type="button">꾸미기</button>
             <button id="pip-btn" type="button">위에 띄우기</button>
@@ -82,11 +119,12 @@
     <p id="pip-note" class="note"></p>
   </main>
 
-  <!-- 순서 중요: 데이터 → 방 → 저장 → 게임 → 로그인 -->
+  <!-- 순서 중요: 데이터 → 방 → 저장 → 게임 → 집중 → 로그인 -->
   <script src="data.js"></script>
   <script src="rooms.js"></script>
   <script src="save.js"></script>
   <script src="game.js"></script>
+  <script src="focus.js"></script>
   <!-- 구글 로그인 (Supabase) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
   <script src="cloud.js"></script>

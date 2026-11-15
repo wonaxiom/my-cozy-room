@@ -976,7 +976,12 @@ function pillowPos() {
 // 잠들기 전 서는 자리 (막혀 있으면 잠자리 주변의 빈 곳)
 function bedSide() {
   const b = bedItem();
-  const x = b.x + b.sleep.side[0], y = b.y + b.sleep.side[1];
+  return spotNear(b, b.sleep.side);
+}
+
+// 가구 옆에 설 자리 (정해 둔 자리가 막혀 있으면 가구 주변의 빈 곳)
+function spotNear(b, offset) {
+  const x = b.x + offset[0], y = b.y + offset[1];
   if (isFree(x, y)) return { x, y };
   const f = footprint(b);
   for (let t = 0.5, n = 0; n < 9; n++, t = 0.5 + (n % 2 ? 1 : -1) * Math.ceil(n / 2) / 8) {
@@ -988,6 +993,16 @@ function bedSide() {
     }
   }
   return { x, y };
+}
+
+// ---- 책상 (집중 타이머) -------------------------------------------
+// 집중하는 동안 캐릭터가 가서 일할 가구 (data.js에서 work가 있는 가구)
+function workItem() {
+  return items.find((f) => f.work && f.z === 0);
+}
+
+function isFocusing() {
+  return typeof Focus !== "undefined" && Focus.isFocusing() && ownsRoom();
 }
 
 // 방을 바꾸면 빈 바닥에 캐릭터를 세웁니다.
@@ -1018,8 +1033,20 @@ function updateHero(dt, h) {
   hero.blinkT -= dt;
   if (hero.blinkT < -0.15) hero.blinkT = 2 + Math.random() * 3;
 
+  // 집중 중이면 책상으로 (잠보다 먼저)
+  const desk = isFocusing() ? workItem() : null;
+  if (desk && hero.mode !== "work" && hero.mode !== "toWork") {
+    if (hero.mode === "sleep") Object.assign(hero, bedSide());
+    hero.mode = "toWork";
+    hero.target = spotNear(desk, desk.work);
+  }
+  if (!desk && (hero.mode === "work" || hero.mode === "toWork")) {
+    hero.mode = "idle";
+    hero.timer = 1;
+  }
+
   // 밤에는 잠자리로, 아침에는 일어나기
-  const sleepy = isSleepTime(h);
+  const sleepy = isSleepTime(h) && !desk;
   if (sleepy && bedItem() && hero.mode !== "sleep" && hero.mode !== "toBed") {
     hero.mode = "toBed";
     hero.target = bedSide();
@@ -1041,7 +1068,7 @@ function updateHero(dt, h) {
         hero.timer = 2 + Math.random() * 3;
       }
     }
-  } else if (hero.mode === "walk" || hero.mode === "toBed") {
+  } else if (hero.mode === "walk" || hero.mode === "toBed" || hero.mode === "toWork") {
     const dx = hero.target.x - hero.x, dy = hero.target.y - hero.y;
     const dist = Math.hypot(dx, dy);
     if (dist < 0.3) {
@@ -1049,6 +1076,12 @@ function updateHero(dt, h) {
       hero.y = hero.target.y;
       if (hero.mode === "toBed") {
         hero.mode = "sleep";
+      } else if (hero.mode === "toWork") {
+        // 책상 쪽을 바라보고 일하기
+        hero.mode = "work";
+        const f = footprint(desk);
+        const sdx = (f.x + f.w / 2 - hero.x) - (f.y + f.d / 2 - hero.y);
+        if (Math.abs(sdx) > 0.01) hero.dir = Math.sign(sdx);
       } else {
         hero.mode = "idle";
         hero.timer = 2 + Math.random() * 4;
@@ -1102,7 +1135,7 @@ function drawHero() {
   if (hero.mode === "sleep") return; // 잘 때는 잠자리 위에 따로 그림
 
   let frame = "idle";
-  if (hero.mode === "walk" || hero.mode === "toBed") {
+  if (hero.mode === "walk" || hero.mode === "toBed" || hero.mode === "toWork") {
     const cycle = ["walk1", "idle", "walk2", "idle"];
     frame = cycle[Math.floor(hero.walkT * 8) % cycle.length];
   } else if (hero.blinkT < 0) {
@@ -1190,6 +1223,15 @@ function drawEffects() {
       drawSprite(EFFECTS.zzz, Math.round(base.x + 5 + p * 6), Math.round(base.y - 12 - p * 12), { Z: "zzz" }, false);
     }
     ctx.globalAlpha = 1;
+  }
+  if (hero.mode === "work") {
+    // 일하는 중: 머리 위에 점 세 개가 차례로 깜빡임
+    const p = heroScreen();
+    const n = Math.floor(time * 2) % 4;
+    for (let i = 0; i < n; i++) {
+      ctx.fillStyle = colorOf("eye");
+      ctx.fillRect(p.x - 3 + i * 3, p.y - heroSize().h - 4, 1, 1);
+    }
   }
   if (hero.heartT > 0) {
     const p = heroScreen();
@@ -1291,6 +1333,7 @@ function setEditing(on) {
   view.style.cursor = "default";
   if (on) {
     closeShop();
+    if (typeof Focus !== "undefined") Focus.close();
     renderBag();
   }
 }
@@ -1524,6 +1567,7 @@ function endDrag(e) {
 // 배치가 바뀐 뒤: 정보 다시 계산하고 캐릭터가 갇히지 않게
 function afterLayoutChange() {
   refreshItems();
+  if (hero.mode === "work" || hero.mode === "toWork") hero.mode = "idle"; // 책상이 옮겨졌을 수 있음
   if (hero.mode !== "sleep" && !isFree(hero.x, hero.y)) placeHeroInRoom();
   if (hero.mode === "walk") { hero.mode = "idle"; hero.timer = 1; }
   fixSleep();
@@ -1710,6 +1754,7 @@ function ownedCount(id) {
 
 function openShop() {
   if (editing) setEditing(false);
+  if (typeof Focus !== "undefined") Focus.close();
   shopEl.hidden = false;
   shopBtn.classList.add("active");
   renderShop();
@@ -1901,6 +1946,7 @@ function updateCoins(gained) {
 // 지난번 계산 이후 흐른 시간만큼 코인을 줍니다.
 // 2분 넘게 소식이 없었으면 꺼져 있던 것으로 보고 최대 180분까지만 쳐 줍니다.
 function earn() {
+  if (typeof Focus !== "undefined") Focus.update();
   const nowMs = Date.now();
   const gap = Math.max(0, nowMs - save.lastSeen);
   const offline = gap > 2 * 60 * 1000;
@@ -1943,7 +1989,7 @@ window.addEventListener("pagehide", earn);
 let pipWin = null;
 
 function updatePipButton() {
-  pipBtn.textContent = pipWin ? "원래 창으로" : "위에 띄우기";
+  pipBtn.textContent = pipWin ? "돌아가기" : "위에 띄우기";
 }
 
 async function togglePip() {
@@ -2003,6 +2049,7 @@ let loopToken = 0;
 
 function tick(dt) {
   time += dt;
+  if (typeof Focus !== "undefined") Focus.update();
   const h = hourNow();
   const phase = phaseOf(h);
 

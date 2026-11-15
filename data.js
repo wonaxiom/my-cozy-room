@@ -238,6 +238,7 @@ const EFFECTS = {
 // surface : 윗면 높이. 이 값이 있으면 위에 작은 물건을 올릴 수 있습니다. (책상, 수납장 등)
 // small   : 다른 가구 위에 올릴 수 있는 작은 물건 (스탠드, 화분 등)
 // sleep   : 잠자는 가구. side는 잠들기 전 서는 위치, pillow는 베개 위치 (가구 기준)
+// work    : 집중 타이머 중에 캐릭터가 서서 일하는 위치 (가구 기준)
 //
 // [그림 파일로 그리기]
 // image   : 그림 파일 경로 (예: "img/plant.png"). 배경이 투명한 PNG를 쓰세요.
@@ -260,6 +261,7 @@ const FURNITURE = {
     name: "책상",
     category: "furniture", price: 150,
     surface: 16,
+    work: [15, 10],
     parts: [
       [0, 0, 0, 2, 2, 14, "woodDark"],
       [10, 0, 0, 2, 2, 14, "woodDark"],
@@ -358,6 +360,7 @@ const FURNITURE = {
     name: "좌탁",
     category: "furniture", price: 120,
     surface: 7.5,
+    work: [7, 13],
     parts: [
       [1, 1, 0, 1.5, 1.5, 6, "woodDark"],
       [11.5, 1, 0, 1.5, 1.5, 6, "woodDark"],
@@ -503,6 +506,7 @@ const FURNITURE = {
     name: "창가 테이블",
     category: "furniture", price: 90,
     surface: 11,
+    work: [4, 9],
     parts: [
       [3, 2, 0, 1.5, 1.5, 10, "metal"],
       [0, 0, 10, 8, 6, 1, "woodLight"],

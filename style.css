@@ -89,6 +89,8 @@ button {
   cursor: pointer;
 }
 
+button { white-space: nowrap; }
+
 button:hover { background: #f1ece5; }
 
 .actions {
@@ -298,6 +300,165 @@ button:disabled {
   background: #f4f1ec;
 }
 
+/* ---- 집중 패널 ---- */
+.panel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.97);
+  border-radius: 6px;
+}
+
+.panel[hidden] { display: none; }
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+
+.panel-body {
+  overflow-y: auto;
+}
+
+.timer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.timer-time {
+  font-size: 36px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 1px;
+}
+
+.chips,
+.timer-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.chips button {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.timer-actions button {
+  min-width: 88px;
+}
+
+.muted {
+  margin: 0;
+  color: var(--sub);
+  font-size: 12px;
+  text-align: center;
+}
+
+.todos h3 {
+  margin: 12px 0 8px;
+  font-size: 13px;
+}
+
+.todo-form {
+  display: flex;
+  gap: 6px;
+}
+
+.todo-form input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.todo-list {
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.todo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 5px 2px;
+  border-bottom: 1px solid #f1ece5;
+  font-size: 13px;
+}
+
+.todo label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.todo label span {
+  overflow-wrap: anywhere;
+}
+
+.todo.done label span {
+  color: var(--sub);
+  text-decoration: line-through;
+}
+
+.todo-del {
+  flex-shrink: 0;
+  width: 24px;
+  padding: 0;
+  color: var(--sub);
+  line-height: 22px;
+  background: transparent;
+  border-color: transparent;
+}
+
+.todo-empty {
+  padding: 6px 2px;
+  color: var(--sub);
+  font-size: 12px;
+}
+
+.todo-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.todo-foot .muted { text-align: left; }
+
+.todo-foot button {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+/* 남은 시간 (화면 위 가운데) */
+.timer-pill {
+  border: none;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.timer-pill[hidden] { display: none; }
+
+.timer-pill.break { color: #4f7a5a; }
+
 /* ---- 잠긴 방 ---- */
 .locked {
   position: absolute;
@@ -443,8 +604,25 @@ body.pip .edit-bar.drop { background: #4a443e; }
 body.pip .edit-hint { color: #cfc7bd; }
 
 body.pip .toolbar {
+  gap: 6px;
   margin: 0;
   padding: 4px 8px;
+}
+
+/* 작은 창에서는 버튼을 조금 작게 */
+body.pip .toolbar button {
+  padding: 5px 8px;
+  font-size: 12px;
+}
+
+body.pip .actions,
+body.pip .room-picker { gap: 4px; }
+
+body.pip .room-picker button { width: 24px; padding: 4px 0; }
+
+body.pip #room-name {
+  min-width: 0;
+  font-size: 12px;
 }
 
 body.pip #room-name { color: #cfc7bd; }
