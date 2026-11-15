@@ -287,6 +287,7 @@ function drawItem(item) {
 // ---- 방 바꾸기 ---------------------------------------------------
 function setRoom(id) {
   room = ROOMS.find((r) => r.id === id) || ROOMS[0];
+  setOrigin(room);
   applyStyle();
   // 직접 꾸민 배치가 있으면 그것을, 없으면 처음 배치를 씁니다.
   const placed = (save.layouts && save.layouts[room.id]) || room.layout;
@@ -298,6 +299,12 @@ function setRoom(id) {
   Save.save(save);
   placeHeroInRoom();
   updateLock();
+}
+
+// 방마다 화면 가운데에 오도록 위치를 옮깁니다. (rooms.js의 offset)
+function setOrigin(r) {
+  viewOX = OX + ((r.offset && r.offset[0]) || 0);
+  viewOY = OY + ((r.offset && r.offset[1]) || 0);
 }
 
 // ---- 벽지 · 바닥 -------------------------------------------------
@@ -379,6 +386,29 @@ document.getElementById("room-prev").addEventListener("click", () => changeRoom(
 document.getElementById("room-next").addEventListener("click", () => changeRoom(1));
 
 // ---- 방 모양 -----------------------------------------------------
+const RW = () => room.width || ROOM;  // 바닥 가로 길이 (x 방향)
+const RD = () => room.depth || ROOM;  // 바닥 세로 길이 (y 방향)
+const RC = ROOM / 2;                  // 원형 방의 중심 위치이자 반지름
+
+// 바닥 안쪽인지 (m: 가장자리에서 띄울 거리)
+function insideFloor(x, y, m = 0) {
+  if (room.shape === "round") return Math.hypot(x - RC, y - RC) <= RC - m;
+  return x >= m && y >= m && x <= RW() - m && y <= RD() - m;
+}
+
+// 바닥 테두리 점들
+function floorOutline() {
+  if (room.shape === "round") {
+    const pts = [];
+    for (let i = 0; i < 48; i++) {
+      const t = (i / 48) * Math.PI * 2;
+      pts.push([RC + Math.cos(t) * RC, RC + Math.sin(t) * RC, 0]);
+    }
+    return pts;
+  }
+  return [[0, 0, 0], [RW(), 0, 0], [RW(), RD(), 0], [0, RD(), 0]];
+}
+
 // 다락방 지붕 높이 (y 위치에 따라)
 function roofZ(y) {
   const k = room.kneeHeight, p = room.peakHeight, half = ROOM / 2;
@@ -386,7 +416,6 @@ function roofZ(y) {
   return k + (p - k) * t;
 }
 
-// 벽 높이: 왼쪽 벽은 y 위치, 오른쪽 벽은 x 위치에 따라
 function leftWallTop(y) {
   return room.shape === "attic" ? roofZ(y) : room.wallHeight;
 }
@@ -395,16 +424,104 @@ function rightWallTop() {
   return room.shape === "attic" ? room.kneeHeight : room.wallHeight;
 }
 
+// ---- 벽면 --------------------------------------------------------
+// 벽 위의 위치를 (a: 벽을 따라간 거리, z: 높이)로 나타냅니다.
+//   "left"  : 왼쪽 벽 (x = 0), a = y
+//   "right" : 오른쪽 벽 (y = 0), a = x
+//   "round" : 원형 방의 둥근 벽, a = 왼쪽 끝부터 잰 둘레 길이
+const ROUND_START = Math.PI * 0.75;  // 둥근 벽이 시작하는 각도 (왼쪽 끝)
+const ROUND_LEN = Math.PI * RC;      // 둥근 벽 길이 (반원)
+
+function roundPoint(a, z, r = RC) {
+  const t = ROUND_START + a / RC;
+  return [RC + Math.cos(t) * r, RC + Math.sin(t) * r, z];
+}
+
+function surfacePoint(wall, a, z) {
+  if (wall === "right") return [a, 0, z];
+  if (wall === "round") return roundPoint(a, z, RC - 0.05);
+  return [0, a, z];
+}
+
+function wallLength(wall) {
+  if (wall === "right") return RW();
+  if (wall === "round") return ROUND_LEN;
+  return RD();
+}
+
+function wallTopAt(wall, a) {
+  if (wall === "left") return leftWallTop(a);
+  if (wall === "right") return rightWallTop();
+  return room.wallHeight;
+}
+
+function wallsOfRoom() {
+  return room.shape === "round" ? ["round"] : ["left", "right"];
+}
+
+// 벽 위의 사각형 (벽 높이를 넘는 부분은 잘라냄, 둥근 벽은 잘게 나눠 그림)
+function surfaceRect(wall, a1, a2, z1, z2, color) {
+  if (a2 <= a1) return;
+  let step = a2 - a1;
+  if (wall === "round") step = 2;
+  else if (wall === "left" && room.shape === "attic") step = 4;
+  for (let a = a1; a < a2 - 1e-6; a += step) {
+    const b = Math.min(a2, a + step);
+    const t1 = Math.min(z2, wallTopAt(wall, a)), t2 = Math.min(z2, wallTopAt(wall, b));
+    if (t1 <= z1 && t2 <= z1) continue;
+    poly([
+      surfacePoint(wall, a, z1), surfacePoint(wall, b, z1),
+      surfacePoint(wall, b, Math.max(z1, t2)), surfacePoint(wall, a, Math.max(z1, t1)),
+    ], color);
+  }
+}
+
+// 예전 이름 (왼쪽·오른쪽 벽 전용)
+function wallLeftRect(y1, y2, z1, z2, color) { surfaceRect("left", y1, y2, z1, z2, color); }
+function wallRightRect(x1, x2, z1, z2, color) { surfaceRect("right", x1, x2, z1, z2, color); }
+
+// ---- 방 껍데기 (벽, 바닥) ----------------------------------------
 function drawShell() {
   if (room.shape === "attic") drawAtticShell();
-  else drawBoxShell();
+  else if (room.shape === "round") drawRoundShell();
+  else {
+    if (room.shape === "train") drawTrainUnder();
+    drawBoxShell();
+  }
+}
+
+// 방 앞쪽에 그리는 것 (가구보다 나중에)
+function drawFront() {
+  if (room.shape === "attic") drawAtticFront();
+  if (room.shape === "train") drawTrainCeiling();
 }
 
 function drawBoxShell() {
-  const wh = room.wallHeight;
-  box(-4, -4, -5, 4, ROOM + 4, wh + 5, { top: "wallTop", left: "wallEdge", right: "wallLeft" });
-  box(0, -4, -5, ROOM, 4, wh + 5, { top: "wallTop", left: "wallRight", right: "wallEdge" });
-  box(0, 0, -5, ROOM, ROOM, 5, { top: "floor", left: "floorEdge", right: "floorEdge" });
+  const wh = room.wallHeight, w = RW(), d = RD();
+  box(-4, -4, -5, 4, d + 4, wh + 5, { top: "wallTop", left: "wallEdge", right: "wallLeft" });
+  box(0, -4, -5, w, 4, wh + 5, { top: "wallTop", left: "wallRight", right: "wallEdge" });
+  box(0, 0, -5, w, d, 5, { top: "floor", left: "floorEdge", right: "floorEdge" });
+}
+
+function drawRoundShell() {
+  const h = room.wallHeight, n = 48;
+  // 둥근 벽 (왼쪽에서 오른쪽으로 갈수록 조금씩 어두워짐)
+  for (let i = 0; i < n; i++) {
+    const a = (ROUND_LEN * i) / n, b = (ROUND_LEN * (i + 1)) / n;
+    poly([roundPoint(a, -5), roundPoint(b, -5), roundPoint(b, h), roundPoint(a, h)],
+      mixColor(colorOf("wallLeft"), colorOf("wallRight"), i / (n - 1)));
+    poly([roundPoint(a, h), roundPoint(b, h), roundPoint(b, h, RC + 4), roundPoint(a, h, RC + 4)], "wallTop");
+  }
+  for (const a of [0, ROUND_LEN]) {
+    poly([roundPoint(a, -5), roundPoint(a, -5, RC + 4), roundPoint(a, h, RC + 4), roundPoint(a, h)], "wallEdge");
+  }
+  // 바닥 앞쪽 두께와 윗면
+  for (let i = 0; i < n; i++) {
+    const t1 = ROUND_START + Math.PI + (Math.PI * i) / n, t2 = ROUND_START + Math.PI + (Math.PI * (i + 1)) / n;
+    const p = (t, z) => [RC + Math.cos(t) * RC, RC + Math.sin(t) * RC, z];
+    poly([p(t1, 0), p(t2, 0), p(t2, -5), p(t1, -5)], "floorEdge");
+  }
+  poly(floorOutline(), "floor");
 }
 
 function drawAtticShell() {
@@ -430,65 +547,110 @@ function drawAtticShell() {
 
 // 지붕 끝 단면 (방 앞쪽을 가리지 않도록 뒤쪽 지붕만 그립니다)
 function drawAtticFront() {
-  if (room.shape !== "attic") return;
   const k = room.kneeHeight, p = room.peakHeight, half = ROOM / 2, end = ROOM + 2, t = 4;
   const len = Math.hypot(half, p - k);
   const ny = ((p - k) / len) * t, nz = (half / len) * t;
-
-  // 지붕 꼭대기 단면
   quad([0, half, p], [end, half, p], [end, half - ny, p + nz], [0, half - ny, p + nz], "roofTop");
-  // 지붕 두께 (오른쪽 끝)
   quad([end, 0, k], [end, -ny, k + nz], [end, half - ny, p + nz], [end, half, p], "roofEdge");
 }
 
+// 기차: 레일, 차체 아래, 바퀴
+function drawTrainUnder() {
+  const w = RW(), d = RD();
+  for (let x = -10; x < w + 12; x += 6) box(x, -3, -16, 2.5, d + 6, 1, "tie");
+  box(-12, 3, -15, w + 26, 1.5, 1.5, "rail");
+  box(-12, d - 4.5, -15, w + 26, 1.5, 1.5, "rail");
+  box(6, 4, -12, w - 12, d - 8, 7, "underbody");
+  for (const cx of [12, 20, w - 20, w - 12]) {
+    const pts = [];
+    for (let i = 0; i < 16; i++) {
+      const t = (i / 16) * Math.PI * 2;
+      pts.push([cx + Math.cos(t) * 3.5, d - 3.9, -11 + Math.sin(t) * 3.5]);
+    }
+    poly(pts, "wheel");
+  }
+}
+
+// 기차: 둥근 천장 (뒤쪽 벽 위로 휘어지는 부분만)
+function drawTrainCeiling() {
+  const w = RW() + 2, h = room.wallHeight, n = 6;
+  const arc = (i, grow = 0) => {
+    const t = (i / n) * (Math.PI / 2);
+    return [10 - (10 + grow) * Math.cos(t), h + (7 + grow) * Math.sin(t)];
+  };
+  for (let i = 0; i < n; i++) {
+    const [y1, z1] = arc(i), [y2, z2] = arc(i + 1);
+    quad([0, y1, z1], [w, y1, z1], [w, y2, z2], [0, y2, z2], shadeOf("ceiling", -0.03 * (n - i)));
+  }
+  const cap = [];
+  for (let i = 0; i <= n; i++) cap.push([w, ...arc(i)]);
+  for (let i = n; i >= 0; i--) cap.push([w, ...arc(i, 3)]);
+  poly(cap, "wallTop");
+}
+
+// 기차: 끝 벽의 문
+function drawTrainDoor() {
+  surfaceRect("left", 8, 20, 0, 28, "woodDark");
+  surfaceRect("left", 9, 19, 1, 27, "door");
+  surfaceRect("left", 11, 17, 16, 24, "doorGlass");
+  surfaceRect("left", 16, 17.5, 12, 13, "metal");
+}
+
 // ---- 벽과 바닥 무늬 ----------------------------------------------
-// 왼쪽 벽 위의 띠 (위쪽 끝은 벽 높이를 따라감 — 다락방에서도 맞게)
-function leftStrip(y1, y2, z1, z2, color) {
-  const t1 = Math.min(z2, leftWallTop(y1)), t2 = Math.min(z2, leftWallTop(y2));
-  if (t1 <= z1 && t2 <= z1) return;
-  poly([[0, y1, z1], [0, y2, z1], [0, y2, Math.max(z1, t2)], [0, y1, Math.max(z1, t1)]], color);
-}
-
-function rightStrip(x1, x2, z1, z2, color) {
-  const top = Math.min(z2, rightWallTop());
-  if (top > z1) wallRightRect(x1, x2, z1, top, color);
-}
-
 function drawWallPattern() {
   const pattern = currentStyle().wall.pattern;
-  const rTop = rightWallTop();
-  if (pattern === "dots") {
-    for (let y = 4; y < ROOM; y += 6) {
-      for (let z = 6; z < leftWallTop(y) - 2; z += 6) dot(0, y, z, "wallDot");
+  const zMax = room.peakHeight || room.wallHeight;
+  for (const wall of wallsOfRoom()) {
+    const len = wallLength(wall);
+    const top = (a) => wallTopAt(wall, a);
+    const pt = (a, z) => surfacePoint(wall, a, z);
+    if (pattern === "dots") {
+      for (let a = 4; a < len; a += 6) {
+        for (let z = 6; z < top(a) - 2; z += 6) dot(...pt(a, z), "wallDot");
+      }
+    } else if (pattern === "stripes") {
+      for (let a = 2; a < len; a += 6) surfaceRect(wall, a, a + 2, 0, 99, "wallDot");
+    } else if (pattern === "planks") {
+      for (let a = 6; a < len; a += 6) line(pt(a, 0), pt(a, top(a)), "wallDot");
+    } else if (pattern === "beams") {
+      // 나무 기둥과 가로 들보 (들보는 벽이 충분히 높은 곳에만)
+      const posts = [0, len - 2];
+      if (len > 50) posts.push(len / 2 - 1);
+      for (const a of posts) surfaceRect(wall, a, a + 2, 0, 99, "wallDot");
+      for (let a = 0; a < len; a += 2) {
+        const b = Math.min(len, a + 2);
+        if (top(a) >= 34 && top(b) >= 34) surfaceRect(wall, a, b, 32, 34, "wallDot");
+      }
+    } else if (pattern === "panel") {
+      // 아래쪽 나무 판넬
+      surfaceRect(wall, 0, len, 0, 12, "wallDot");
+      for (let a = 8; a < len; a += 8) surfaceRect(wall, a - 0.5, a, 2, 11, "woodDark");
+      surfaceRect(wall, 0, len, 12, 13, "woodDark");
+    } else if (pattern === "bricks") {
+      for (let z = 4, row = 0; z < zMax; z += 4, row++) {
+        for (let a = 0; a < len; a += 0.5) if (z < top(a)) dot(...pt(a, z), "wallDot");
+        for (let a = row % 2 ? 4 : 0; a < len; a += 8) if (z < top(a)) line(pt(a, z - 4), pt(a, z), "wallDot");
+      }
     }
-    for (let x = 4; x < ROOM; x += 6) {
-      for (let z = 6; z < rTop - 2; z += 6) dot(x, 0, z, "wallDot");
-    }
-  } else if (pattern === "stripes") {
-    for (let y = 2; y < ROOM; y += 6) leftStrip(y, y + 2, 0, 99, "wallDot");
-    for (let x = 2; x < ROOM; x += 6) rightStrip(x, x + 2, 0, 99, "wallDot");
-  } else if (pattern === "planks") {
-    for (let y = 6; y < ROOM; y += 6) line([0, y, 0], [0, y, leftWallTop(y)], "wallDot");
-    for (let x = 6; x < ROOM; x += 6) line([x, 0, 0], [x, 0, rTop], "wallDot");
-  } else if (pattern === "beams") {
-    // 나무 기둥과 가로 들보
-    const beamZ = 32;
-    leftStrip(0, 2, 0, 99, "wallDot");
-    leftStrip(ROOM - 2, ROOM, 0, 99, "wallDot");
-    rightStrip(0, 2, 0, 99, "wallDot");
-    rightStrip(31, 33, 0, 99, "wallDot");
-    rightStrip(ROOM - 2, ROOM, 0, 99, "wallDot");
-    for (let y = 0; y < ROOM; y += 2) {
-      if (leftWallTop(y) >= beamZ + 2 && leftWallTop(y + 2) >= beamZ + 2) leftStrip(y, y + 2, beamZ, beamZ + 2, "wallDot");
-    }
-    if (rTop >= beamZ + 2) rightStrip(0, ROOM, beamZ, beamZ + 2, "wallDot");
+    if (pattern !== "panel") surfaceRect(wall, 0, len, 0, 3, "baseboard");
   }
-  wallLeftRect(0, ROOM, 0, 3, "baseboard");
-  wallRightRect(0, ROOM, 0, Math.min(3, rTop), "baseboard");
+  if (room.shape === "train") drawTrainDoor();
 }
 
 function drawFloorPattern() {
   const pattern = currentStyle().floor.pattern;
+  const w = RW(), d = RD();
+  // 바닥 모양 밖으로 무늬가 넘치지 않게
+  ctx.save();
+  ctx.beginPath();
+  floorOutline().forEach((q, i) => {
+    const p = project(...q);
+    if (i) ctx.lineTo(p.x, p.y);
+    else ctx.moveTo(p.x, p.y);
+  });
+  ctx.closePath();
+  ctx.clip();
+
   if (pattern === "tatami") {
     // 다다미 4장 + 2장씩 엇갈린 배치
     const mats = [
@@ -497,43 +659,47 @@ function drawFloorPattern() {
       [0, 32, 16, 32], [16, 32, 16, 32],
       [32, 32, 32, 16], [32, 48, 32, 16],
     ];
-    for (const [x, y, w, d] of mats) {
-      quad([x, y, 0], [x + w, y, 0], [x + w, y + d, 0], [x, y + d, 0], "tatami");
+    for (const [x, y, mw, md] of mats) {
+      quad([x, y, 0], [x + mw, y, 0], [x + mw, y + md, 0], [x, y + md, 0], "tatami");
       // 짚 무늬
-      if (w > d) for (let yy = y + 2; yy < y + d - 1; yy += 2) line([x + 1, yy, 0], [x + w - 1, yy, 0], "tatamiLine");
-      else for (let xx = x + 2; xx < x + w - 1; xx += 2) line([xx, y + 1, 0], [xx, y + d - 1, 0], "tatamiLine");
+      if (mw > md) for (let yy = y + 2; yy < y + md - 1; yy += 2) line([x + 1, yy, 0], [x + mw - 1, yy, 0], "tatamiLine");
+      else for (let xx = x + 2; xx < x + mw - 1; xx += 2) line([xx, y + 1, 0], [xx, y + md - 1, 0], "tatamiLine");
       // 긴 쪽 테두리
-      if (w > d) {
-        line([x, y, 0], [x + w, y, 0], "tatamiEdge");
-        line([x, y + d - 0.5, 0], [x + w, y + d - 0.5, 0], "tatamiEdge");
+      if (mw > md) {
+        line([x, y, 0], [x + mw, y, 0], "tatamiEdge");
+        line([x, y + md - 0.5, 0], [x + mw, y + md - 0.5, 0], "tatamiEdge");
       } else {
-        line([x, y, 0], [x, y + d, 0], "tatamiEdge");
-        line([x + w - 0.5, y, 0], [x + w - 0.5, y + d, 0], "tatamiEdge");
+        line([x, y, 0], [x, y + md, 0], "tatamiEdge");
+        line([x + mw - 0.5, y, 0], [x + mw - 0.5, y + md, 0], "tatamiEdge");
       }
     }
   } else if (pattern === "tile") {
     // 체크 타일
-    for (let x = 0; x < ROOM; x += 8) {
-      for (let y = 0; y < ROOM; y += 8) {
+    for (let x = 0; x < w; x += 8) {
+      for (let y = 0; y < d; y += 8) {
         if ((x + y) / 8 % 2) quad([x, y, 0], [x + 8, y, 0], [x + 8, y + 8, 0], [x, y + 8, 0], "floorLine");
       }
     }
   } else if (pattern === "carpet") {
     // 카펫 결
-    for (let x = 2; x < ROOM; x += 4) {
-      for (let y = (x / 4) % 2 ? 2 : 4; y < ROOM; y += 4) dot(x, y, 0, "floorLine");
+    for (let x = 2; x < w; x += 4) {
+      for (let y = (x / 4) % 2 ? 2 : 4; y < d; y += 4) dot(x, y, 0, "floorLine");
     }
   } else {
     // 나무 바닥
-    for (let y = 6, row = 0; y < ROOM; y += 6, row++) {
-      line([0, y, 0], [ROOM, y, 0], "floorLine");
-      for (let x = row % 2 ? 12 : 0; x < ROOM; x += 24) line([x, y - 6, 0], [x, y, 0], "floorLine");
+    for (let y = 6, row = 0; y < d; y += 6, row++) {
+      line([0, y, 0], [w, y, 0], "floorLine");
+      for (let x = row % 2 ? 12 : 0; x < w; x += 24) line([x, y - 6, 0], [x, y, 0], "floorLine");
     }
   }
+  ctx.restore();
 }
 
 // ---- 창문 --------------------------------------------------------
-// 창문 모양에 따라 높이 z에서 하늘이 보이는 범위 [y1, y2]
+// 창문 위치는 벽 위의 (a, z) 좌표로 정합니다. y1~y2가 가로(a), z1~z2가 높이입니다.
+// wall: "left"(왼쪽 벽, 기본) / "right"(오른쪽 벽) / "round"(둥근 벽)
+
+// 창문 모양에 따라 높이 z에서 하늘이 보이는 범위 [a1, a2]
 function windowSpan(win, z) {
   if (win.style === "round") {
     const dz = z - win.cz;
@@ -551,7 +717,7 @@ function skyRect(win, y1, y2, z1, z2, color) {
     const span = windowSpan(win, z + 0.5);
     if (!span) continue;
     const a = Math.max(y1, span[0]), b = Math.min(y2, span[1]);
-    if (b > a) wallLeftRect(a, b, z, z + 1, color);
+    if (b > a) surfaceRect(win.wall, a, b, z, z + 1, color);
   }
 }
 
@@ -569,79 +735,126 @@ function drawSky(win, phase, yMin, yMax, zMin, zMax) {
       const span = windowSpan(win, fz(sz));
       if (!span || fy(sy) < span[0] || fy(sy) > span[1]) return;
       ctx.globalAlpha = 0.5 + 0.5 * Math.sin(time * 1.5 + i * 1.7);
-      dot(0, fy(sy), fz(sz), "#fff6d5");
+      dot(...surfacePoint(win.wall, fy(sy), fz(sz)), "#fff6d5");
     });
     ctx.globalAlpha = 1;
     skyRect(win, fy(0.15), fy(0.15) + 3, fz(0.72), fz(0.72) + 3, "#f4efd2");
   } else {
-    // 천천히 흘러가는 구름
+    // 흘러가는 구름 (기차 창문에서는 빠르게)
     ctx.globalAlpha = 0.85;
+    const speed = win.scenery ? 5 : 1.2;
     const range = yMax - yMin + 12;
     [[0, 0.55], [range / 2, 0.2]].forEach(([offset, cz]) => {
-      const cy = yMax + 6 - ((time * 1.2 + offset) % range);
+      const cy = yMax + 6 - ((time * speed + offset) % range);
       skyRect(win, cy - 6, cy, fz(cz), fz(cz) + 2, "#ffffff");
       skyRect(win, cy - 4, cy - 1, fz(cz) + 2, fz(cz) + 3, "#ffffff");
     });
     ctx.globalAlpha = 1;
   }
+  if (win.scenery) drawScenery(win, phase, yMin, yMax, zMin, zMax);
+}
+
+// 기차 창밖 풍경: 먼 산은 천천히, 언덕과 전봇대는 빠르게 지나갑니다.
+function drawScenery(win, phase, aMin, aMax, zMin, zMax) {
+  const night = phase === "night";
+  const farColor = night ? "#2a3548" : phase === "evening" ? "#a08c78" : "#a9cbb0";
+  const nearColor = night ? "#1c2533" : phase === "evening" ? "#6f7458" : "#7aa86a";
+  const h = zMax - zMin;
+  for (let a = Math.floor(aMin); a < aMax; a++) {
+    const u = a + time * 2;
+    skyRect(win, a, a + 1, zMin, zMin + h * (0.38 + 0.1 * Math.sin(u * 0.15) + 0.05 * Math.sin(u * 0.41)), farColor);
+    const v = a + time * 9;
+    skyRect(win, a, a + 1, zMin, zMin + h * (0.18 + 0.07 * Math.sin(v * 0.23)), nearColor);
+  }
+  // 전봇대 (창문끼리 이어지도록 벽 전체 기준 위치로 계산)
+  const gap = 40, shift = time * 18;
+  for (let k = Math.floor((aMin + shift) / gap); k <= Math.ceil((aMax + shift) / gap); k++) {
+    const pa = k * gap - shift;
+    if (pa < aMin - 1 || pa > aMax) continue;
+    skyRect(win, pa, pa + 1, zMin, zMax - 1, night ? "#151b26" : "#5b4a3e");
+    skyRect(win, pa - 1.5, pa + 2.5, zMax - 3, zMax - 2.5, night ? "#151b26" : "#5b4a3e");
+  }
+}
+
+function windowsOf(r = room) {
+  return (r.windows || []).map((w) => Object.assign({ wall: "left" }, w));
+}
+
+// 창틀 밑의 창턱 (평평한 벽에만)
+function windowSill(win, depth) {
+  const { y1, y2, z1 } = win;
+  if (win.wall === "left") box(0, y1 - 1, z1 - 2, depth, y2 - y1 + 2, 2, "windowFrame");
+  else if (win.wall === "right") box(y1 - 1, 0, z1 - 2, y2 - y1 + 2, depth, 2, "windowFrame");
 }
 
 function drawWindow(phase) {
-  const win = room.window;
-  if (!win) return;
-  if (win.style === "round") drawRoundWindow(win, phase);
-  else if (win.style === "shoji") drawShojiWindow(win, phase);
-  else drawCurtainWindow(win, phase);
+  for (const win of windowsOf()) {
+    if (win.style === "round") drawRoundWindow(win, phase);
+    else if (win.style === "shoji") drawShojiWindow(win, phase);
+    else if (win.style === "train") drawTrainWindow(win, phase);
+    else drawCurtainWindow(win, phase);
+  }
 }
 
 function drawCurtainWindow(win, phase) {
-  const { y1, y2, z1, z2 } = win;
+  const { y1, y2, z1, z2, wall } = win;
   const mid = (y1 + y2) / 2, midZ = (z1 + z2) / 2;
 
   // 커튼과 커튼봉
-  wallLeftRect(y1 - 5, y2 + 5, z2 + 3, z2 + 4, "woodDark");
-  wallLeftRect(y1 - 4, y1, z1 - 3, z2 + 3, "curtain");
-  wallLeftRect(y2, y2 + 4, z1 - 3, z2 + 3, "curtain");
-  wallLeftRect(y1 - 2, y1 - 1, z1 - 3, z2 + 3, "curtainShade");
-  wallLeftRect(y2 + 2, y2 + 3, z1 - 3, z2 + 3, "curtainShade");
+  surfaceRect(wall, y1 - 5, y2 + 5, z2 + 3, z2 + 4, "woodDark");
+  surfaceRect(wall, y1 - 4, y1, z1 - 3, z2 + 3, "curtain");
+  surfaceRect(wall, y2, y2 + 4, z1 - 3, z2 + 3, "curtain");
+  surfaceRect(wall, y1 - 2, y1 - 1, z1 - 3, z2 + 3, "curtainShade");
+  surfaceRect(wall, y2 + 2, y2 + 3, z1 - 3, z2 + 3, "curtainShade");
 
   // 창틀과 하늘
-  wallLeftRect(y1, y2, z1, z2, "windowFrame");
-  const sky = { sy1: y1 + 2, sy2: y2 - 2, sz1: z1 + 2, sz2: z2 - 2 };
+  surfaceRect(wall, y1, y2, z1, z2, "windowFrame");
+  const sky = { wall, sy1: y1 + 2, sy2: y2 - 2, sz1: z1 + 2, sz2: z2 - 2 };
   drawSky(sky, phase, sky.sy1, sky.sy2, sky.sz1, sky.sz2);
 
   // 창살과 창턱
-  wallLeftRect(mid - 0.5, mid + 0.5, z1, z2, "windowFrame");
-  wallLeftRect(y1, y2, midZ - 0.5, midZ + 0.5, "windowFrame");
-  box(0, y1 - 1, z1 - 2, 3, y2 - y1 + 2, 2, "windowFrame");
+  surfaceRect(wall, mid - 0.5, mid + 0.5, z1, z2, "windowFrame");
+  surfaceRect(wall, y1, y2, midZ - 0.5, midZ + 0.5, "windowFrame");
+  windowSill(win, 3);
 }
 
 // 미닫이 창: 왼쪽 절반은 열려 있고, 오른쪽 절반은 창호지
 function drawShojiWindow(win, phase) {
-  const { y1, y2, z1, z2 } = win;
+  const { y1, y2, z1, z2, wall } = win;
   const mid = (y1 + y2) / 2;
-  wallLeftRect(y1, y2, z1, z2, "windowFrame");
+  surfaceRect(wall, y1, y2, z1, z2, "windowFrame");
 
   // 열린 쪽 (하늘)
-  const sky = { sy1: mid + 1, sy2: y2 - 1.5, sz1: z1 + 1.5, sz2: z2 - 1.5 };
+  const sky = { wall, sy1: mid + 1, sy2: y2 - 1.5, sz1: z1 + 1.5, sz2: z2 - 1.5 };
   drawSky(sky, phase, sky.sy1, sky.sy2, sky.sz1, sky.sz2);
 
   // 창호지 쪽 (시간에 따라 비치는 빛이 달라짐)
   const glow = { dawn: "#f6e3cf", day: "#f7f1e1", evening: "#f3d9b0", night: "#b9b7c2" }[phase];
-  wallLeftRect(y1 + 1.5, mid, z1 + 1.5, z2 - 1.5, glow);
-  for (let y = y1 + 1.5 + 4; y < mid - 0.5; y += 4) wallLeftRect(y - 0.5, y, z1 + 1.5, z2 - 1.5, "windowFrame");
-  for (let z = z1 + 1.5 + 5; z < z2 - 2; z += 5) wallLeftRect(y1 + 1.5, mid, z - 0.5, z, "windowFrame");
-  wallLeftRect(mid - 0.5, mid + 1, z1, z2, "windowFrame");
-  box(0, y1 - 1, z1 - 2, 2, y2 - y1 + 2, 2, "windowFrame");
+  surfaceRect(wall, y1 + 1.5, mid, z1 + 1.5, z2 - 1.5, glow);
+  for (let y = y1 + 1.5 + 4; y < mid - 0.5; y += 4) surfaceRect(wall, y - 0.5, y, z1 + 1.5, z2 - 1.5, "windowFrame");
+  for (let z = z1 + 1.5 + 5; z < z2 - 2; z += 5) surfaceRect(wall, y1 + 1.5, mid, z - 0.5, z, "windowFrame");
+  surfaceRect(wall, mid - 0.5, mid + 1, z1, z2, "windowFrame");
+  windowSill(win, 2);
+}
+
+// 기차 창문: 위에 짧은 커튼, 창밖으로 풍경이 지나감
+function drawTrainWindow(win, phase) {
+  const { y1, y2, z1, z2, wall } = win;
+  surfaceRect(wall, y1, y2, z1, z2, "windowFrame");
+  const sky = { wall, scenery: true, sy1: y1 + 1.5, sy2: y2 - 1.5, sz1: z1 + 1.5, sz2: z2 - 1.5 };
+  drawSky(sky, phase, sky.sy1, sky.sy2, sky.sz1, sky.sz2);
+  surfaceRect(wall, y1 - 1, y2 + 1, z2 - 0.5, z2 + 2.5, "curtain");
+  for (let a = y1; a < y2; a += 3) surfaceRect(wall, a + 1, a + 1.5, z2 - 0.5, z2 + 2.5, "curtainShade");
+  windowSill(win, 2);
 }
 
 function drawRoundWindow(win, phase) {
-  const { cy, cz, r } = win;
+  const { cy, cz, r, wall } = win;
   const circle = (rad) => {
     const pts = [];
     for (let i = 0; i < 32; i++) {
       const a = (i / 32) * Math.PI * 2;
-      pts.push([0, cy + Math.cos(a) * rad, cz + Math.sin(a) * rad]);
+      pts.push(surfacePoint(wall, cy + Math.cos(a) * rad, cz + Math.sin(a) * rad));
     }
     return pts;
   };
@@ -728,7 +941,7 @@ const hero = {
 
 // 가구에 부딪히지 않는 곳인지 확인
 function isFree(x, y) {
-  if (x < 4 || y < 4 || x > ROOM - 4 || y > ROOM - 4) return false;
+  if (!insideFloor(x, y, 4)) return false;
   return !blockers.some((b) => x > b.x - 2.5 && x < b.x + b.w + 2.5 && y > b.y - 2.5 && y < b.y + b.d + 2.5);
 }
 
@@ -743,8 +956,8 @@ function pathIsFree(x1, y1, x2, y2) {
 
 function pickTarget() {
   for (let i = 0; i < 30; i++) {
-    const x = 4 + Math.random() * (ROOM - 8);
-    const y = 4 + Math.random() * (ROOM - 8);
+    const x = 4 + Math.random() * (RW() - 8);
+    const y = 4 + Math.random() * (RD() - 8);
     if (pathIsFree(hero.x, hero.y, x, y)) return { x, y };
   }
   return null;
@@ -780,8 +993,8 @@ function bedSide() {
 // 방을 바꾸면 빈 바닥에 캐릭터를 세웁니다.
 function placeHeroInRoom() {
   for (let i = 0; i < 200; i++) {
-    const x = 6 + Math.random() * (ROOM - 12);
-    const y = 30 + Math.random() * (ROOM - 36);
+    const x = 6 + Math.random() * (RW() - 12);
+    const y = RD() * 0.45 + Math.random() * (RD() * 0.55 - 6);
     if (isFree(x, y)) { hero.x = x; hero.y = y; break; }
   }
   if (hero.mode === "walk") { hero.mode = "idle"; hero.timer = 1; }
@@ -1170,13 +1383,14 @@ function wallRect(item) {
   return { a1: a + e.a1, a2: a + e.a2, z1: item.z + e.z1, z2: item.z + e.z2 };
 }
 
-// 벽에서 비워 둬야 하는 곳 (창문, 시계)
+// 벽에서 비워 둬야 하는 곳 (창문, 시계, 기차 문)
 function wallObstacles(wall) {
   const list = [];
-  const win = room.window;
-  if (wall === "left" && win) {
+  for (const win of windowsOf()) {
+    if (win.wall !== wall) continue;
     if (win.style === "round") list.push({ a1: win.cy - win.r - 3, a2: win.cy + win.r + 3, z1: win.cz - win.r - 3, z2: win.cz + win.r + 3 });
-    else list.push({ a1: win.y1 - 6, a2: win.y2 + 6, z1: win.z1 - 3, z2: win.z2 + 5 });
+    else if (win.style === "curtain") list.push({ a1: win.y1 - 6, a2: win.y2 + 6, z1: win.z1 - 3, z2: win.z2 + 5 });
+    else list.push({ a1: win.y1 - 1, a2: win.y2 + 1, z1: win.z1 - 2, z2: win.z2 + 3 });
   }
   if (room.clock) {
     const [cx, cy, cz] = room.clock;
@@ -1186,6 +1400,7 @@ function wallObstacles(wall) {
       list.push({ a1: a - 7, a2: a + 7, z1: cz - 7, z2: cz + 7 });
     }
   }
+  if (room.shape === "train" && wall === "left") list.push({ a1: 7, a2: 21, z1: 0, z2: 29 });
   return list;
 }
 
@@ -1196,7 +1411,8 @@ function rectsOverlap(p, q) {
 // 벽 가구를 지금 위치에 걸 수 있는지
 function wallValid(item) {
   const wall = wallOf(item), r = wallRect(item);
-  if (r.a1 < 1 || r.a2 > ROOM - 1 || r.z1 < 3) return false;
+  if (wall === "round") return false; // 둥근 벽에는 걸 수 없음
+  if (r.a1 < 1 || r.a2 > wallLength(wall) - 1 || r.z1 < 3) return false;
   const top = wall === "right" ? rightWallTop() : Math.min(leftWallTop(r.a1), leftWallTop(r.a2));
   if (r.z2 > top - 1) return false;
   if (wallObstacles(wall).some((o) => rectsOverlap(r, o))) return false;
@@ -1204,12 +1420,15 @@ function wallValid(item) {
 }
 
 // 바닥 가구를 지금 위치에 놓을 수 있는지 (ignore: 함께 옮기는 물건)
-function floorValid(item, ignore = []) {
+// pad: 다른 가구와 띄울 간격 (자동으로 놓을 때 너무 붙지 않게)
+function floorValid(item, ignore = [], pad = 0) {
   const fp = footprint(item);
-  if (fp.x < 0 || fp.y < 0 || fp.x + fp.w > ROOM || fp.y + fp.d > ROOM) return false;
+  const corners = [[fp.x, fp.y], [fp.x + fp.w, fp.y], [fp.x, fp.y + fp.d], [fp.x + fp.w, fp.y + fp.d]];
+  if (!corners.every(([x, y]) => insideFloor(x, y))) return false;
   if (item.type === "floor") return true;
   const others = objects.filter((o) => o !== item && o.z === 0 && !ignore.includes(o));
-  if (others.some((o) => overlaps(fp, footprint(o)))) return false;
+  const area = { x: fp.x - pad, y: fp.y - pad, w: fp.w + pad * 2, d: fp.d + pad * 2 };
+  if (others.some((o) => overlaps(area, footprint(o)))) return false;
   // 다락방: 낮은 지붕에 닿으면 안 됨
   if (room.shape === "attic" && itemHeight(item) > Math.min(roofZ(fp.y), roofZ(fp.y + fp.d))) return false;
   return true;
@@ -1243,8 +1462,9 @@ function moveDrag(p) {
     const da = cur.a - drag.start.a;
     const top = drag.wall === "right" ? rightWallTop() : (room.wallHeight || room.peakHeight);
     item.z = clamp(snap(orig.z + cur.z - drag.start.z), 3 - e.z1, top - e.z2 - 1);
-    if (drag.wall === "right") item.x = clamp(snap(orig.x + da), 1 - e.a1, ROOM - e.a2 - 1);
-    else item.y = clamp(snap(orig.y + da), 1 - e.a1, ROOM - e.a2 - 1);
+    const len = wallLength(drag.wall);
+    if (drag.wall === "right") item.x = clamp(snap(orig.x + da), 1 - e.a1, len - e.a2 - 1);
+    else item.y = clamp(snap(orig.y + da), 1 - e.a1, len - e.a2 - 1);
     drag.valid = wallValid(item);
     return;
   }
@@ -1252,8 +1472,8 @@ function moveDrag(p) {
   // 바닥에 놓는 가구
   const cur = unproject(p.x, p.y, orig.z);
   const r = drag.rel;
-  item.x = clamp(snap(orig.x + cur.x - drag.start.x), -r.x, ROOM - r.x - r.w);
-  item.y = clamp(snap(orig.y + cur.y - drag.start.y), -r.y, ROOM - r.y - r.d);
+  item.x = clamp(snap(orig.x + cur.x - drag.start.x), -r.x, RW() - r.x - r.w);
+  item.y = clamp(snap(orig.y + cur.y - drag.start.y), -r.y, RD() - r.y - r.d);
 
   if (item.type === "floor") {
     drag.valid = true;
@@ -1363,7 +1583,9 @@ function isOverBag(e) {
 function takeFromBag(id) {
   const item = makeItem({ id, x: 0, y: 0, z: 0 });
   if (!findSpot(item)) {
-    toast("놓을 자리가 없어요. 가구를 옮겨서 자리를 만들어 주세요.");
+    toast(item.type === "wall" && room.shape === "round"
+      ? "둥근 벽에는 걸 수 없어요. 다른 방에서 써 주세요."
+      : "놓을 자리가 없어요. 가구를 옮겨서 자리를 만들어 주세요.");
     return;
   }
   items.push(item);
@@ -1378,11 +1600,16 @@ function takeFromBag(id) {
 // 빈자리 찾기 (바닥은 방 가운데부터, 벽은 높은 곳부터)
 function findSpot(item) {
   if (item.type === "wall") {
+    if (room.shape === "round") return false;
     const walls = room.shape === "attic" ? ["left"] : ["right", "left"];
     for (const wall of walls) {
       item.flip = wall === "left";
-      for (let z = 24; z >= 6; z -= GRID) {
-        for (let a = 2; a < ROOM; a += GRID) {
+      // 눈높이(24)부터 아래로, 그다음 위로 찾아봅니다.
+      const heights = [];
+      for (let z = 24; z >= 6; z -= GRID) heights.push(z);
+      for (let z = 26; z <= 40; z += GRID) heights.push(z);
+      for (const z of heights) {
+        for (let a = 2; a < wallLength(wall); a += GRID) {
           item.x = wall === "right" ? a : 0;
           item.y = wall === "right" ? 0 : a;
           item.z = z;
@@ -1394,12 +1621,15 @@ function findSpot(item) {
   }
   item.z = 0;
   const spots = [];
-  for (let x = 0; x <= ROOM; x += GRID) for (let y = 0; y <= ROOM; y += GRID) spots.push([x, y]);
-  spots.sort((p, q) => Math.hypot(p[0] - 28, p[1] - 36) - Math.hypot(q[0] - 28, q[1] - 36));
-  for (const [x, y] of spots) {
-    item.x = x;
-    item.y = y;
-    if (floorValid(item)) return true;
+  for (let x = 0; x <= RW(); x += GRID) for (let y = 0; y <= RD(); y += GRID) spots.push([x, y]);
+  const cx = RW() * 0.45, cy = RD() * 0.55;
+  spots.sort((p, q) => Math.hypot(p[0] - cx, p[1] - cy) - Math.hypot(q[0] - cx, q[1] - cy));
+  for (const pad of [3, 0]) {
+    for (const [x, y] of spots) {
+      item.x = x;
+      item.y = y;
+      if (floorValid(item, [], pad)) return true;
+    }
   }
   return false;
 }
@@ -1499,13 +1729,14 @@ function makeRoomPreview(r, style) {
   const prev = { ctx, viewOX, viewOY, room, activeColors, shadeCache, previewStyle };
   ctx = c.getContext("2d");
   room = r;
+  setOrigin(r);
   previewStyle = style || null;
   applyStyle();
   drawShell();
   drawWallPattern();
   drawFloorPattern();
   drawWindow("day");
-  drawAtticFront();
+  drawFront();
   ({ ctx, viewOX, viewOY, room, activeColors, shadeCache, previewStyle } = prev);
   return c;
 }
@@ -1792,7 +2023,7 @@ function tick(dt) {
   }
   drawObjects();
   drawEditMarker("over");
-  drawAtticFront();
+  drawFront();
   drawLighting(phase);
   drawEffects();
 

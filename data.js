@@ -80,6 +80,22 @@ const PALETTE = {
   roofEdge: "#6b4a33",
   roofTop: "#8a6244",
 
+  // 원형 탑방 · 기차 객실
+  ceiling: "#f3eee4",
+  door: "#8a5a3c",
+  doorGlass: "#bcd7e0",
+  tie: "#5a4636",
+  rail: "#8a8f96",
+  underbody: "#2f3338",
+  wheel: "#3d4248",
+  seat: "#4f6d8f",
+  seatBase: "#3b4f68",
+  blanketRed: "#b5545a",
+  brass: "#c9a24a",
+  globe: "#5d8fb5",
+  globeLand: "#7dab6a",
+  velvet: "#7a4a6b",
+
   // 캐릭터
   hair: "#4a3226",
   skin: "#f6d2b8",
@@ -437,6 +453,80 @@ const FURNITURE = {
     parts: [
       [0, 0, 0, 6, 6, 5, "cushion"],
       [0, 0, 5, 6, 6, 1, "cushionLight"],
+    ],
+  },
+
+  // ---- 원형 탑방 ----
+  armchair: {
+    name: "안락의자",
+    category: "furniture", price: 130,
+    parts: [
+      [0, 0, 0, 9, 9, 5, "velvet"],
+      [0, 0, 5, 2.5, 9, 9, "velvet"],
+      [0, 0, 5, 9, 1.5, 4, "velvet"],
+      [0, 7.5, 5, 9, 1.5, 4, "velvet"],
+    ],
+  },
+  globe: {
+    name: "지구본",
+    category: "prop", price: 70,
+    small: true,
+    parts: [
+      [1.5, 1.5, 0, 3, 3, 1, "woodDark"],
+      [2.5, 2.5, 1, 1, 1, 4, "brass"],
+      [0.5, 0.5, 5, 5, 5, 5, "globe"],
+      [1.5, 0.5, 7, 3, 2, 2, "globeLand"],
+    ],
+  },
+  telescope: {
+    name: "망원경",
+    category: "prop", price: 80,
+    parts: [
+      [1, 1, 0, 1, 1, 10, "woodDark"],
+      [6, 1, 0, 1, 1, 10, "woodDark"],
+      [3.5, 6, 0, 1, 1, 10, "woodDark"],
+      [0, 2.5, 10, 10, 2.5, 2.5, "brass"],
+    ],
+  },
+
+  // ---- 기차 객실 ----
+  trainSeat: {
+    name: "객실 좌석",
+    category: "furniture", price: 100,
+    parts: [
+      [0, 0, 0, 9, 10, 6, "seatBase"],
+      [0, 0, 6, 9, 10, 2, "seat"],
+      [0, 0, 8, 2.5, 10, 11, "seat"],
+    ],
+  },
+  windowTable: {
+    name: "창가 테이블",
+    category: "furniture", price: 90,
+    surface: 11,
+    parts: [
+      [3, 2, 0, 1.5, 1.5, 10, "metal"],
+      [0, 0, 10, 8, 6, 1, "woodLight"],
+    ],
+  },
+  berth: {
+    name: "침대칸",
+    category: "furniture", price: 180,
+    sleep: { side: [-3, 5], pillow: [17.5, 5, 7.5] },
+    parts: [
+      [0, 0, 0, 22, 10, 4, "woodDark"],
+      [1, 1, 4, 20, 8, 2, "sheet"],
+      [15, 2, 6, 5, 6, 1.5, "pillow"],
+      [1, 1, 6, 13, 8, 1, "blanketRed"],
+    ],
+  },
+  luggageRack: {
+    name: "짐 선반",
+    type: "wall",
+    category: "prop", price: 60,
+    parts: [
+      [0, 0, 0, 18, 6, 1, "metal"],
+      [2, 0, 1, 5, 4, 4, "book1"],
+      [9, 0, 1, 6, 4, 3, "book3"],
     ],
   },
 };
