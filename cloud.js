@@ -71,6 +71,20 @@ const Cloud = (() => {
     Save.save(save);
     Start.ready();
     await upload();
+    await loadProfile();
+  }
+
+  // 고유번호 받아오기 (처음이면 서버가 겹치지 않는 번호를 만들어 줌). 이름도 함께 맞춥니다.
+  async function loadProfile() {
+    if (!user) return null;
+    const name = (save.profile && save.profile.name) || null;
+    const { data, error } = await client.rpc("ensure_profile", { p_name: name });
+    if (error || !data) return null;
+    if (save.friendCode !== data) {
+      save.friendCode = data;
+      Save.save(save);
+    }
+    return data;
   }
 
   async function upload() {
@@ -151,5 +165,10 @@ const Cloud = (() => {
   }
 
   init();
-  return { upload, sync };
+  return {
+    upload,
+    sync,
+    loadProfile,
+    isSignedIn: () => !!user,
+  };
 })();

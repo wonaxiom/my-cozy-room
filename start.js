@@ -144,6 +144,50 @@ const Start = (() => {
     }
   }
 
+  // ---- 내 정보 ----
+  const cloudReady = () => typeof Cloud !== "undefined" && Cloud.isSignedIn();
+  const formatCode = (code) => (code ? `${code.slice(0, 4)}-${code.slice(4)}` : "");
+
+  async function openProfile() {
+    const name = (save.profile && save.profile.name) || "이름 없음";
+    const city = CITIES.find((c) => c.id === (save.profile && save.profile.city));
+    $("pf-name").textContent = name;
+    $("pf-city").textContent = city ? city.name : "정하지 않음 (무작위 날씨)";
+    const avatar = $("pf-avatar");
+    avatar.innerHTML = "";
+    avatar.append(makeSpritePreview(heroRows("idle"), heroColors()));
+    showCode();
+    $("profile").hidden = false;
+
+    // 고유번호가 아직 없으면 받아오기
+    if (!save.friendCode && cloudReady()) {
+      $("pf-code").textContent = "불러오는 중…";
+      await Cloud.loadProfile();
+      showCode();
+    }
+  }
+
+  function showCode() {
+    const code = save.friendCode;
+    $("pf-code").textContent = code ? formatCode(code) : cloudReady() ? "받아오지 못했어요" : "로그인하면 생겨요";
+    $("pf-copy").hidden = !code;
+    $("pf-copy").textContent = "복사";
+  }
+
+  function closeProfile() {
+    $("profile").hidden = true;
+  }
+
+  async function copyCode() {
+    try {
+      await navigator.clipboard.writeText(formatCode(save.friendCode));
+      $("pf-copy").textContent = "복사됨";
+    } catch (e) {
+      $("pf-copy").textContent = "복사 실패";
+    }
+    setTimeout(() => { $("pf-copy").textContent = "복사"; }, 1500);
+  }
+
   function finish() {
     const name = $("ob-name").value.trim();
     save.profile = { name, city: $("ob-city").value || null };
@@ -154,7 +198,9 @@ const Start = (() => {
     applyProfile();
     refreshWeather(true);
     setState("game");
+    if (cloudReady()) Cloud.loadProfile(); // 바뀐 이름을 프로필에도 반영
     if (first) toast(`${name ? name + "님, " : ""}어서 와요! 상점에서 가구를 사서 방을 꾸며 보세요.`);
+    else openProfile(); // "캐릭터 변경"에서 왔으면 내 정보로 돌아가기
   }
 
   // ---- 버튼 연결 ----
@@ -162,8 +208,19 @@ const Start = (() => {
     b.addEventListener("click", () => showStep(Number(b.dataset.go)));
   });
   $("ob-done").addEventListener("click", finish);
-  $("ob-close").addEventListener("click", () => setState("game"));
-  $("profile-btn").addEventListener("click", () => openOnboarding(true));
+  $("ob-close").addEventListener("click", () => {
+    setState("game");
+    openProfile();
+  });
+  $("profile-btn").addEventListener("click", openProfile);
+  $("pf-close").addEventListener("click", closeProfile);
+  $("pf-copy").addEventListener("click", copyCode);
+  $("pf-edit").addEventListener("click", () => {
+    closeProfile();
+    openOnboarding(true);
+  });
+  // 바깥 어두운 부분을 누르면 닫기
+  $("profile").addEventListener("click", (e) => { if (e.target.id === "profile") closeProfile(); });
   $("gate-retry").addEventListener("click", () => location.reload());
   $("gate-guest").addEventListener("click", ready);
 

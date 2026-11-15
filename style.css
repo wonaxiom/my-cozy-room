@@ -860,3 +860,95 @@ button[hidden] { display: none; }
   width: 24px;
   height: 24px;
 }
+
+/* ---- 내 정보 ---- */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(58, 54, 50, 0.35);
+}
+
+.modal[hidden] { display: none; }
+
+.modal-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  max-width: 380px;
+  padding: 24px;
+  background: var(--card);
+  border-radius: 14px;
+}
+
+.profile-top {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.pf-avatar {
+  flex-shrink: 0;
+  padding: 6px;
+  background: var(--bg);
+  border-radius: 12px;
+}
+
+.pf-avatar canvas {
+  display: block;
+  width: 84px;
+  height: 84px;
+  image-rendering: pixelated;
+}
+
+.pf-info {
+  min-width: 0;
+}
+
+.pf-name {
+  margin-bottom: 8px;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.pf-list {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 12px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.pf-list dt { color: var(--sub); }
+
+.pf-list dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.pf-code-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#pf-code {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  letter-spacing: 1px;
+}
+
+.pf-code-row button {
+  padding: 2px 8px;
+  font-size: 11px;
+}
+
+.pf-note {
+  margin: 0;
+  color: var(--sub);
+  font-size: 12px;
+}
