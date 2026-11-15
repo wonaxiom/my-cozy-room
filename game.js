@@ -20,7 +20,12 @@ const SKY = {
 };
 const DARKNESS = { dawn: 0.15, day: 0, evening: 0.2, night: 0.5 };
 
+// 날씨: 이름과 방이 더 어두워지는 정도
+const WEATHER_NAMES = { clear: "맑음", cloudy: "흐림", rain: "비", snow: "눈" };
+const WEATHER_DARK = { clear: 0, cloudy: 0.05, rain: 0.12, snow: 0.04 };
+
 // 테스트용: 주소 뒤에 ?hour=21 을 붙이면 밤 9시처럼 보입니다.
+// ?weather=rain 처럼 붙이면 날씨를 고정합니다. (clear, cloudy, rain, snow)
 // ?room=attic 처럼 붙이면 해당 방으로 시작합니다.
 const params = new URLSearchParams(location.search);
 const TEST_HOUR = params.has("hour") ? Number(params.get("hour")) : null;
@@ -70,6 +75,25 @@ function phaseOf(h) {
   return "night";
 }
 
+// 3시간마다 바뀌는 날씨 (같은 시간대면 어느 컴퓨터에서나 같은 날씨)
+let weather = "clear";
+function weatherNow() {
+  if (params.has("weather")) return params.get("weather");
+  const d = now();
+  const localHours = (d.getTime() - d.getTimezoneOffset() * 60000) / 3600000;
+  const block = Math.floor(localHours / 3);
+  const x = Math.sin(block * 12.9898) * 43758.5453;
+  const r = x - Math.floor(x);
+  if ([11, 0, 1].includes(d.getMonth())) {
+    return r < 0.2 ? "snow" : r < 0.28 ? "rain" : r < 0.5 ? "cloudy" : "clear"; // 12~2월
+  }
+  return r < 0.2 ? "rain" : r < 0.45 ? "cloudy" : "clear";
+}
+
+function darknessOf(phase) {
+  return Math.min(0.6, DARKNESS[phase] + WEATHER_DARK[weather]);
+}
+
 function isSleepTime(h) {
   return h >= 23 || h < 7;
 }
@@ -83,6 +107,12 @@ let floorItems = [], wallItems = [], objects = [], blockers = [];
 function hexToRgb(hex) {
   const n = parseInt(hex.slice(1), 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+// 두 색을 섞어서 "#rrggbb"로 (다시 섞을 수 있게)
+function mixHex(a, b, t) {
+  const pa = hexToRgb(a), pb = hexToRgb(b);
+  return "#" + pa.map((v, i) => Math.round(v + (pb[i] - v) * t).toString(16).padStart(2, "0")).join("");
 }
 
 function mixColor(a, b, t) {
@@ -742,14 +772,21 @@ function skyRect(win, y1, y2, z1, z2, color) {
 }
 
 function drawSky(win, phase, yMin, yMax, zMin, zMax) {
-  const [top, bottom] = SKY[phase];
+  let [top, bottom] = SKY[phase];
+  // 흐리거나 비·눈이 오면 하늘이 회색빛으로
+  const grey = { cloudy: 0.45, rain: 0.65, snow: 0.5 }[weather];
+  if (grey) {
+    const g = phase === "night" ? "#2a2f3a" : "#a7b0ba";
+    top = mixHex(top, g, grey);
+    bottom = mixHex(bottom, g, grey);
+  }
   for (let z = Math.floor(zMin); z < zMax; z++) {
     skyRect(win, yMin, yMax, z, z + 1, mixColor(bottom, top, (z - zMin) / Math.max(1, zMax - zMin - 1)));
   }
   const fy = (f) => yMin + (yMax - yMin) * f;
   const fz = (f) => zMin + (zMax - zMin) * f;
 
-  if (phase === "night") {
+  if (phase === "night" && weather === "clear") {
     const stars = [[0.15, 0.7], [0.35, 0.5], [0.5, 0.75], [0.7, 0.4], [0.25, 0.2], [0.65, 0.15], [0.45, 0.3], [0.85, 0.65]];
     stars.forEach(([sy, sz], i) => {
       const span = windowSpan(win, fz(sz));
@@ -759,19 +796,42 @@ function drawSky(win, phase, yMin, yMax, zMin, zMax) {
     });
     ctx.globalAlpha = 1;
     skyRect(win, fy(0.15), fy(0.15) + 3, fz(0.72), fz(0.72) + 3, "#f4efd2");
-  } else {
-    // 흘러가는 구름 (기차 창문에서는 빠르게)
+  } else if (phase !== "night") {
+    // 흘러가는 구름 (기차 창문에서는 빠르게, 흐린 날은 회색 구름이 더 많이)
     ctx.globalAlpha = 0.85;
     const speed = win.scenery ? 5 : 1.2;
     const range = yMax - yMin + 12;
-    [[0, 0.55], [range / 2, 0.2]].forEach(([offset, cz]) => {
+    const cloud = weather === "clear" ? "#ffffff" : weather === "rain" ? "#c3c8cf" : "#e2e5e9";
+    const clouds = weather === "clear" ? [[0, 0.55], [range / 2, 0.2]] : [[0, 0.6], [range / 3, 0.25], [(range * 2) / 3, 0.75]];
+    clouds.forEach(([offset, cz]) => {
       const cy = yMax + 6 - ((time * speed + offset) % range);
-      skyRect(win, cy - 6, cy, fz(cz), fz(cz) + 2, "#ffffff");
-      skyRect(win, cy - 4, cy - 1, fz(cz) + 2, fz(cz) + 3, "#ffffff");
+      skyRect(win, cy - 6, cy, fz(cz), fz(cz) + 2, cloud);
+      skyRect(win, cy - 4, cy - 1, fz(cz) + 2, fz(cz) + 3, cloud);
     });
     ctx.globalAlpha = 1;
   }
   if (win.scenery) drawScenery(win, phase, yMin, yMax, zMin, zMax);
+  drawPrecipitation(win, phase, yMin, yMax, zMin, zMax);
+}
+
+// 비나 눈 (창문 안쪽에만)
+function drawPrecipitation(win, phase, yMin, yMax, zMin, zMax) {
+  if (weather !== "rain" && weather !== "snow") return;
+  const w = yMax - yMin, h = zMax - zMin;
+  const count = Math.max(3, Math.round(w / 2.5));
+  ctx.globalAlpha = weather === "rain" ? 0.85 : 0.9;
+  for (let i = 0; i < count; i++) {
+    if (weather === "rain") {
+      const a = yMin + ((i * 7.3) % w);
+      const z = zMax - ((time * 30 + i * 5.1) % h);
+      skyRect(win, a, a + 0.5, z - 3, z, phase === "night" ? "#8a97b0" : "#f4f7fb");
+    } else {
+      const a = yMin + (((i * 5.7 + Math.sin(time + i) * 1.5) % w) + w) % w;
+      const z = zMax - ((time * 4 + i * 3.3) % h);
+      skyRect(win, a, a + 1, z - 1, z, "#ffffff");
+    }
+  }
+  ctx.globalAlpha = 1;
 }
 
 // 기차 창밖 풍경: 먼 산은 천천히, 언덕과 전봇대는 빠르게 지나갑니다.
@@ -911,7 +971,7 @@ function drawClock() {
 
 // 시간대에 따라 방을 어둡게 하고, 조명 빛을 비춥니다.
 function drawLighting(phase) {
-  const dark = DARKNESS[phase];
+  const dark = darknessOf(phase);
   const lights = save.lampOn ? items.filter((f) => f.light) : [];
   const lightPos = (f) => {
     const [lx, ly, lz] = turned(f, [f.light.x, f.light.y, f.light.z]);
@@ -2139,6 +2199,7 @@ let loopToken = 0;
 
 function tick(dt) {
   time += dt;
+  weather = weatherNow();
   if (typeof Focus !== "undefined") Focus.update();
   const h = hourNow();
   const phase = phaseOf(h);
@@ -2171,7 +2232,8 @@ function tick(dt) {
   vctx.drawImage(buf, 0, 0, view.width, view.height);
 
   const d = now();
-  const label = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  const label = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
+    + (weather !== "clear" ? ` · ${WEATHER_NAMES[weather]}` : "");
   if (clockText.textContent !== label) clockText.textContent = label;
 }
 
