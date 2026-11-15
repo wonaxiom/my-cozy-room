@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My Cozy Room</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="page">
+    <h1 class="title">My Cozy Room</h1>
+
+    <div id="app-home">
+      <!-- 게임 전체. '항상 위에 띄우기'를 누르면 이 부분이 작은 창으로 옮겨집니다. -->
+      <div id="app">
+        <div class="stage">
+          <canvas id="game" width="480" height="384"></canvas>
+
+          <!-- 코인과 시계 -->
+          <div class="hud">
+            <span class="pill"><i class="coin"></i><span id="coins">0</span><span id="coin-pop" class="coin-pop"></span></span>
+            <span class="pill" id="clock">--:--</span>
+          </div>
+
+          <!-- 상점 -->
+          <div id="shop" class="shop" hidden>
+            <div class="shop-head">
+              <div class="tabs">
+                <button type="button" class="tab" data-cat="furniture">가구</button>
+                <button type="button" class="tab" data-cat="prop">소품</button>
+                <button type="button" class="tab" data-cat="wall">벽지</button>
+                <button type="button" class="tab" data-cat="floor">바닥</button>
+                <button type="button" class="tab" data-cat="room">방</button>
+              </div>
+              <button id="shop-close" type="button">닫기</button>
+            </div>
+            <div id="shop-list" class="shop-list"></div>
+          </div>
+
+          <!-- 아직 열지 않은 방 -->
+          <div id="locked" class="locked" hidden>
+            <div class="locked-box">
+              <div id="lock-name" class="locked-name"></div>
+              <div class="locked-price"><i class="coin"></i><span id="lock-price"></span></div>
+              <button id="lock-buy" type="button">열기</button>
+            </div>
+          </div>
+
+          <div id="toast" class="toast"></div>
+        </div>
+
+        <div class="toolbar">
+          <div class="room-picker">
+            <button id="room-prev" type="button" aria-label="이전 방">‹</button>
+            <span id="room-name"></span>
+            <button id="room-next" type="button" aria-label="다음 방">›</button>
+          </div>
+          <div class="actions">
+            <button id="shop-btn" type="button">상점</button>
+            <button id="edit-btn" type="button">꾸미기</button>
+            <button id="pip-btn" type="button">위에 띄우기</button>
+          </div>
+        </div>
+
+        <!-- 꾸미기 중에만 보이는 보관함 -->
+        <div id="edit-bar" class="edit-bar" hidden>
+          <p class="edit-hint">보관함의 물건을 누르면 방에 놓여요. 방의 물건을 여기로 끌어오면 보관함에 다시 들어가요.</p>
+          <div id="inventory" class="inventory"></div>
+        </div>
+      </div>
+      <p id="pip-placeholder" class="placeholder" hidden>방이 작은 창으로 나가 있어요. 작은 창을 닫으면 여기로 돌아옵니다.</p>
+    </div>
+
+    <p class="hint">켜두는 동안 1분에 2코인이 모여요. 꺼져 있을 때도 최대 3시간치까지 쌓여요.</p>
+    <p id="pip-note" class="note"></p>
+  </main>
+
+  <!-- 순서 중요: 데이터 → 방 → 저장 → 게임 -->
+  <script src="data.js"></script>
+  <script src="rooms.js"></script>
+  <script src="save.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

@@ -1,0 +1,1826 @@
+// =============================================================
+// game.js — 게임 동작 (그리기, 캐릭터 움직임, 클릭, 항상 위 창)
+// =============================================================
+
+// ---- 기본 설정 ---------------------------------------------------
+const W = 160;          // 게임 화면 가로 (도트)
+const H = 128;          // 게임 화면 세로 (도트)
+const OX = 80;          // 방 안쪽 모서리의 화면 위치
+const OY = 52;
+const ROOM = 64;        // 바닥 크기
+const FPS = 30;         // 초당 화면 갱신 수 (낮을수록 컴퓨터가 편함)
+const WALK_SPEED = 9;   // 걷는 속도
+
+// 시간대별 하늘 색 [위, 아래]과 방 어둡기
+const SKY = {
+  dawn: ["#f2b8a2", "#fbe2c6"],
+  day: ["#8ec5e8", "#d4ecf7"],
+  evening: ["#e5866a", "#f5c07a"],
+  night: ["#18223f", "#2f3b66"],
+};
+const DARKNESS = { dawn: 0.15, day: 0, evening: 0.2, night: 0.5 };
+
+// 테스트용: 주소 뒤에 ?hour=21 을 붙이면 밤 9시처럼 보입니다.
+// ?room=attic 처럼 붙이면 해당 방으로 시작합니다.
+const params = new URLSearchParams(location.search);
+const TEST_HOUR = params.has("hour") ? Number(params.get("hour")) : null;
+
+// ---- 화면 준비 ---------------------------------------------------
+const app = document.getElementById("app");
+const appHome = document.getElementById("app-home");
+const placeholder = document.getElementById("pip-placeholder");
+const view = document.getElementById("game");
+const clockText = document.getElementById("clock");
+const coinText = document.getElementById("coins");
+const pipBtn = document.getElementById("pip-btn");
+const pipNote = document.getElementById("pip-note");
+const roomName = document.getElementById("room-name");
+const vctx = view.getContext("2d");
+
+// 작은 해상도로 그린 뒤 크게 확대해서 도트 느낌을 냅니다.
+const buf = document.createElement("canvas");
+buf.width = W;
+buf.height = H;
+let ctx = buf.getContext("2d"); // 미리보기를 그릴 때 잠시 바뀝니다.
+
+const shade = document.createElement("canvas");
+shade.width = W;
+shade.height = H;
+const sctx = shade.getContext("2d");
+
+const save = Save.load();
+let time = 0; // 게임 시작 후 흐른 시간(초)
+
+// ---- 시간 --------------------------------------------------------
+function now() {
+  const d = new Date();
+  if (TEST_HOUR !== null) d.setHours(TEST_HOUR);
+  return d;
+}
+
+function hourNow() {
+  const d = now();
+  return d.getHours() + d.getMinutes() / 60;
+}
+
+function phaseOf(h) {
+  if (h >= 5 && h < 7) return "dawn";
+  if (h >= 7 && h < 17) return "day";
+  if (h >= 17 && h < 19) return "evening";
+  return "night";
+}
+
+function isSleepTime(h) {
+  return h >= 23 || h < 7;
+}
+
+// ---- 현재 방 -----------------------------------------------------
+let room = null;     // 지금 보고 있는 방 (rooms.js의 ROOMS 중 하나)
+let items = [];      // 이 방에 놓인 가구들
+let floorItems = [], wallItems = [], objects = [], blockers = [];
+
+// ---- 색 도우미 ---------------------------------------------------
+function hexToRgb(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+function mixColor(a, b, t) {
+  const pa = hexToRgb(a), pb = hexToRgb(b);
+  const c = pa.map((v, i) => Math.round(v + (pb[i] - v) * t));
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+
+// 색 이름 → 실제 색 (방마다 바꾼 색이 있으면 그 색을 씁니다)
+let activeColors = {}; // 지금 방의 틀 색 + 벽지 + 바닥 색
+function colorOf(key) {
+  return activeColors[key] || PALETTE[key] || key;
+}
+
+let shadeCache = {};
+function shadeOf(key, amount) {
+  const id = key + amount;
+  if (!shadeCache[id]) {
+    const base = colorOf(key);
+    shadeCache[id] = base.startsWith("#")
+      ? mixColor(base, amount > 0 ? "#ffffff" : "#000000", Math.abs(amount))
+      : base;
+  }
+  return shadeCache[id];
+}
+
+// ---- 입체 그리기 도우미 ------------------------------------------
+// 방 좌표(x, y, z)를 화면 좌표로 바꿉니다.
+let viewOX = OX, viewOY = OY; // 미리보기를 그릴 때 잠시 바뀝니다.
+function project(x, y, z) {
+  return { x: viewOX + (x - y), y: viewOY + (x + y) / 2 - z };
+}
+
+// 다각형을 도트 경계가 또렷하게 칠합니다.
+function fillPoly(c, pts, color) {
+  let minY = Infinity, maxY = -Infinity;
+  for (const p of pts) { minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y); }
+  c.fillStyle = color;
+  for (let row = Math.floor(minY); row < Math.ceil(maxY); row++) {
+    const yc = row + 0.5;
+    const xs = [];
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i], b = pts[(i + 1) % pts.length];
+      if ((a.y <= yc && b.y > yc) || (b.y <= yc && a.y > yc)) {
+        xs.push(a.x + ((yc - a.y) / (b.y - a.y)) * (b.x - a.x));
+      }
+    }
+    xs.sort((p, q) => p - q);
+    for (let i = 0; i + 1 < xs.length; i += 2) {
+      const x1 = Math.ceil(xs[i] - 0.5), x2 = Math.ceil(xs[i + 1] - 0.5);
+      if (x2 > x1) c.fillRect(x1, row, x2 - x1, 1);
+    }
+  }
+}
+
+// 방 좌표로 된 점 목록을 다각형으로 칠하기
+function poly(points, color) {
+  fillPoly(ctx, points.map((p) => project(...p)), colorOf(color));
+}
+
+function quad(a, b, c2, d, color) {
+  poly([a, b, c2, d], color);
+}
+
+// 상자 하나 그리기. 윗면은 밝게, 오른쪽 면은 어둡게.
+// color 대신 { top, left, right }로 면마다 색을 정할 수도 있습니다.
+function box(x, y, z, w, d, h, color) {
+  const faces = typeof color === "object"
+    ? { top: colorOf(color.top), left: colorOf(color.left), right: colorOf(color.right) }
+    : { top: shadeOf(color, 0.15), left: colorOf(color), right: shadeOf(color, -0.18) };
+  quad([x, y + d, z], [x + w, y + d, z], [x + w, y + d, z + h], [x, y + d, z + h], faces.left);
+  quad([x + w, y, z], [x + w, y + d, z], [x + w, y + d, z + h], [x + w, y, z + h], faces.right);
+  quad([x, y, z + h], [x + w, y, z + h], [x + w, y + d, z + h], [x, y + d, z + h], faces.top);
+}
+
+// 왼쪽 벽(x = 0) 위의 사각형
+function wallLeftRect(y1, y2, z1, z2, color) {
+  quad([0, y1, z1], [0, y2, z1], [0, y2, z2], [0, y1, z2], color);
+}
+
+// 오른쪽 벽(y = 0) 위의 사각형
+function wallRightRect(x1, x2, z1, z2, color) {
+  quad([x1, 0, z1], [x2, 0, z1], [x2, 0, z2], [x1, 0, z2], color);
+}
+
+function dot(x, y, z, color) {
+  const p = project(x, y, z);
+  ctx.fillStyle = colorOf(color);
+  ctx.fillRect(Math.round(p.x), Math.round(p.y), 1, 1);
+}
+
+// 바닥이나 벽 위의 직선 (점을 촘촘히 찍어서)
+function line(a, b, color) {
+  const len = Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1]), Math.abs(b[2] - a[2]));
+  const steps = Math.max(1, Math.ceil(len * 2));
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    dot(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, color);
+  }
+}
+
+function drawSprite(rows, x, y, colors, flip) {
+  for (let r = 0; r < rows.length; r++) {
+    const row = rows[r];
+    for (let c = 0; c < row.length; c++) {
+      const key = colors[row[c]];
+      if (!key) continue;
+      ctx.fillStyle = colorOf(key);
+      ctx.fillRect(x + (flip ? row.length - 1 - c : c), y + r, 1, 1);
+    }
+  }
+}
+
+// ---- 그림 파일 불러오기 -------------------------------------------
+const images = {};
+
+function loadImage(src) {
+  if (!src || images[src]) return;
+  const img = new Image();
+  img.onload = () => { img.ready = true; };
+  img.onerror = () => { console.warn("그림 파일을 찾을 수 없어요: " + src); };
+  img.src = src;
+  images[src] = img;
+}
+
+function readyImage(src) {
+  const img = src && images[src];
+  return img && img.ready ? img : null;
+}
+
+Object.values(FURNITURE).forEach((f) => { loadImage(f.image); loadImage(f.imageOff); });
+if (CHARACTER_SHEET) loadImage(CHARACTER_SHEET.image);
+
+// 가구에 쓸 그림 (없거나 아직 못 불러왔으면 null → 상자로 그림)
+function itemImage(item) {
+  if (item.light && !save.lampOn && item.imageOff) {
+    return readyImage(item.imageOff) || readyImage(item.image);
+  }
+  return readyImage(item.image);
+}
+
+// 그림을 놓을 위치: 그림 맨 아래 = 가구 바닥의 가장 앞 모서리
+function imageRect(item, img) {
+  const [w, d] = item.size;
+  const left = project(item.x, item.y + d, item.z).x;
+  const bottom = project(item.x + w, item.y + d, item.z).y;
+  const [ox, oy] = item.offset || [0, 0];
+  return { x: Math.round(left + ox), y: Math.round(bottom - img.height + oy), w: img.width, h: img.height };
+}
+
+// 상자 목록 (parts가 없으면 size 크기의 상자 하나)
+// flip이 켜진 가구(왼쪽 벽에 건 물건)는 가로·세로를 바꿔서 그립니다.
+function partsOf(item) {
+  let parts = [];
+  if (item.parts) parts = item.parts;
+  else if (item.size) parts = [[0, 0, 0, item.size[0], item.size[1], item.size[2] || 10, "wood"]];
+  if (!item.flip) return parts;
+  return parts.map(([dx, dy, dz, w, d, h, c]) => [dy, dx, dz, d, w, h, c]);
+}
+
+// ---- 가구 정보 계산 ----------------------------------------------
+// 바닥에서 차지하는 영역
+function footprint(item) {
+  if (item.size) return { x: item.x, y: item.y, w: item.size[0], d: item.size[1] };
+  let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+  for (const [dx, dy, , w, d] of partsOf(item)) {
+    x1 = Math.min(x1, dx); y1 = Math.min(y1, dy);
+    x2 = Math.max(x2, dx + w); y2 = Math.max(y2, dy + d);
+  }
+  return { x: item.x + x1, y: item.y + y1, w: x2 - x1, d: y2 - y1 };
+}
+
+// 화면에서 차지하는 영역 (클릭 판정용)
+function screenBounds(item) {
+  const img = itemImage(item);
+  if (img) return imageRect(item, img);
+  let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+  for (const [dx, dy, dz, w, d, h] of partsOf(item)) {
+    for (const cx of [0, w]) for (const cy of [0, d]) for (const cz of [0, h]) {
+      const p = project(item.x + dx + cx, item.y + dy + cy, item.z + dz + cz);
+      x1 = Math.min(x1, p.x); y1 = Math.min(y1, p.y);
+      x2 = Math.max(x2, p.x); y2 = Math.max(y2, p.y);
+    }
+  }
+  return { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
+}
+
+function drawItem(item) {
+  const img = itemImage(item);
+  if (img) {
+    const r = imageRect(item, img);
+    ctx.drawImage(img, r.x, r.y);
+    return;
+  }
+  for (const [dx, dy, dz, w, d, h, color] of partsOf(item)) {
+    let key = color;
+    if (item.light && !save.lampOn && PALETTE[key + "Off"]) key += "Off";
+    box(item.x + dx, item.y + dy, item.z + dz, w, d, h, key);
+  }
+}
+
+// ---- 방 바꾸기 ---------------------------------------------------
+function setRoom(id) {
+  room = ROOMS.find((r) => r.id === id) || ROOMS[0];
+  applyStyle();
+  // 직접 꾸민 배치가 있으면 그것을, 없으면 처음 배치를 씁니다.
+  const placed = (save.layouts && save.layouts[room.id]) || room.layout;
+  items = placed.filter((p) => FURNITURE[p.id]).map(makeItem);
+  refreshItems();
+  if (typeof setEditing === "function") setEditing(editing);
+  roomName.textContent = room.name;
+  save.roomId = room.id;
+  Save.save(save);
+  placeHeroInRoom();
+  updateLock();
+}
+
+// ---- 벽지 · 바닥 -------------------------------------------------
+let previewStyle = null; // 상점 미리보기용으로 잠시 바꾸는 벽지·바닥
+
+// 방에 적용된 벽지와 바닥
+function currentStyle(r = room) {
+  const chosen = (save.roomStyles && save.roomStyles[r.id]) || {};
+  const pick = Object.assign({}, chosen, previewStyle || {});
+  return {
+    wall: WALLPAPERS.find((w) => w.id === pick.wall) || WALLPAPERS.find((w) => w.id === r.wallpaper),
+    floor: FLOORS.find((f) => f.id === pick.floor) || FLOORS.find((f) => f.id === r.floor),
+  };
+}
+
+function applyStyle() {
+  const st = currentStyle();
+  activeColors = Object.assign({}, room.colors, st.wall.colors, st.floor.colors);
+  shadeCache = {};
+}
+
+function ownsStyle(style) {
+  return style.price === 0 || save.ownedStyles.includes(style.id);
+}
+
+// ---- 방 잠금 -----------------------------------------------------
+function ownsRoom(r = room) {
+  return !r.price || save.ownedRooms.includes(r.id);
+}
+
+const lockEl = document.getElementById("locked");
+function updateLock() {
+  const locked = !ownsRoom();
+  lockEl.hidden = !locked;
+  editBtn.disabled = locked;
+  if (locked) {
+    if (editing) setEditing(false);
+    document.getElementById("lock-name").textContent = room.name;
+    document.getElementById("lock-price").textContent = `${room.price.toLocaleString()}코인으로 열 수 있어요`;
+    const btn = document.getElementById("lock-buy");
+    btn.disabled = save.coins < room.price;
+    btn.textContent = save.coins < room.price ? "코인 부족" : "열기";
+  }
+}
+
+function buyRoom(r) {
+  if (ownsRoom(r) || save.coins < r.price) return;
+  save.coins -= r.price;
+  save.ownedRooms.push(r.id);
+  Save.save(save);
+  updateCoins();
+  setRoom(r.id);
+  toast(`${r.name}이 열렸어요. 상점에서 가구를 사서 꾸며 보세요.`);
+}
+
+function makeItem(p) {
+  return Object.assign({}, FURNITURE[p.id], { id: p.id, x: p.x, y: p.y, z: p.z, flip: !!p.flip });
+}
+
+function refreshItems() {
+  floorItems = items.filter((f) => f.type === "floor");
+  wallItems = items.filter((f) => f.type === "wall");
+  objects = items.filter((f) => !f.type);
+  blockers = objects.filter((f) => f.z === 0).map(footprint);
+}
+
+function saveLayout() {
+  save.layouts = save.layouts || {};
+  save.layouts[room.id] = items.map((f) => ({ id: f.id, x: f.x, y: f.y, z: f.z, flip: f.flip || undefined }));
+  Save.save(save);
+}
+
+function changeRoom(step) {
+  const i = ROOMS.indexOf(room);
+  setRoom(ROOMS[(i + step + ROOMS.length) % ROOMS.length].id);
+}
+
+document.getElementById("room-prev").addEventListener("click", () => changeRoom(-1));
+document.getElementById("room-next").addEventListener("click", () => changeRoom(1));
+
+// ---- 방 모양 -----------------------------------------------------
+// 다락방 지붕 높이 (y 위치에 따라)
+function roofZ(y) {
+  const k = room.kneeHeight, p = room.peakHeight, half = ROOM / 2;
+  const t = y <= half ? y / half : (ROOM - y) / half;
+  return k + (p - k) * t;
+}
+
+// 벽 높이: 왼쪽 벽은 y 위치, 오른쪽 벽은 x 위치에 따라
+function leftWallTop(y) {
+  return room.shape === "attic" ? roofZ(y) : room.wallHeight;
+}
+
+function rightWallTop() {
+  return room.shape === "attic" ? room.kneeHeight : room.wallHeight;
+}
+
+function drawShell() {
+  if (room.shape === "attic") drawAtticShell();
+  else drawBoxShell();
+}
+
+function drawBoxShell() {
+  const wh = room.wallHeight;
+  box(-4, -4, -5, 4, ROOM + 4, wh + 5, { top: "wallTop", left: "wallEdge", right: "wallLeft" });
+  box(0, -4, -5, ROOM, 4, wh + 5, { top: "wallTop", left: "wallRight", right: "wallEdge" });
+  box(0, 0, -5, ROOM, ROOM, 5, { top: "floor", left: "floorEdge", right: "floorEdge" });
+}
+
+function drawAtticShell() {
+  const k = room.kneeHeight, p = room.peakHeight, half = ROOM / 2, end = ROOM + 2;
+
+  // 박공벽(왼쪽 삼각 벽): 윗면 테두리, 앞쪽 단면, 안쪽 면
+  quad([-4, 0, k], [0, 0, k], [0, half, p], [-4, half, p], "wallTop");
+  quad([-4, half, p], [0, half, p], [0, ROOM, k], [-4, ROOM, k], "wallTop");
+  quad([-4, ROOM, -5], [0, ROOM, -5], [0, ROOM, k], [-4, ROOM, k], "wallEdge");
+  poly([[0, 0, -5], [0, 0, k], [0, half, p], [0, ROOM, k], [0, ROOM, -5]], "wallLeft");
+
+  // 낮은 벽(오른쪽)과 지붕 안쪽
+  box(0, -4, -5, ROOM, 4, k + 5, { top: "roofEdge", left: "wallRight", right: "wallEdge" });
+  quad([0, 0, k], [end, 0, k], [end, half, p], [0, half, p], "roofInner");
+  for (let i = 1; i < 6; i++) {
+    const y = (half * i) / 6;
+    line([0, y, roofZ(y)], [end, y, roofZ(y)], "roofLine");
+  }
+
+  // 바닥
+  box(0, 0, -5, ROOM, ROOM, 5, { top: "floor", left: "floorEdge", right: "floorEdge" });
+}
+
+// 지붕 끝 단면 (방 앞쪽을 가리지 않도록 뒤쪽 지붕만 그립니다)
+function drawAtticFront() {
+  if (room.shape !== "attic") return;
+  const k = room.kneeHeight, p = room.peakHeight, half = ROOM / 2, end = ROOM + 2, t = 4;
+  const len = Math.hypot(half, p - k);
+  const ny = ((p - k) / len) * t, nz = (half / len) * t;
+
+  // 지붕 꼭대기 단면
+  quad([0, half, p], [end, half, p], [end, half - ny, p + nz], [0, half - ny, p + nz], "roofTop");
+  // 지붕 두께 (오른쪽 끝)
+  quad([end, 0, k], [end, -ny, k + nz], [end, half - ny, p + nz], [end, half, p], "roofEdge");
+}
+
+// ---- 벽과 바닥 무늬 ----------------------------------------------
+// 왼쪽 벽 위의 띠 (위쪽 끝은 벽 높이를 따라감 — 다락방에서도 맞게)
+function leftStrip(y1, y2, z1, z2, color) {
+  const t1 = Math.min(z2, leftWallTop(y1)), t2 = Math.min(z2, leftWallTop(y2));
+  if (t1 <= z1 && t2 <= z1) return;
+  poly([[0, y1, z1], [0, y2, z1], [0, y2, Math.max(z1, t2)], [0, y1, Math.max(z1, t1)]], color);
+}
+
+function rightStrip(x1, x2, z1, z2, color) {
+  const top = Math.min(z2, rightWallTop());
+  if (top > z1) wallRightRect(x1, x2, z1, top, color);
+}
+
+function drawWallPattern() {
+  const pattern = currentStyle().wall.pattern;
+  const rTop = rightWallTop();
+  if (pattern === "dots") {
+    for (let y = 4; y < ROOM; y += 6) {
+      for (let z = 6; z < leftWallTop(y) - 2; z += 6) dot(0, y, z, "wallDot");
+    }
+    for (let x = 4; x < ROOM; x += 6) {
+      for (let z = 6; z < rTop - 2; z += 6) dot(x, 0, z, "wallDot");
+    }
+  } else if (pattern === "stripes") {
+    for (let y = 2; y < ROOM; y += 6) leftStrip(y, y + 2, 0, 99, "wallDot");
+    for (let x = 2; x < ROOM; x += 6) rightStrip(x, x + 2, 0, 99, "wallDot");
+  } else if (pattern === "planks") {
+    for (let y = 6; y < ROOM; y += 6) line([0, y, 0], [0, y, leftWallTop(y)], "wallDot");
+    for (let x = 6; x < ROOM; x += 6) line([x, 0, 0], [x, 0, rTop], "wallDot");
+  } else if (pattern === "beams") {
+    // 나무 기둥과 가로 들보
+    const beamZ = 32;
+    leftStrip(0, 2, 0, 99, "wallDot");
+    leftStrip(ROOM - 2, ROOM, 0, 99, "wallDot");
+    rightStrip(0, 2, 0, 99, "wallDot");
+    rightStrip(31, 33, 0, 99, "wallDot");
+    rightStrip(ROOM - 2, ROOM, 0, 99, "wallDot");
+    for (let y = 0; y < ROOM; y += 2) {
+      if (leftWallTop(y) >= beamZ + 2 && leftWallTop(y + 2) >= beamZ + 2) leftStrip(y, y + 2, beamZ, beamZ + 2, "wallDot");
+    }
+    if (rTop >= beamZ + 2) rightStrip(0, ROOM, beamZ, beamZ + 2, "wallDot");
+  }
+  wallLeftRect(0, ROOM, 0, 3, "baseboard");
+  wallRightRect(0, ROOM, 0, Math.min(3, rTop), "baseboard");
+}
+
+function drawFloorPattern() {
+  const pattern = currentStyle().floor.pattern;
+  if (pattern === "tatami") {
+    // 다다미 4장 + 2장씩 엇갈린 배치
+    const mats = [
+      [0, 0, 32, 16], [0, 16, 32, 16],
+      [32, 0, 16, 32], [48, 0, 16, 32],
+      [0, 32, 16, 32], [16, 32, 16, 32],
+      [32, 32, 32, 16], [32, 48, 32, 16],
+    ];
+    for (const [x, y, w, d] of mats) {
+      quad([x, y, 0], [x + w, y, 0], [x + w, y + d, 0], [x, y + d, 0], "tatami");
+      // 짚 무늬
+      if (w > d) for (let yy = y + 2; yy < y + d - 1; yy += 2) line([x + 1, yy, 0], [x + w - 1, yy, 0], "tatamiLine");
+      else for (let xx = x + 2; xx < x + w - 1; xx += 2) line([xx, y + 1, 0], [xx, y + d - 1, 0], "tatamiLine");
+      // 긴 쪽 테두리
+      if (w > d) {
+        line([x, y, 0], [x + w, y, 0], "tatamiEdge");
+        line([x, y + d - 0.5, 0], [x + w, y + d - 0.5, 0], "tatamiEdge");
+      } else {
+        line([x, y, 0], [x, y + d, 0], "tatamiEdge");
+        line([x + w - 0.5, y, 0], [x + w - 0.5, y + d, 0], "tatamiEdge");
+      }
+    }
+  } else if (pattern === "tile") {
+    // 체크 타일
+    for (let x = 0; x < ROOM; x += 8) {
+      for (let y = 0; y < ROOM; y += 8) {
+        if ((x + y) / 8 % 2) quad([x, y, 0], [x + 8, y, 0], [x + 8, y + 8, 0], [x, y + 8, 0], "floorLine");
+      }
+    }
+  } else if (pattern === "carpet") {
+    // 카펫 결
+    for (let x = 2; x < ROOM; x += 4) {
+      for (let y = (x / 4) % 2 ? 2 : 4; y < ROOM; y += 4) dot(x, y, 0, "floorLine");
+    }
+  } else {
+    // 나무 바닥
+    for (let y = 6, row = 0; y < ROOM; y += 6, row++) {
+      line([0, y, 0], [ROOM, y, 0], "floorLine");
+      for (let x = row % 2 ? 12 : 0; x < ROOM; x += 24) line([x, y - 6, 0], [x, y, 0], "floorLine");
+    }
+  }
+}
+
+// ---- 창문 --------------------------------------------------------
+// 창문 모양에 따라 높이 z에서 하늘이 보이는 범위 [y1, y2]
+function windowSpan(win, z) {
+  if (win.style === "round") {
+    const dz = z - win.cz;
+    if (Math.abs(dz) >= win.r) return null;
+    const w = Math.sqrt(win.r * win.r - dz * dz);
+    return [win.cy - w, win.cy + w];
+  }
+  if (z < win.sz1 || z >= win.sz2) return null;
+  return [win.sy1, win.sy2];
+}
+
+// 하늘 영역 안에서만 칠하는 사각형
+function skyRect(win, y1, y2, z1, z2, color) {
+  for (let z = Math.floor(z1); z < z2; z++) {
+    const span = windowSpan(win, z + 0.5);
+    if (!span) continue;
+    const a = Math.max(y1, span[0]), b = Math.min(y2, span[1]);
+    if (b > a) wallLeftRect(a, b, z, z + 1, color);
+  }
+}
+
+function drawSky(win, phase, yMin, yMax, zMin, zMax) {
+  const [top, bottom] = SKY[phase];
+  for (let z = Math.floor(zMin); z < zMax; z++) {
+    skyRect(win, yMin, yMax, z, z + 1, mixColor(bottom, top, (z - zMin) / Math.max(1, zMax - zMin - 1)));
+  }
+  const fy = (f) => yMin + (yMax - yMin) * f;
+  const fz = (f) => zMin + (zMax - zMin) * f;
+
+  if (phase === "night") {
+    const stars = [[0.15, 0.7], [0.35, 0.5], [0.5, 0.75], [0.7, 0.4], [0.25, 0.2], [0.65, 0.15], [0.45, 0.3], [0.85, 0.65]];
+    stars.forEach(([sy, sz], i) => {
+      const span = windowSpan(win, fz(sz));
+      if (!span || fy(sy) < span[0] || fy(sy) > span[1]) return;
+      ctx.globalAlpha = 0.5 + 0.5 * Math.sin(time * 1.5 + i * 1.7);
+      dot(0, fy(sy), fz(sz), "#fff6d5");
+    });
+    ctx.globalAlpha = 1;
+    skyRect(win, fy(0.15), fy(0.15) + 3, fz(0.72), fz(0.72) + 3, "#f4efd2");
+  } else {
+    // 천천히 흘러가는 구름
+    ctx.globalAlpha = 0.85;
+    const range = yMax - yMin + 12;
+    [[0, 0.55], [range / 2, 0.2]].forEach(([offset, cz]) => {
+      const cy = yMax + 6 - ((time * 1.2 + offset) % range);
+      skyRect(win, cy - 6, cy, fz(cz), fz(cz) + 2, "#ffffff");
+      skyRect(win, cy - 4, cy - 1, fz(cz) + 2, fz(cz) + 3, "#ffffff");
+    });
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawWindow(phase) {
+  const win = room.window;
+  if (!win) return;
+  if (win.style === "round") drawRoundWindow(win, phase);
+  else if (win.style === "shoji") drawShojiWindow(win, phase);
+  else drawCurtainWindow(win, phase);
+}
+
+function drawCurtainWindow(win, phase) {
+  const { y1, y2, z1, z2 } = win;
+  const mid = (y1 + y2) / 2, midZ = (z1 + z2) / 2;
+
+  // 커튼과 커튼봉
+  wallLeftRect(y1 - 5, y2 + 5, z2 + 3, z2 + 4, "woodDark");
+  wallLeftRect(y1 - 4, y1, z1 - 3, z2 + 3, "curtain");
+  wallLeftRect(y2, y2 + 4, z1 - 3, z2 + 3, "curtain");
+  wallLeftRect(y1 - 2, y1 - 1, z1 - 3, z2 + 3, "curtainShade");
+  wallLeftRect(y2 + 2, y2 + 3, z1 - 3, z2 + 3, "curtainShade");
+
+  // 창틀과 하늘
+  wallLeftRect(y1, y2, z1, z2, "windowFrame");
+  const sky = { sy1: y1 + 2, sy2: y2 - 2, sz1: z1 + 2, sz2: z2 - 2 };
+  drawSky(sky, phase, sky.sy1, sky.sy2, sky.sz1, sky.sz2);
+
+  // 창살과 창턱
+  wallLeftRect(mid - 0.5, mid + 0.5, z1, z2, "windowFrame");
+  wallLeftRect(y1, y2, midZ - 0.5, midZ + 0.5, "windowFrame");
+  box(0, y1 - 1, z1 - 2, 3, y2 - y1 + 2, 2, "windowFrame");
+}
+
+// 미닫이 창: 왼쪽 절반은 열려 있고, 오른쪽 절반은 창호지
+function drawShojiWindow(win, phase) {
+  const { y1, y2, z1, z2 } = win;
+  const mid = (y1 + y2) / 2;
+  wallLeftRect(y1, y2, z1, z2, "windowFrame");
+
+  // 열린 쪽 (하늘)
+  const sky = { sy1: mid + 1, sy2: y2 - 1.5, sz1: z1 + 1.5, sz2: z2 - 1.5 };
+  drawSky(sky, phase, sky.sy1, sky.sy2, sky.sz1, sky.sz2);
+
+  // 창호지 쪽 (시간에 따라 비치는 빛이 달라짐)
+  const glow = { dawn: "#f6e3cf", day: "#f7f1e1", evening: "#f3d9b0", night: "#b9b7c2" }[phase];
+  wallLeftRect(y1 + 1.5, mid, z1 + 1.5, z2 - 1.5, glow);
+  for (let y = y1 + 1.5 + 4; y < mid - 0.5; y += 4) wallLeftRect(y - 0.5, y, z1 + 1.5, z2 - 1.5, "windowFrame");
+  for (let z = z1 + 1.5 + 5; z < z2 - 2; z += 5) wallLeftRect(y1 + 1.5, mid, z - 0.5, z, "windowFrame");
+  wallLeftRect(mid - 0.5, mid + 1, z1, z2, "windowFrame");
+  box(0, y1 - 1, z1 - 2, 2, y2 - y1 + 2, 2, "windowFrame");
+}
+
+function drawRoundWindow(win, phase) {
+  const { cy, cz, r } = win;
+  const circle = (rad) => {
+    const pts = [];
+    for (let i = 0; i < 32; i++) {
+      const a = (i / 32) * Math.PI * 2;
+      pts.push([0, cy + Math.cos(a) * rad, cz + Math.sin(a) * rad]);
+    }
+    return pts;
+  };
+  poly(circle(r + 2), "windowFrame");
+  drawSky(win, phase, cy - r, cy + r, cz - r, cz + r);
+  // 창살 (십자)
+  skyRect(win, cy - 0.5, cy + 0.5, cz - r, cz + r, "windowFrame");
+  skyRect(win, cy - r, cy + r, cz - 0.5, cz + 0.5, "windowFrame");
+}
+
+// 실제 시간을 가리키는 벽시계
+function drawClock() {
+  if (!room.clock) return;
+  const c = project(...room.clock);
+  const cx = Math.round(c.x), cy = Math.round(c.y), r = 5;
+  for (let dy = -r; dy <= r; dy++) {
+    for (let dx = -r; dx <= r; dx++) {
+      const d = dx * dx + dy * dy;
+      if (d > r * r) continue;
+      ctx.fillStyle = colorOf(d <= (r - 1) * (r - 1) ? "clockFace" : "woodDark");
+      ctx.fillRect(cx + dx, cy + dy, 1, 1);
+    }
+  }
+  const d = now();
+  const hand = (angle, len) => {
+    ctx.fillStyle = colorOf("eye");
+    for (let i = 0; i <= len; i++) {
+      ctx.fillRect(Math.round(cx + Math.sin(angle) * i), Math.round(cy - Math.cos(angle) * i), 1, 1);
+    }
+  };
+  hand(((d.getHours() % 12) + d.getMinutes() / 60) / 12 * Math.PI * 2, 2);
+  hand(d.getMinutes() / 60 * Math.PI * 2, 3);
+}
+
+// 시간대에 따라 방을 어둡게 하고, 조명 빛을 비춥니다.
+function drawLighting(phase) {
+  const dark = DARKNESS[phase];
+  const lights = save.lampOn ? items.filter((f) => f.light) : [];
+  const lightPos = (f) => project(f.x + f.light.x, f.y + f.light.y, f.z + f.light.z);
+
+  // source-atop: 방이 그려진 부분에만 적용
+  ctx.globalCompositeOperation = "source-atop";
+  if (dark > 0) {
+    sctx.clearRect(0, 0, W, H);
+    sctx.globalCompositeOperation = "source-over";
+    sctx.fillStyle = `rgba(20, 26, 51, ${dark})`;
+    sctx.fillRect(0, 0, W, H);
+    sctx.globalCompositeOperation = "destination-out";
+    for (const f of lights) {
+      const p = lightPos(f), r = f.light.radius;
+      const g = sctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+      g.addColorStop(0, "rgba(0,0,0,0.9)");
+      g.addColorStop(1, "rgba(0,0,0,0)");
+      sctx.fillStyle = g;
+      sctx.fillRect(0, 0, W, H);
+    }
+    sctx.globalCompositeOperation = "source-over";
+    ctx.drawImage(shade, 0, 0);
+  }
+  for (const f of lights) {
+    const p = lightPos(f), r = f.light.radius;
+    const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+    g.addColorStop(0, `rgba(255, 190, 110, ${dark > 0 ? 0.25 : 0.1})`);
+    g.addColorStop(1, "rgba(255, 190, 110, 0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+  }
+  ctx.globalCompositeOperation = "source-over";
+}
+
+// ---- 캐릭터 ------------------------------------------------------
+const hero = {
+  x: 32,
+  y: 52,
+  dir: 1,
+  mode: "idle",   // idle(가만히) / walk(걷기) / toBed(자러 가기) / sleep(자기)
+  timer: 2,
+  target: null,
+  walkT: 0,
+  blinkT: 3,
+  jumpT: 0,
+  heartT: 0,
+};
+
+// 가구에 부딪히지 않는 곳인지 확인
+function isFree(x, y) {
+  if (x < 4 || y < 4 || x > ROOM - 4 || y > ROOM - 4) return false;
+  return !blockers.some((b) => x > b.x - 2.5 && x < b.x + b.w + 2.5 && y > b.y - 2.5 && y < b.y + b.d + 2.5);
+}
+
+function pathIsFree(x1, y1, x2, y2) {
+  const steps = Math.ceil(Math.hypot(x2 - x1, y2 - y1));
+  for (let i = 0; i <= steps; i++) {
+    const t = steps ? i / steps : 0;
+    if (!isFree(x1 + (x2 - x1) * t, y1 + (y2 - y1) * t)) return false;
+  }
+  return true;
+}
+
+function pickTarget() {
+  for (let i = 0; i < 30; i++) {
+    const x = 4 + Math.random() * (ROOM - 8);
+    const y = 4 + Math.random() * (ROOM - 8);
+    if (pathIsFree(hero.x, hero.y, x, y)) return { x, y };
+  }
+  return null;
+}
+
+// ---- 잠자리 ------------------------------------------------------
+function bedItem() {
+  return items.find((f) => f.sleep);
+}
+
+function pillowPos() {
+  const b = bedItem();
+  return [b.x + b.sleep.pillow[0], b.y + b.sleep.pillow[1], b.z + b.sleep.pillow[2]];
+}
+
+// 잠들기 전 서는 자리 (막혀 있으면 잠자리 주변의 빈 곳)
+function bedSide() {
+  const b = bedItem();
+  const x = b.x + b.sleep.side[0], y = b.y + b.sleep.side[1];
+  if (isFree(x, y)) return { x, y };
+  const f = footprint(b);
+  for (let t = 0.5, n = 0; n < 9; n++, t = 0.5 + (n % 2 ? 1 : -1) * Math.ceil(n / 2) / 8) {
+    for (const [cx, cy] of [
+      [f.x - 3, f.y + f.d * t], [f.x + f.w + 3, f.y + f.d * t],
+      [f.x + f.w * t, f.y + f.d + 3], [f.x + f.w * t, f.y - 3],
+    ]) {
+      if (isFree(cx, cy)) return { x: cx, y: cy };
+    }
+  }
+  return { x, y };
+}
+
+// 방을 바꾸면 빈 바닥에 캐릭터를 세웁니다.
+function placeHeroInRoom() {
+  for (let i = 0; i < 200; i++) {
+    const x = 6 + Math.random() * (ROOM - 12);
+    const y = 30 + Math.random() * (ROOM - 36);
+    if (isFree(x, y)) { hero.x = x; hero.y = y; break; }
+  }
+  if (hero.mode === "walk") { hero.mode = "idle"; hero.timer = 1; }
+  fixSleep();
+}
+
+// 잠자리가 없어졌으면 깨우고, 있으면 그쪽으로 다시 가게 합니다.
+function fixSleep() {
+  if (hero.mode !== "sleep" && hero.mode !== "toBed") return;
+  if (!bedItem()) {
+    hero.mode = "idle";
+    hero.timer = 1;
+  } else if (hero.mode === "toBed") {
+    hero.target = bedSide();
+  }
+}
+
+function updateHero(dt, h) {
+  hero.heartT = Math.max(0, hero.heartT - dt);
+  hero.jumpT = Math.max(0, hero.jumpT - dt);
+  hero.blinkT -= dt;
+  if (hero.blinkT < -0.15) hero.blinkT = 2 + Math.random() * 3;
+
+  // 밤에는 잠자리로, 아침에는 일어나기
+  const sleepy = isSleepTime(h);
+  if (sleepy && bedItem() && hero.mode !== "sleep" && hero.mode !== "toBed") {
+    hero.mode = "toBed";
+    hero.target = bedSide();
+  }
+  if (!sleepy && (hero.mode === "sleep" || hero.mode === "toBed")) {
+    if (hero.mode === "sleep") Object.assign(hero, bedSide());
+    hero.mode = "idle";
+    hero.timer = 2;
+  }
+
+  if (hero.mode === "idle") {
+    hero.timer -= dt;
+    if (hero.timer <= 0) {
+      const t = Math.random() < 0.7 ? pickTarget() : null;
+      if (t) {
+        hero.target = t;
+        hero.mode = "walk";
+      } else {
+        hero.timer = 2 + Math.random() * 3;
+      }
+    }
+  } else if (hero.mode === "walk" || hero.mode === "toBed") {
+    const dx = hero.target.x - hero.x, dy = hero.target.y - hero.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 0.3) {
+      hero.x = hero.target.x;
+      hero.y = hero.target.y;
+      if (hero.mode === "toBed") {
+        hero.mode = "sleep";
+      } else {
+        hero.mode = "idle";
+        hero.timer = 2 + Math.random() * 4;
+      }
+    } else {
+      const step = Math.min(dist, WALK_SPEED * dt);
+      hero.x += (dx / dist) * step;
+      hero.y += (dy / dist) * step;
+      const screenDx = dx - dy;
+      if (Math.abs(screenDx) > 0.01) hero.dir = Math.sign(screenDx);
+      hero.walkT += dt;
+    }
+  }
+}
+
+function heroScreen() {
+  const p = project(hero.x, hero.y, 0);
+  return { x: Math.round(p.x), y: Math.round(p.y) };
+}
+
+// 캐릭터 크기 (그림 파일이 있으면 그 크기, 없으면 글자 그림 크기)
+function heroSize() {
+  if (readyImage(CHARACTER_SHEET && CHARACTER_SHEET.image)) {
+    return { w: CHARACTER_SHEET.frameWidth, h: CHARACTER_SHEET.frameHeight };
+  }
+  return { w: CHARACTER.idle[0].length, h: CHARACTER.idle.length };
+}
+
+// 동작 이름(idle, blink, walk1, walk2, sleep)에 맞는 그림을 그립니다.
+// centerX: 가운데 위치, bottomY: 발(맨 아래) 위치
+function drawHeroFrame(name, centerX, bottomY, flip) {
+  const img = readyImage(CHARACTER_SHEET && CHARACTER_SHEET.image);
+  if (img) {
+    const fw = CHARACTER_SHEET.frameWidth, fh = CHARACTER_SHEET.frameHeight;
+    const index = CHARACTER_SHEET.frames[name] ?? 0;
+    const x = centerX - Math.floor(fw / 2), y = bottomY - fh;
+    ctx.save();
+    if (flip) {
+      ctx.translate(x * 2 + fw, 0);
+      ctx.scale(-1, 1);
+    }
+    ctx.drawImage(img, index * fw, 0, fw, fh, x, y, fw, fh);
+    ctx.restore();
+    return;
+  }
+  const rows = CHARACTER[name] || CHARACTER.idle;
+  drawSprite(rows, centerX - Math.floor(rows[0].length / 2), bottomY - rows.length, CHAR_COLORS, flip);
+}
+
+function drawHero() {
+  if (hero.mode === "sleep") return; // 잘 때는 잠자리 위에 따로 그림
+
+  let frame = "idle";
+  if (hero.mode === "walk" || hero.mode === "toBed") {
+    const cycle = ["walk1", "idle", "walk2", "idle"];
+    frame = cycle[Math.floor(hero.walkT * 8) % cycle.length];
+  } else if (hero.blinkT < 0) {
+    frame = "blink";
+  }
+
+  const p = heroScreen();
+  const jump = hero.jumpT > 0 ? Math.round(Math.sin((1 - hero.jumpT / 0.35) * Math.PI) * 4) : 0;
+  ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
+  ctx.fillRect(p.x - 4, p.y - 1, 8, 2); // 그림자
+  drawHeroFrame(frame, p.x, p.y - jump, hero.dir < 0);
+}
+
+function drawSleeper() {
+  if (hero.mode !== "sleep") return;
+  const p = project(...pillowPos());
+  drawHeroFrame("sleep", Math.round(p.x), Math.round(p.y), false);
+}
+
+// 가구와 캐릭터를 뒤에서 앞 순서로 그립니다.
+let drawOrder = []; // 그려진 순서 (클릭한 가구를 찾을 때 사용)
+function drawObjects() {
+  drawOrder = [];
+  // 옮기는 중인 가구(와 그 위의 물건)는 맨 마지막에 그려서 가려지지 않게 합니다.
+  const lifted = drag && !drag.wall ? [drag.item, ...drag.carried.map((c) => c.o)] : [];
+  const list = objects.filter((item) => !lifted.includes(item)).map((item) => ({ fp: footprint(item), draw: () => {
+    drawItem(item);
+    drawOrder.push(item);
+    if (item.sleep) drawSleeper();
+  } }));
+  if (hero.mode !== "sleep" && ownsRoom()) {
+    list.push({ fp: { x: hero.x - 1.5, y: hero.y - 1.5, w: 3, d: 3 }, draw: drawHero });
+  }
+
+  const behind = (a, b) => a.x + a.w <= b.x || a.y + a.d <= b.y;
+  const rest = list.slice();
+  while (rest.length) {
+    let idx = rest.findIndex((it) => !rest.some((o) => o !== it && behind(o.fp, it.fp) && !behind(it.fp, o.fp)));
+    if (idx < 0) idx = 0;
+    rest.splice(idx, 1)[0].draw();
+  }
+
+  if (drag && !drag.wall) drawEditMarker("drag");
+  for (const item of lifted) {
+    drawItem(item);
+    drawOrder.push(item);
+    if (item.sleep) drawSleeper();
+    if (!drag.valid) tintItem(item, "rgba(230, 70, 70, 0.45)");
+  }
+}
+
+// 가구 모양 그대로 색을 덧입힙니다. (놓을 수 없을 때 빨갛게)
+const tintCanvas = document.createElement("canvas");
+function tintItem(item, color) {
+  const img = itemImage(item);
+  if (img) {
+    const r = imageRect(item, img);
+    tintCanvas.width = img.width;
+    tintCanvas.height = img.height;
+    const t = tintCanvas.getContext("2d");
+    t.drawImage(img, 0, 0);
+    t.globalCompositeOperation = "source-atop";
+    t.fillStyle = color;
+    t.fillRect(0, 0, img.width, img.height);
+    ctx.drawImage(tintCanvas, r.x, r.y);
+    return;
+  }
+  for (const [dx, dy, dz, w, d, h] of partsOf(item)) {
+    const x = item.x + dx, y = item.y + dy, z = item.z + dz;
+    const outline = [
+      [x, y, z + h], [x + w, y, z + h], [x + w, y, z],
+      [x + w, y + d, z], [x, y + d, z], [x, y + d, z + h],
+    ];
+    fillPoly(ctx, outline.map((q) => project(...q)), color);
+  }
+}
+
+// 하트, Zzz 같은 효과 (조명 위에 그려서 잘 보이게)
+function drawEffects() {
+  if (hero.mode === "sleep") {
+    const base = project(...pillowPos());
+    for (let i = 0; i < 2; i++) {
+      const p = (time * 0.4 + i * 0.5) % 1;
+      ctx.globalAlpha = 1 - p;
+      drawSprite(EFFECTS.zzz, Math.round(base.x + 5 + p * 6), Math.round(base.y - 12 - p * 12), { Z: "zzz" }, false);
+    }
+    ctx.globalAlpha = 1;
+  }
+  if (hero.heartT > 0) {
+    const p = heroScreen();
+    const rise = (1.2 - hero.heartT) * 6;
+    ctx.globalAlpha = Math.min(1, hero.heartT * 2);
+    drawSprite(EFFECTS.heart, p.x - 2, Math.round(p.y - heroSize().h - 8 - rise), { H: "heart" }, false);
+    ctx.globalAlpha = 1;
+  }
+}
+
+// ---- 클릭 --------------------------------------------------------
+function toGamePos(e) {
+  // 작은 창에서는 화면 비율을 유지한 채 가운데 놓이므로 그만큼 보정합니다.
+  const r = view.getBoundingClientRect();
+  const scale = Math.min(r.width / view.width, r.height / view.height);
+  const w = view.width * scale, h = view.height * scale;
+  const left = r.left + (r.width - w) / 2, top = r.top + (r.height - h) / 2;
+  return {
+    x: ((e.clientX - left) / w) * W,
+    y: ((e.clientY - top) / h) * H,
+  };
+}
+
+function inside(p, b) {
+  return p.x >= b.x && p.x < b.x + b.w && p.y >= b.y && p.y < b.y + b.h;
+}
+
+function heroBounds() {
+  const p = heroScreen();
+  const s = heroSize();
+  return { x: p.x - s.w / 2, y: p.y - s.h - 1, w: s.w, h: s.h + 1 };
+}
+
+function lampItem(p) {
+  return items.find((f) => f.light && inside(p, screenBounds(f)));
+}
+
+view.addEventListener("click", (e) => {
+  if (editing) return;
+  const p = toGamePos(e);
+  if (hero.mode !== "sleep" && inside(p, heroBounds())) {
+    hero.heartT = 1.2;
+    hero.jumpT = 0.35;
+    return;
+  }
+  if (lampItem(p)) {
+    save.lampOn = !save.lampOn;
+    Save.save(save);
+  }
+});
+
+view.addEventListener("pointermove", (e) => {
+  const p = toGamePos(e);
+  if (editing) {
+    if (drag) {
+      moveDrag(p);
+      editBar.classList.toggle("drop", isOverBag(e));
+    } else {
+      hoverItem = itemAt(p);
+    }
+    view.style.cursor = drag ? "grabbing" : hoverItem ? "grab" : "default";
+    return;
+  }
+  const hit = (hero.mode !== "sleep" && inside(p, heroBounds())) || lampItem(p);
+  view.style.cursor = hit ? "pointer" : "default";
+});
+
+view.addEventListener("pointerdown", (e) => {
+  if (!editing) return;
+  const p = toGamePos(e);
+  const item = itemAt(p);
+  if (!item) return;
+  startDrag(item, p);
+  view.setPointerCapture(e.pointerId);
+  e.preventDefault();
+});
+
+view.addEventListener("pointerup", (e) => { if (drag) endDrag(e); });
+view.addEventListener("pointercancel", () => { if (drag) endDrag(null); });
+view.addEventListener("pointerleave", () => { if (!drag) hoverItem = null; });
+
+// ---- 꾸미기 (가구 옮기기) ------------------------------------------
+const GRID = 2;          // 가구가 움직이는 칸 크기
+let editing = false;     // 꾸미기 중인지
+let drag = null;         // 옮기는 중인 가구 정보
+let hoverItem = null;    // 마우스가 올라가 있는 가구
+const editBtn = document.getElementById("edit-btn");
+const editBar = document.getElementById("edit-bar");
+const bagEl = document.getElementById("inventory");
+
+function setEditing(on) {
+  editing = on;
+  drag = null;
+  hoverItem = null;
+  editBtn.textContent = on ? "완료" : "꾸미기";
+  editBtn.classList.toggle("active", on);
+  editBar.hidden = !on;
+  editBar.classList.remove("drop");
+  view.style.cursor = "default";
+  if (on) {
+    closeShop();
+    renderBag();
+  }
+}
+
+editBtn.addEventListener("click", () => setEditing(!editing));
+
+const snap = (v) => Math.round(v / GRID) * GRID;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+// 화면 좌표 → 바닥 좌표 (높이 z 기준)
+function unproject(sx, sy, z) {
+  const a = sx - viewOX, b = 2 * (sy - viewOY + z);
+  return { x: (a + b) / 2, y: (b - a) / 2 };
+}
+
+// 화면 좌표 → 벽 위 좌표 (오른쪽 벽: x·z, 왼쪽 벽: y·z)
+function unprojectWall(sx, sy, wall) {
+  if (wall === "right") {
+    const x = sx - viewOX;
+    return { a: x, z: viewOY + x / 2 - sy };
+  }
+  const y = viewOX - sx;
+  return { a: y, z: viewOY + y / 2 - sy };
+}
+
+// 벽 가구가 걸린 벽 (flip이면 왼쪽 벽)
+function wallOf(item) {
+  return item.flip ? "left" : "right";
+}
+
+// 벽 가구가 벽에서 차지하는 범위 (가로 a1~a2, 높이 z1~z2, 가구 기준)
+function wallExtent(item) {
+  const wall = wallOf(item);
+  let a1 = Infinity, a2 = -Infinity, z1 = Infinity, z2 = -Infinity;
+  for (const [dx, dy, dz, w, d, h] of partsOf(item)) {
+    const a = wall === "right" ? dx : dy, len = wall === "right" ? w : d;
+    a1 = Math.min(a1, a); a2 = Math.max(a2, a + len);
+    z1 = Math.min(z1, dz); z2 = Math.max(z2, dz + h);
+  }
+  return { a1, a2, z1, z2 };
+}
+
+function itemHeight(item) {
+  if (item.size && itemImage(item)) return item.size[2] || 10;
+  return Math.max(...partsOf(item).map((p) => p[2] + p[5]));
+}
+
+function overlaps(a, b) {
+  return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.d && b.y < a.y + a.d;
+}
+
+// o의 가운데가 base 위에 있는지
+function centerOn(o, base) {
+  const f = footprint(o), b = footprint(base);
+  const cx = f.x + f.w / 2, cy = f.y + f.d / 2;
+  return cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.d;
+}
+
+function pointInPoly(p, pts) {
+  let hit = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const a = pts[i], b = pts[j];
+    if ((a.y > p.y) !== (b.y > p.y) && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x) hit = !hit;
+  }
+  return hit;
+}
+
+// 화면의 한 점이 가구 위에 있는지 (상자 모양 그대로 판정)
+function hitItem(item, p) {
+  if (itemImage(item)) return inside(p, screenBounds(item));
+  return partsOf(item).some(([dx, dy, dz, w, d, h]) => {
+    const x = item.x + dx, y = item.y + dy, z = item.z + dz;
+    const outline = [
+      [x, y, z + h], [x + w, y, z + h], [x + w, y, z],
+      [x + w, y + d, z], [x, y + d, z], [x, y + d, z + h],
+    ];
+    return pointInPoly(p, outline.map((q) => project(...q)));
+  });
+}
+
+// 앞에 있는 가구부터 찾습니다.
+function itemAt(p) {
+  const order = [...drawOrder].reverse().concat([...wallItems].reverse(), [...floorItems].reverse());
+  return order.find((it) => hitItem(it, p)) || null;
+}
+
+// 벽 위에서 가구가 차지하는 사각형 (가로 a, 높이 z)
+function wallRect(item) {
+  const e = wallExtent(item), a = wallOf(item) === "right" ? item.x : item.y;
+  return { a1: a + e.a1, a2: a + e.a2, z1: item.z + e.z1, z2: item.z + e.z2 };
+}
+
+// 벽에서 비워 둬야 하는 곳 (창문, 시계)
+function wallObstacles(wall) {
+  const list = [];
+  const win = room.window;
+  if (wall === "left" && win) {
+    if (win.style === "round") list.push({ a1: win.cy - win.r - 3, a2: win.cy + win.r + 3, z1: win.cz - win.r - 3, z2: win.cz + win.r + 3 });
+    else list.push({ a1: win.y1 - 6, a2: win.y2 + 6, z1: win.z1 - 3, z2: win.z2 + 5 });
+  }
+  if (room.clock) {
+    const [cx, cy, cz] = room.clock;
+    const onRight = cy === 0;
+    if ((wall === "right") === onRight) {
+      const a = onRight ? cx : cy;
+      list.push({ a1: a - 7, a2: a + 7, z1: cz - 7, z2: cz + 7 });
+    }
+  }
+  return list;
+}
+
+function rectsOverlap(p, q) {
+  return p.a1 < q.a2 && q.a1 < p.a2 && p.z1 < q.z2 && q.z1 < p.z2;
+}
+
+// 벽 가구를 지금 위치에 걸 수 있는지
+function wallValid(item) {
+  const wall = wallOf(item), r = wallRect(item);
+  if (r.a1 < 1 || r.a2 > ROOM - 1 || r.z1 < 3) return false;
+  const top = wall === "right" ? rightWallTop() : Math.min(leftWallTop(r.a1), leftWallTop(r.a2));
+  if (r.z2 > top - 1) return false;
+  if (wallObstacles(wall).some((o) => rectsOverlap(r, o))) return false;
+  return !wallItems.some((o) => o !== item && wallOf(o) === wall && rectsOverlap(r, wallRect(o)));
+}
+
+// 바닥 가구를 지금 위치에 놓을 수 있는지 (ignore: 함께 옮기는 물건)
+function floorValid(item, ignore = []) {
+  const fp = footprint(item);
+  if (fp.x < 0 || fp.y < 0 || fp.x + fp.w > ROOM || fp.y + fp.d > ROOM) return false;
+  if (item.type === "floor") return true;
+  const others = objects.filter((o) => o !== item && o.z === 0 && !ignore.includes(o));
+  if (others.some((o) => overlaps(fp, footprint(o)))) return false;
+  // 다락방: 낮은 지붕에 닿으면 안 됨
+  if (room.shape === "attic" && itemHeight(item) > Math.min(roofZ(fp.y), roofZ(fp.y + fp.d))) return false;
+  return true;
+}
+
+function startDrag(item, p) {
+  const wall = item.type === "wall" ? wallOf(item) : null;
+  const fp = footprint(item);
+  // 위에 올려진 물건은 함께 옮깁니다.
+  const carried = item.surface
+    ? objects.filter((o) => o !== item && Math.abs(o.z - (item.z + item.surface)) < 0.01 && centerOn(o, item))
+    : [];
+  drag = {
+    item,
+    wall,
+    start: wall ? unprojectWall(p.x, p.y, wall) : unproject(p.x, p.y, item.z),
+    orig: { x: item.x, y: item.y, z: item.z },
+    rel: { x: fp.x - item.x, y: fp.y - item.y, w: fp.w, d: fp.d },
+    carried: carried.map((o) => ({ o, dx: o.x - item.x, dy: o.y - item.y, dz: o.z - item.z, orig: { x: o.x, y: o.y, z: o.z } })),
+    valid: true,
+  };
+}
+
+function moveDrag(p) {
+  const { item, orig } = drag;
+
+  // 벽에 거는 가구
+  if (drag.wall) {
+    const cur = unprojectWall(p.x, p.y, drag.wall);
+    const e = wallExtent(item);
+    const da = cur.a - drag.start.a;
+    const top = drag.wall === "right" ? rightWallTop() : (room.wallHeight || room.peakHeight);
+    item.z = clamp(snap(orig.z + cur.z - drag.start.z), 3 - e.z1, top - e.z2 - 1);
+    if (drag.wall === "right") item.x = clamp(snap(orig.x + da), 1 - e.a1, ROOM - e.a2 - 1);
+    else item.y = clamp(snap(orig.y + da), 1 - e.a1, ROOM - e.a2 - 1);
+    drag.valid = wallValid(item);
+    return;
+  }
+
+  // 바닥에 놓는 가구
+  const cur = unproject(p.x, p.y, orig.z);
+  const r = drag.rel;
+  item.x = clamp(snap(orig.x + cur.x - drag.start.x), -r.x, ROOM - r.x - r.w);
+  item.y = clamp(snap(orig.y + cur.y - drag.start.y), -r.y, ROOM - r.y - r.d);
+
+  if (item.type === "floor") {
+    drag.valid = true;
+  } else {
+    const carriedSet = drag.carried.map((c) => c.o);
+    const support = item.small && objects.find((o) => o !== item && o.surface && !carriedSet.includes(o) && centerOn(item, o));
+    if (support) {
+      item.z = support.z + support.surface;
+      drag.valid = true;
+    } else {
+      item.z = 0;
+      drag.valid = floorValid(item, carriedSet);
+    }
+  }
+  for (const c of drag.carried) {
+    c.o.x = item.x + c.dx;
+    c.o.y = item.y + c.dy;
+    c.o.z = item.z + c.dz;
+  }
+}
+
+function endDrag(e) {
+  editBar.classList.remove("drop");
+
+  // 보관함 위에 놓으면 다시 보관함으로
+  if (e && isOverBag(e)) {
+    const back = [drag.item, ...drag.carried.map((c) => c.o)];
+    items = items.filter((it) => !back.includes(it));
+    back.forEach((it) => addToBag(it.id));
+    drag = null;
+    saveLayout();
+    afterLayoutChange();
+    renderBag();
+    toast(back.length > 1 ? "올려 둔 물건과 함께 보관함에 넣었어요." : "보관함에 넣었어요.");
+    return;
+  }
+
+  if (!drag.valid) {
+    Object.assign(drag.item, drag.orig);
+    for (const c of drag.carried) Object.assign(c.o, c.orig);
+  } else {
+    saveLayout();
+  }
+  drag = null;
+  afterLayoutChange();
+}
+
+// 배치가 바뀐 뒤: 정보 다시 계산하고 캐릭터가 갇히지 않게
+function afterLayoutChange() {
+  refreshItems();
+  if (hero.mode !== "sleep" && !isFree(hero.x, hero.y)) placeHeroInRoom();
+  if (hero.mode === "walk") { hero.mode = "idle"; hero.timer = 1; }
+  fixSleep();
+}
+
+// 옮기는 가구의 자리 표시 (초록: 놓을 수 있음, 빨강: 놓을 수 없음)
+// layer: "under"(가구 밑) / "over"(가구 위) / "drag"(옮기는 중)
+function drawEditMarker(layer) {
+  if (!editing) return;
+  const target = drag ? drag.item : hoverItem;
+  if (!target) return;
+  if (drag) {
+    if (layer !== "drag") return;
+  } else {
+    const isUpper = target.type !== "wall" && target.z > 0;
+    if (layer === "drag" || (layer === "over") !== isUpper) return;
+  }
+
+  const color = drag
+    ? (drag.valid ? "rgba(110, 200, 120, 0.5)" : "rgba(230, 80, 80, 0.55)")
+    : "rgba(255, 255, 255, 0.45)";
+  let pts;
+  if (target.type === "wall") {
+    const e = wallExtent(target), z1 = target.z + e.z1 - 1, z2 = target.z + e.z2 + 1;
+    if (wallOf(target) === "right") {
+      const a1 = target.x + e.a1 - 1, a2 = target.x + e.a2 + 1;
+      pts = [[a1, 0, z1], [a2, 0, z1], [a2, 0, z2], [a1, 0, z2]];
+    } else {
+      const a1 = target.y + e.a1 - 1, a2 = target.y + e.a2 + 1;
+      pts = [[0, a1, z1], [0, a2, z1], [0, a2, z2], [0, a1, z2]];
+    }
+  } else {
+    // 가구보다 한 칸 넓게 표시해서 가장자리가 보이게 합니다.
+    const f = footprint(target), z = target.z;
+    const x1 = f.x - 1, y1 = f.y - 1, x2 = f.x + f.w + 1, y2 = f.y + f.d + 1;
+    pts = [[x1, y1, z], [x2, y1, z], [x2, y2, z], [x1, y2, z]];
+  }
+  fillPoly(ctx, pts.map((q) => project(...q)), color);
+}
+
+// 처음 시작할 방 (주소에 ?room=이 있으면 그 방)
+setRoom(params.get("room") || save.roomId);
+
+// ---- 보관함 --------------------------------------------------------
+function addToBag(id) {
+  save.inventory[id] = (save.inventory[id] || 0) + 1;
+  Save.save(save);
+}
+
+function isOverBag(e) {
+  if (editBar.hidden) return false;
+  const r = editBar.getBoundingClientRect();
+  return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+}
+
+// 보관함에서 꺼내 빈자리에 놓기
+function takeFromBag(id) {
+  const item = makeItem({ id, x: 0, y: 0, z: 0 });
+  if (!findSpot(item)) {
+    toast("놓을 자리가 없어요. 가구를 옮겨서 자리를 만들어 주세요.");
+    return;
+  }
+  items.push(item);
+  save.inventory[id] -= 1;
+  if (save.inventory[id] <= 0) delete save.inventory[id];
+  saveLayout();
+  afterLayoutChange();
+  renderBag();
+  hoverItem = item; // 새로 놓은 가구를 잠깐 표시
+}
+
+// 빈자리 찾기 (바닥은 방 가운데부터, 벽은 높은 곳부터)
+function findSpot(item) {
+  if (item.type === "wall") {
+    const walls = room.shape === "attic" ? ["left"] : ["right", "left"];
+    for (const wall of walls) {
+      item.flip = wall === "left";
+      for (let z = 24; z >= 6; z -= GRID) {
+        for (let a = 2; a < ROOM; a += GRID) {
+          item.x = wall === "right" ? a : 0;
+          item.y = wall === "right" ? 0 : a;
+          item.z = z;
+          if (wallValid(item)) return true;
+        }
+      }
+    }
+    return false;
+  }
+  item.z = 0;
+  const spots = [];
+  for (let x = 0; x <= ROOM; x += GRID) for (let y = 0; y <= ROOM; y += GRID) spots.push([x, y]);
+  spots.sort((p, q) => Math.hypot(p[0] - 28, p[1] - 36) - Math.hypot(q[0] - 28, q[1] - 36));
+  for (const [x, y] of spots) {
+    item.x = x;
+    item.y = y;
+    if (floorValid(item)) return true;
+  }
+  return false;
+}
+
+function renderBag() {
+  bagEl.innerHTML = "";
+  const ids = Object.keys(save.inventory).filter((id) => save.inventory[id] > 0 && FURNITURE[id]);
+  if (!ids.length) {
+    const p = document.createElement("p");
+    p.className = "empty";
+    p.textContent = "보관함이 비어 있어요. 상점에서 가구를 사 보세요.";
+    bagEl.append(p);
+    return;
+  }
+  for (const id of ids) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "bag-item";
+    btn.title = FURNITURE[id].name + " 꺼내기";
+    btn.append(makePreview(id));
+    const name = document.createElement("span");
+    name.textContent = FURNITURE[id].name;
+    btn.append(name);
+    if (save.inventory[id] > 1) {
+      const n = document.createElement("span");
+      n.className = "count";
+      n.textContent = save.inventory[id];
+      btn.append(n);
+    }
+    btn.addEventListener("click", () => takeFromBag(id));
+    bagEl.append(btn);
+  }
+}
+
+// 가구 미리보기 그림 (상점, 보관함에서 사용)
+// 가구 크기에 맞춘 작은 캔버스에 그리고, 화면에서는 같은 칸 크기로 확대해 보여줍니다.
+function makePreview(id) {
+  const item = makeItem({ id, x: 0, y: 0, z: 0 });
+  const prev = { ctx, viewOX, viewOY };
+  viewOX = OX;
+  viewOY = OY;
+  const b = screenBounds(item);
+  const size = Math.ceil(Math.max(b.w + 4, b.h + 4, 18)); // 작은 물건이 너무 커지지 않게 최소 크기
+  const c = document.createElement("canvas");
+  c.width = size;
+  c.height = size;
+  c.className = "preview";
+  ctx = c.getContext("2d");
+  viewOX += Math.round(size / 2 - (b.x + b.w / 2));
+  viewOY += Math.round(size / 2 - (b.y + b.h / 2));
+  drawItem(item);
+  ({ ctx, viewOX, viewOY } = prev);
+  return c;
+}
+
+// ---- 상점 --------------------------------------------------------
+const shopEl = document.getElementById("shop");
+const shopList = document.getElementById("shop-list");
+const shopBtn = document.getElementById("shop-btn");
+let shopCategory = "furniture";
+
+// 받침 있는 글자면 "을", 없으면 "를"
+function withObject(word) {
+  const c = word.charCodeAt(word.length - 1);
+  if (c < 0xac00 || c > 0xd7a3) return word + "을(를)";
+  return word + ((c - 0xac00) % 28 ? "을" : "를");
+}
+
+// 가지고 있는 개수 (보관함 + 모든 방에 놓인 것)
+function ownedCount(id) {
+  let n = save.inventory[id] || 0;
+  for (const r of ROOMS) {
+    const list = r.id === room.id ? items : (save.layouts[r.id] || r.layout);
+    n += list.filter((p) => p.id === id).length;
+  }
+  return n;
+}
+
+function openShop() {
+  if (editing) setEditing(false);
+  shopEl.hidden = false;
+  shopBtn.classList.add("active");
+  renderShop();
+}
+
+function closeShop() {
+  shopEl.hidden = true;
+  shopBtn.classList.remove("active");
+}
+
+// 방 전체 미리보기 (벽지·바닥·방 상품용)
+function makeRoomPreview(r, style) {
+  const c = document.createElement("canvas");
+  c.width = W;
+  c.height = H;
+  c.className = "room-preview";
+  const prev = { ctx, viewOX, viewOY, room, activeColors, shadeCache, previewStyle };
+  ctx = c.getContext("2d");
+  room = r;
+  previewStyle = style || null;
+  applyStyle();
+  drawShell();
+  drawWallPattern();
+  drawFloorPattern();
+  drawWindow("day");
+  drawAtticFront();
+  ({ ctx, viewOX, viewOY, room, activeColors, shadeCache, previewStyle } = prev);
+  return c;
+}
+
+function makeCard(preview, title, metaHtml, button) {
+  const card = document.createElement("div");
+  card.className = "card";
+  const name = document.createElement("div");
+  name.className = "card-name";
+  name.textContent = title;
+  const meta = document.createElement("div");
+  meta.className = "card-meta";
+  meta.innerHTML = metaHtml;
+  card.append(preview, name, meta, button);
+  return card;
+}
+
+function makeButton(label, onClick, disabled) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.textContent = label;
+  btn.disabled = !!disabled;
+  if (onClick) btn.addEventListener("click", onClick);
+  return btn;
+}
+
+const priceHtml = (n) => (n ? `<span class="price"><i class="coin"></i>${n.toLocaleString()}</span>` : "<span>기본</span>");
+
+// 벽지·바닥 상품
+function renderStyles(kind) {
+  const list = kind === "wall" ? WALLPAPERS : FLOORS;
+  const now = currentStyle()[kind];
+  for (const st of list) {
+    let btn;
+    if (!ownsStyle(st)) {
+      btn = makeButton("구매", () => buyStyle(kind, st));
+      btn.dataset.price = st.price;
+    } else if (now.id === st.id) {
+      btn = makeButton("사용 중", null, true);
+    } else {
+      btn = makeButton("적용", () => useStyle(kind, st));
+    }
+    const owned = ownsStyle(st) && st.price ? "<span>보유</span>" : "";
+    shopList.append(makeCard(makeRoomPreview(room, { [kind]: st.id }), st.name, priceHtml(st.price) + owned, btn));
+  }
+}
+
+function useStyle(kind, st) {
+  save.roomStyles[room.id] = Object.assign({}, save.roomStyles[room.id], { [kind]: st.id });
+  Save.save(save);
+  applyStyle();
+  renderShop();
+}
+
+function buyStyle(kind, st) {
+  if (save.coins < st.price) return;
+  save.coins -= st.price;
+  save.ownedStyles.push(st.id);
+  updateCoins();
+  useStyle(kind, st);
+  toast(`${withObject(st.name)} 샀어요. ${room.name}에 적용했어요.`);
+}
+
+// 방 상품
+function renderRooms() {
+  for (const r of ROOMS) {
+    let btn;
+    if (!ownsRoom(r)) {
+      btn = makeButton("구매", () => { buyRoom(r); renderShop(); });
+      btn.dataset.price = r.price;
+    } else if (r.id === room.id) {
+      btn = makeButton("지금 방", null, true);
+    } else {
+      btn = makeButton("가 보기", () => { setRoom(r.id); renderShop(); });
+    }
+    const meta = ownsRoom(r) ? (r.price ? "<span>보유</span>" : "<span>기본</span>") : priceHtml(r.price);
+    shopList.append(makeCard(makeRoomPreview(r), r.name, meta, btn));
+  }
+}
+
+function renderShop() {
+  shopEl.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.cat === shopCategory));
+  shopList.innerHTML = "";
+  shopList.classList.toggle("wide", ["wall", "floor", "room"].includes(shopCategory));
+  if (shopCategory === "wall" || shopCategory === "floor") {
+    renderStyles(shopCategory);
+    updateShopButtons();
+    return;
+  }
+  if (shopCategory === "room") {
+    renderRooms();
+    updateShopButtons();
+    return;
+  }
+  const entries = Object.entries(FURNITURE)
+    .filter(([, f]) => f.category === shopCategory && f.price != null)
+    .sort((a, b) => a[1].price - b[1].price);
+  for (const [id, f] of entries) {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.append(makePreview(id));
+    const name = document.createElement("div");
+    name.className = "card-name";
+    name.textContent = f.name;
+    const meta = document.createElement("div");
+    meta.className = "card-meta";
+    const owned = ownedCount(id);
+    meta.innerHTML = `<span class="price"><i class="coin"></i>${f.price}</span>` + (owned ? `<span>보유 ${owned}</span>` : "");
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.dataset.price = f.price;
+    btn.addEventListener("click", () => buy(id));
+    card.append(name, meta, btn);
+    shopList.append(card);
+  }
+  updateShopButtons();
+}
+
+function updateShopButtons() {
+  if (lockEl && !lockEl.hidden) updateLock();
+  shopList.querySelectorAll("button[data-price]").forEach((btn) => {
+    const enough = save.coins >= Number(btn.dataset.price);
+    btn.disabled = !enough;
+    btn.textContent = enough ? "구매" : "코인 부족";
+  });
+}
+
+function buy(id) {
+  const f = FURNITURE[id];
+  if (save.coins < f.price) return;
+  save.coins -= f.price;
+  addToBag(id);
+  updateCoins();
+  renderShop();
+  toast(`${withObject(f.name)} 샀어요. 꾸미기에서 꺼내 놓을 수 있어요.`);
+}
+
+shopBtn.addEventListener("click", () => (shopEl.hidden ? openShop() : closeShop()));
+document.getElementById("lock-buy").addEventListener("click", () => buyRoom(room));
+document.getElementById("shop-close").addEventListener("click", closeShop);
+shopEl.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => {
+  shopCategory = t.dataset.cat;
+  renderShop();
+}));
+
+// ---- 코인 --------------------------------------------------------
+const COINS_PER_MINUTE = 2;      // 1분에 받는 코인
+const OFFLINE_MAX_MINUTES = 180; // 꺼져 있을 때 최대 몇 분치까지 쌓이는지
+const coinPop = document.getElementById("coin-pop");
+
+function updateCoins(gained) {
+  coinText.textContent = save.coins.toLocaleString();
+  if (gained) {
+    coinPop.textContent = "+" + gained;
+    coinPop.classList.remove("show");
+    void coinPop.offsetWidth; // 애니메이션 다시 시작
+    coinPop.classList.add("show");
+  }
+  updateShopButtons();
+}
+
+// 지난번 계산 이후 흐른 시간만큼 코인을 줍니다.
+// 2분 넘게 소식이 없었으면 꺼져 있던 것으로 보고 최대 180분까지만 쳐 줍니다.
+function earn() {
+  const nowMs = Date.now();
+  const gap = Math.max(0, nowMs - save.lastSeen);
+  const offline = gap > 2 * 60 * 1000;
+  save.carryMs += offline ? Math.min(gap, OFFLINE_MAX_MINUTES * 60 * 1000) : gap;
+  const minutes = Math.floor(save.carryMs / 60000);
+  save.carryMs -= minutes * 60000;
+  save.lastSeen = nowMs;
+  if (minutes > 0) {
+    const gained = minutes * COINS_PER_MINUTE;
+    save.coins += gained;
+    updateCoins(gained);
+    if (offline) toast(`자리를 비운 동안 ${gained}코인이 모였어요.`);
+  }
+  Save.save(save);
+}
+
+// 테스트용: 주소 뒤에 ?coins=1000 을 붙이면 코인이 그 값으로 바뀝니다.
+if (params.has("coins")) {
+  save.coins = Number(params.get("coins")) || 0;
+  Save.save(save);
+}
+
+// ---- 알림 --------------------------------------------------------
+const toastEl = document.getElementById("toast");
+let toastTimer = null;
+function toast(message) {
+  toastEl.textContent = message;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 3000);
+}
+
+updateCoins();
+earn();
+setInterval(earn, 5000);
+document.addEventListener("visibilitychange", earn);
+window.addEventListener("pagehide", earn);
+
+// ---- 항상 위에 띄우기 (Document Picture-in-Picture) ---------------
+let pipWin = null;
+
+function updatePipButton() {
+  pipBtn.textContent = pipWin ? "원래 창으로" : "위에 띄우기";
+}
+
+async function togglePip() {
+  if (pipWin) {
+    pipWin.close();
+    return;
+  }
+  if (!("documentPictureInPicture" in window)) {
+    pipNote.textContent = "이 브라우저는 '항상 위' 창을 지원하지 않아요. 최신 크롬이나 엣지에서 열어 주세요.";
+    return;
+  }
+
+  try {
+    pipWin = await documentPictureInPicture.requestWindow({ width: 380, height: 380 });
+  } catch (err) {
+    pipNote.textContent = "작은 창을 열지 못했어요. 브라우저 설정을 확인해 주세요.";
+    return;
+  }
+
+  // 스타일을 작은 창으로 복사
+  for (const sheet of document.styleSheets) {
+    try {
+      const style = pipWin.document.createElement("style");
+      style.textContent = [...sheet.cssRules].map((r) => r.cssText).join("\n");
+      pipWin.document.head.appendChild(style);
+    } catch (e) {
+      const link = pipWin.document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = sheet.href;
+      pipWin.document.head.appendChild(link);
+    }
+  }
+
+  pipWin.document.title = "My Cozy Room";
+  pipWin.document.body.classList.add("pip");
+  pipWin.document.body.append(app);
+  placeholder.hidden = false;
+  pipNote.textContent = "";
+  updatePipButton();
+  startLoop();
+
+  // 작은 창이 닫히면 원래 자리로 돌아오기
+  pipWin.addEventListener("pagehide", () => {
+    appHome.prepend(app);
+    placeholder.hidden = true;
+    pipWin = null;
+    updatePipButton();
+    startLoop();
+  });
+}
+
+pipBtn.addEventListener("click", togglePip);
+
+// ---- 게임 루프 ---------------------------------------------------
+let lastTick = performance.now();
+let loopToken = 0;
+
+function tick(dt) {
+  time += dt;
+  const h = hourNow();
+  const phase = phaseOf(h);
+
+  updateHero(dt, h);
+
+  ctx.clearRect(0, 0, W, H);
+  drawShell();
+  drawWallPattern();
+  drawFloorPattern();
+  drawWindow(phase);
+  drawClock();
+  floorItems.forEach(drawItem);
+  drawEditMarker("under");
+  wallItems.forEach(drawItem);
+  if (drag && drag.wall) {
+    drawEditMarker("drag");
+    if (!drag.valid) tintItem(drag.item, "rgba(230, 70, 70, 0.45)");
+  }
+  drawObjects();
+  drawEditMarker("over");
+  drawAtticFront();
+  drawLighting(phase);
+  drawEffects();
+
+  // 배경색도 시간에 따라 조금씩 바뀝니다.
+  vctx.fillStyle = mixColor(PALETTE.bgDay, PALETTE.bgNight, DARKNESS[phase] * 2);
+  vctx.fillRect(0, 0, view.width, view.height);
+  vctx.imageSmoothingEnabled = false;
+  vctx.drawImage(buf, 0, 0, view.width, view.height);
+
+  const d = now();
+  const label = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  if (clockText.textContent !== label) clockText.textContent = label;
+}
+
+// 작은 창이 열려 있으면 그 창 기준으로 화면을 갱신합니다.
+// (원래 탭이 최소화되어도 멈추지 않도록)
+function startLoop() {
+  const token = ++loopToken;
+  const step = () => {
+    if (token !== loopToken) return;
+    const t = performance.now();
+    if (t - lastTick >= 1000 / FPS - 1) {
+      tick(Math.min(0.1, (t - lastTick) / 1000));
+      lastTick = t;
+    }
+    (pipWin || window).requestAnimationFrame(step);
+  };
+  (pipWin || window).requestAnimationFrame(step);
+}
+
+startLoop();
