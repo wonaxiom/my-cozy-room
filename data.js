@@ -238,6 +238,37 @@ const OUTFITS = [
   { id: "raincoat", name: "노란 우비", price: 150, shirt: "#f2c84b", pants: "#4a6a8a" },
 ];
 
+// ---- 사는 곳 (실제 날씨용) -----------------------------------------
+// 고른 도시의 좌표로 날씨를 받아옵니다. 도시를 추가하려면 이름과 위도(lat)·경도(lon)를 적으세요.
+const CITIES = [
+  { id: "seoul", name: "서울", lat: 37.57, lon: 126.98 },
+  { id: "incheon", name: "인천", lat: 37.46, lon: 126.71 },
+  { id: "suwon", name: "수원", lat: 37.26, lon: 127.03 },
+  { id: "seongnam", name: "성남", lat: 37.42, lon: 127.13 },
+  { id: "goyang", name: "고양", lat: 37.66, lon: 126.83 },
+  { id: "yongin", name: "용인", lat: 37.24, lon: 127.18 },
+  { id: "chuncheon", name: "춘천", lat: 37.88, lon: 127.73 },
+  { id: "wonju", name: "원주", lat: 37.34, lon: 127.92 },
+  { id: "gangneung", name: "강릉", lat: 37.75, lon: 128.88 },
+  { id: "daejeon", name: "대전", lat: 36.35, lon: 127.38 },
+  { id: "sejong", name: "세종", lat: 36.48, lon: 127.29 },
+  { id: "cheongju", name: "청주", lat: 36.64, lon: 127.49 },
+  { id: "cheonan", name: "천안", lat: 36.82, lon: 127.11 },
+  { id: "jeonju", name: "전주", lat: 35.82, lon: 127.15 },
+  { id: "gwangju", name: "광주", lat: 35.16, lon: 126.85 },
+  { id: "mokpo", name: "목포", lat: 34.81, lon: 126.39 },
+  { id: "yeosu", name: "여수", lat: 34.76, lon: 127.66 },
+  { id: "daegu", name: "대구", lat: 35.87, lon: 128.6 },
+  { id: "andong", name: "안동", lat: 36.57, lon: 128.73 },
+  { id: "pohang", name: "포항", lat: 36.02, lon: 129.34 },
+  { id: "busan", name: "부산", lat: 35.18, lon: 129.08 },
+  { id: "ulsan", name: "울산", lat: 35.54, lon: 129.31 },
+  { id: "changwon", name: "창원", lat: 35.23, lon: 128.68 },
+  { id: "gimhae", name: "김해", lat: 35.23, lon: 128.89 },
+  { id: "jeju", name: "제주", lat: 33.5, lon: 126.53 },
+  { id: "seogwipo", name: "서귀포", lat: 33.25, lon: 126.56 },
+];
+
 // ---- 반려동물 -----------------------------------------------------
 // K: 몸, D: 무늬·귀, E: 눈, N: 코. 그림은 오른쪽을 보고 있고, 왼쪽으로 갈 때는 뒤집힙니다.
 const PET_FRAMES = {

@@ -6,14 +6,82 @@
   <title>My Cozy Room</title>
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body data-state="loading">
+  <!-- 불러오는 중 -->
+  <section id="loading" class="screen">
+    <p class="muted">불러오는 중…</p>
+  </section>
+
+  <!-- 로그인 화면 -->
+  <section id="gate" class="screen">
+    <div class="screen-card">
+      <h1 class="gate-title">My Cozy Room</h1>
+      <p class="gate-sub">데스크톱 옆에 켜두는 나만의 작은 방</p>
+      <div id="gate-preview" class="gate-preview"></div>
+      <button id="gate-login" class="primary" type="button">구글로 시작하기</button>
+      <p class="gate-note">코인과 꾸민 방은 구글 계정에 저장돼서 어느 컴퓨터에서든 이어서 할 수 있어요.</p>
+      <div id="gate-error" class="gate-error" hidden>
+        <p>로그인 기능을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.</p>
+        <div class="row">
+          <button id="gate-retry" type="button">다시 시도</button>
+          <button id="gate-guest" type="button">로그인 없이 하기</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 시작 설정 (처음 한 번, 이후에는 "내 정보"로 다시 열기) -->
+  <section id="onboard" class="screen">
+    <div class="screen-card">
+      <div class="steps">
+        <span data-step="1">1. 캐릭터 만들기</span>
+        <span data-step="2">2. 사는 곳</span>
+      </div>
+
+      <div id="step1" class="step">
+        <div id="ob-preview" class="ob-preview"></div>
+        <label class="field">
+          <span>이름</span>
+          <input id="ob-name" type="text" maxlength="10" placeholder="예: 원이" autocomplete="off">
+        </label>
+        <div class="field">
+          <span>머리 모양</span>
+          <div id="ob-hair" class="chips"></div>
+        </div>
+        <div class="field">
+          <span>머리색</span>
+          <div id="ob-color" class="swatches"></div>
+        </div>
+        <div class="ob-actions">
+          <button id="ob-close" type="button" hidden>닫기</button>
+          <button id="ob-next" class="primary" type="button">다음</button>
+        </div>
+      </div>
+
+      <div id="step2" class="step" hidden>
+        <p class="ob-text">사는 곳을 고르면 그 지역의 실제 날씨가 창밖에 나와요.<br>위치 권한은 필요 없어요.</p>
+        <label class="field">
+          <span>사는 곳</span>
+          <select id="ob-city">
+            <option value="">날씨 연동 안 함 (무작위 날씨)</option>
+          </select>
+        </label>
+        <div class="ob-actions">
+          <button id="ob-back" type="button">이전</button>
+          <button id="ob-done" class="primary" type="button">시작하기</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <main class="page">
     <header class="top">
-      <h1 class="title">My Cozy Room</h1>
+      <h1 class="title" id="title">My Cozy Room</h1>
       <div class="account">
         <span id="account-name"></span>
         <span id="account-status"></span>
-        <button id="login-btn" type="button">구글로 로그인</button>
+        <button id="profile-btn" type="button">내 정보</button>
+        <button id="login-btn" type="button">로그아웃</button>
       </div>
     </header>
 
@@ -127,12 +195,13 @@
     <p id="pip-note" class="note"></p>
   </main>
 
-  <!-- 순서 중요: 데이터 → 방 → 저장 → 게임 → 집중 → 로그인 -->
+  <!-- 순서 중요: 데이터 → 방 → 저장 → 게임 → 집중 → 첫 화면 → 로그인 -->
   <script src="data.js"></script>
   <script src="rooms.js"></script>
   <script src="save.js"></script>
   <script src="game.js"></script>
   <script src="focus.js"></script>
+  <script src="start.js"></script>
   <!-- 구글 로그인 (Supabase) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
   <script src="cloud.js"></script>

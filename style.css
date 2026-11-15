@@ -693,3 +693,142 @@ body.pip .toolbar button:not(.active) {
   background: #3a3530;
   border-color: #4a443e;
 }
+
+/* ---- 첫 화면 (불러오는 중, 로그인, 시작 설정) ---- */
+.screen {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px 16px;
+}
+
+body[data-state="loading"] #loading,
+body[data-state="login"] #gate,
+body[data-state="onboard"] #onboard { display: flex; }
+
+body:not([data-state="game"]) .page { display: none; }
+
+.screen-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  max-width: 380px;
+  padding: 28px 24px;
+  text-align: center;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+button.primary {
+  padding: 10px 16px;
+  font-size: 14px;
+  color: #ffffff;
+  background: #7a5034;
+  border-color: #7a5034;
+}
+
+button.primary:hover { background: #6a4529; }
+
+button[hidden] { display: none; }
+
+.gate-title {
+  margin: 0;
+  font-size: 22px;
+}
+
+.gate-sub,
+.gate-note,
+.ob-text {
+  margin: 0;
+  color: var(--sub);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.gate-note { font-size: 12px; }
+
+.gate-preview canvas {
+  width: 100%;
+  max-width: 280px;
+  height: auto;
+  image-rendering: pixelated;
+}
+
+.gate-error {
+  color: #b0563f;
+  font-size: 13px;
+}
+
+.gate-error p { margin: 0 0 8px; }
+
+.gate-error[hidden] { display: none; }
+
+.row {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.steps {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  color: var(--sub);
+  font-size: 12px;
+}
+
+.steps .on {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.step[hidden] { display: none; }
+
+.ob-preview canvas {
+  width: 96px;
+  height: 96px;
+  image-rendering: pixelated;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--sub);
+  font-size: 12px;
+  text-align: left;
+}
+
+.field input,
+.field select {
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.field .chips { flex-wrap: wrap; }
+
+.chips button.active {
+  color: #ffffff;
+  background: #7a5034;
+  border-color: #7a5034;
+}
+
+.ob-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

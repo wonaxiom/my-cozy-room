@@ -75,10 +75,55 @@ function phaseOf(h) {
   return "night";
 }
 
-// 3시간마다 바뀌는 날씨 (같은 시간대면 어느 컴퓨터에서나 같은 날씨)
+// ---- 날씨 --------------------------------------------------------
+// 사는 곳을 골랐으면 그 도시의 실제 날씨를, 아니면 3시간마다 바뀌는 무작위 날씨를 씁니다.
 let weather = "clear";
+const WEATHER_KEY = "cozyroom-weather";
+const WEATHER_REFRESH = 30 * 60 * 1000; // 30분마다 새로 받아오기
+let realWeather = null; // { city, kind, at }
+try { realWeather = JSON.parse(localStorage.getItem(WEATHER_KEY)); } catch (e) { realWeather = null; }
+
+function myCity() {
+  return CITIES.find((c) => c.id === (save.profile && save.profile.city)) || null;
+}
+
+// 날씨 코드(WMO)를 게임 날씨로 바꿉니다.
+function weatherFromCode(code) {
+  if ([71, 73, 75, 77, 85, 86].includes(code)) return "snow";
+  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95) return "rain";
+  if (code >= 2) return "cloudy"; // 구름 많음, 흐림, 안개
+  return "clear";
+}
+
+async function refreshWeather(force) {
+  const city = myCity();
+  if (!city) return;
+  if (!force && realWeather && realWeather.city === city.id && Date.now() - realWeather.at < WEATHER_REFRESH) return;
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}&current=weather_code`;
+    const res = await fetch(url);
+    const json = await res.json();
+    realWeather = { city: city.id, kind: weatherFromCode(json.current.weather_code), at: Date.now() };
+    localStorage.setItem(WEATHER_KEY, JSON.stringify(realWeather));
+  } catch (e) {
+    // 받아오지 못하면 무작위 날씨로 대신합니다.
+  }
+}
+
+// 실제 날씨 (3시간 넘게 못 받아왔으면 쓰지 않음)
+function cityWeather() {
+  const city = myCity();
+  if (!city || !realWeather || realWeather.city !== city.id) return null;
+  if (Date.now() - realWeather.at > 3 * 60 * 60 * 1000) return null;
+  return realWeather.kind;
+}
+
+setInterval(() => refreshWeather(), 5 * 60 * 1000);
+
 function weatherNow() {
   if (params.has("weather")) return params.get("weather");
+  const real = cityWeather();
+  if (real) return real;
   const d = now();
   const localHours = (d.getTime() - d.getTimezoneOffset() * 60000) / 3600000;
   const block = Math.floor(localHours / 3);
@@ -1194,6 +1239,7 @@ function heroRows(name, look = save.look) {
   const put = (r, c, ch) => { if (rows[r] && rows[r][c] !== undefined) rows[r][c] = ch; };
   if (look.hair === "long") {
     for (let r = 6; r <= 8; r++) { put(r, 1, "H"); put(r, 8, "H"); }
+    put(7, 2, "H"); put(7, 7, "H"); // 어깨에 닿는 머리
   } else if (look.hair === "pigtails") {
     for (let r = 3; r <= 6; r++) { put(r, 0, "H"); put(r, 9, "H"); }
   }
@@ -2491,8 +2537,9 @@ function tick(dt) {
   vctx.drawImage(buf, 0, 0, view.width, view.height);
 
   const d = now();
+  const city = cityWeather() && myCity();
   const label = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
-    + (weather !== "clear" ? ` · ${WEATHER_NAMES[weather]}` : "");
+    + (city ? ` · ${city.name} ${WEATHER_NAMES[weather]}` : weather !== "clear" ? ` · ${WEATHER_NAMES[weather]}` : "");
   if (clockText.textContent !== label) clockText.textContent = label;
 }
 

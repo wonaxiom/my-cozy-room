@@ -24,6 +24,8 @@ const Save = {
       outfits: [],            // 산 옷
       pets: [],               // 데려온 반려동물
       pet: null,              // 함께 있는 반려동물
+      profile: { name: "", city: null }, // 캐릭터 이름, 사는 곳 (실제 날씨용)
+      profileDone: false,     // 처음 시작 설정을 마쳤는지
       owner: null,            // 이 저장 데이터의 주인 (구글 계정 id)
       savedAt: 0,             // 마지막으로 저장한 시각
     };

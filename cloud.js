@@ -31,7 +31,7 @@ const Cloud = (() => {
     if (!user) ready = false;
     const meta = (user && user.user_metadata) || {};
     nameEl.textContent = user ? meta.full_name || meta.name || user.email : "";
-    loginBtn.textContent = user ? "로그아웃" : "구글로 로그인";
+    loginBtn.hidden = !user;
     if (!user) setStatus("");
   }
 
@@ -49,6 +49,7 @@ const Cloud = (() => {
 
     if (error) {
       setStatus("연결 실패");
+      Start.ready(); // 계정에 못 붙어도 이 컴퓨터의 데이터로 계속
       return;
     }
     const remote = data && data.data;
@@ -68,6 +69,7 @@ const Cloud = (() => {
     save.owner = user.id;
     ready = true;
     Save.save(save);
+    Start.ready();
     await upload();
   }
 
@@ -104,22 +106,26 @@ const Cloud = (() => {
     await upload();
     await client.auth.signOut();
     setUser(null);
+    Start.showLogin();
   }
 
   async function init() {
+    loginBtn.hidden = true;
+    // 파일로 직접 열었을 때는 로그인 없이 바로 시작 (만들면서 확인하는 용도)
     if (location.protocol === "file:") {
-      loginBtn.disabled = true;
-      loginBtn.title = "로그인은 사이트 주소(github.io)에서 열었을 때만 쓸 수 있어요.";
+      Start.ready();
       return;
     }
+    // 로그인 기능을 불러오지 못했으면 다시 시도하거나 로그인 없이 할 수 있게
     if (!window.supabase) {
-      loginBtn.disabled = true;
-      setStatus("로그인 기능을 불러오지 못했어요");
+      Start.showLogin({ error: true });
       return;
     }
 
+    Start.showLoading();
     client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    loginBtn.addEventListener("click", () => (user ? logout() : login()));
+    loginBtn.addEventListener("click", logout);
+    document.getElementById("gate-login").addEventListener("click", login);
     Save.onSave = queue;
 
     // 창을 닫거나 다른 창으로 갈 때는 바로 올립니다.
@@ -131,6 +137,7 @@ const Cloud = (() => {
       const before = user && user.id;
       setUser((session && session.user) || null);
       if (user && user.id !== before) sync();
+      if (!user) Start.showLogin();
     });
 
     const { data } = await client.auth.getSession();
@@ -138,6 +145,8 @@ const Cloud = (() => {
     if (u && (!user || user.id !== u.id)) {
       setUser(u);
       sync();
+    } else if (!u) {
+      Start.showLogin();
     }
   }
 
