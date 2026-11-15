@@ -126,6 +126,38 @@ button.active {
   font-size: 12px;
 }
 
+.edit-hint[hidden] { display: none; }
+
+.sel-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+
+.sel-bar[hidden] { display: none; }
+
+#sel-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sel-bar button {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+#sel-cancel {
+  width: 26px;
+  padding: 4px 0;
+}
+
+body.pip #sel-name { color: #e9e3da; }
+
 .inventory {
   display: flex;
   gap: 6px;

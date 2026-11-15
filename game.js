@@ -226,7 +226,7 @@ function itemImage(item) {
 
 // 그림을 놓을 위치: 그림 맨 아래 = 가구 바닥의 가장 앞 모서리
 function imageRect(item, img) {
-  const [w, d] = item.size;
+  const [w, d] = turned(item, item.size);
   const left = project(item.x, item.y + d, item.z).x;
   const bottom = project(item.x + w, item.y + d, item.z).y;
   const [ox, oy] = item.offset || [0, 0];
@@ -245,8 +245,16 @@ function partsOf(item) {
 
 // ---- 가구 정보 계산 ----------------------------------------------
 // 바닥에서 차지하는 영역
+// 방향을 돌린(flip) 가구는 가로·세로 값이 서로 바뀝니다.
+function turned(item, v) {
+  return item.flip ? [v[1], v[0], ...v.slice(2)] : v;
+}
+
 function footprint(item) {
-  if (item.size) return { x: item.x, y: item.y, w: item.size[0], d: item.size[1] };
+  if (item.size) {
+    const [w, d] = turned(item, item.size);
+    return { x: item.x, y: item.y, w, d };
+  }
   let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
   for (const [dx, dy, , w, d] of partsOf(item)) {
     x1 = Math.min(x1, dx); y1 = Math.min(y1, dy);
@@ -270,11 +278,23 @@ function screenBounds(item) {
   return { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
 }
 
+// 그림 가구: 방향을 돌렸으면 좌우를 뒤집어 그립니다.
+function drawMirrored(item, img, r) {
+  if (!item.flip) {
+    ctx.drawImage(img, r.x, r.y);
+    return;
+  }
+  ctx.save();
+  ctx.translate(r.x * 2 + r.w, 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(img, r.x, r.y);
+  ctx.restore();
+}
+
 function drawItem(item) {
   const img = itemImage(item);
   if (img) {
-    const r = imageRect(item, img);
-    ctx.drawImage(img, r.x, r.y);
+    drawMirrored(item, img, imageRect(item, img));
     return;
   }
   for (const [dx, dy, dz, w, d, h, color] of partsOf(item)) {
@@ -893,7 +913,10 @@ function drawClock() {
 function drawLighting(phase) {
   const dark = DARKNESS[phase];
   const lights = save.lampOn ? items.filter((f) => f.light) : [];
-  const lightPos = (f) => project(f.x + f.light.x, f.y + f.light.y, f.z + f.light.z);
+  const lightPos = (f) => {
+    const [lx, ly, lz] = turned(f, [f.light.x, f.light.y, f.light.z]);
+    return project(f.x + lx, f.y + ly, f.z + lz);
+  };
 
   // source-atop: 방이 그려진 부분에만 적용
   ctx.globalCompositeOperation = "source-atop";
@@ -970,13 +993,14 @@ function bedItem() {
 
 function pillowPos() {
   const b = bedItem();
-  return [b.x + b.sleep.pillow[0], b.y + b.sleep.pillow[1], b.z + b.sleep.pillow[2]];
+  const [px, py, pz] = turned(b, b.sleep.pillow);
+  return [b.x + px, b.y + py, b.z + pz];
 }
 
 // 잠들기 전 서는 자리 (막혀 있으면 잠자리 주변의 빈 곳)
 function bedSide() {
   const b = bedItem();
-  return spotNear(b, b.sleep.side);
+  return spotNear(b, turned(b, b.sleep.side));
 }
 
 // 가구 옆에 설 자리 (정해 둔 자리가 막혀 있으면 가구 주변의 빈 곳)
@@ -1038,7 +1062,7 @@ function updateHero(dt, h) {
   if (desk && hero.mode !== "work" && hero.mode !== "toWork") {
     if (hero.mode === "sleep") Object.assign(hero, bedSide());
     hero.mode = "toWork";
-    hero.target = spotNear(desk, desk.work);
+    hero.target = spotNear(desk, turned(desk, desk.work));
   }
   if (!desk && (hero.mode === "work" || hero.mode === "toWork")) {
     hero.mode = "idle";
@@ -1200,7 +1224,7 @@ function tintItem(item, color) {
     t.globalCompositeOperation = "source-atop";
     t.fillStyle = color;
     t.fillRect(0, 0, img.width, img.height);
-    ctx.drawImage(tintCanvas, r.x, r.y);
+    drawMirrored(item, tintCanvas, r);
     return;
   }
   for (const [dx, dy, dz, w, d, h] of partsOf(item)) {
@@ -1304,6 +1328,7 @@ view.addEventListener("pointerdown", (e) => {
   const p = toGamePos(e);
   const item = itemAt(p);
   if (!item) return;
+  select(item);
   startDrag(item, p);
   view.setPointerCapture(e.pointerId);
   e.preventDefault();
@@ -1329,6 +1354,7 @@ function setEditing(on) {
   editBtn.textContent = on ? "완료" : "꾸미기";
   editBtn.classList.toggle("active", on);
   editBar.hidden = !on;
+  if (typeof select === "function") select(null);
   editBar.classList.remove("drop");
   view.style.cursor = "default";
   if (on) {
@@ -1543,14 +1569,11 @@ function endDrag(e) {
 
   // 보관함 위에 놓으면 다시 보관함으로
   if (e && isOverBag(e)) {
-    const back = [drag.item, ...drag.carried.map((c) => c.o)];
-    items = items.filter((it) => !back.includes(it));
-    back.forEach((it) => addToBag(it.id));
+    Object.assign(drag.item, drag.orig);
+    for (const c of drag.carried) Object.assign(c.o, c.orig);
+    const item = drag.item;
     drag = null;
-    saveLayout();
-    afterLayoutChange();
-    renderBag();
-    toast(back.length > 1 ? "올려 둔 물건과 함께 보관함에 넣었어요." : "보관함에 넣었어요.");
+    storeItem(item);
     return;
   }
 
@@ -1563,6 +1586,72 @@ function endDrag(e) {
   drag = null;
   afterLayoutChange();
 }
+
+// 가구 위에 올려 둔 물건들
+function itemsOn(item) {
+  if (!item.surface) return [];
+  return objects.filter((o) => o !== item && Math.abs(o.z - (item.z + item.surface)) < 0.01 && centerOn(o, item));
+}
+
+// 보관함에 넣기 (위에 올린 물건도 함께)
+function storeItem(item) {
+  const back = [item, ...itemsOn(item)];
+  items = items.filter((it) => !back.includes(it));
+  back.forEach((it) => addToBag(it.id));
+  if (selected && back.includes(selected)) select(null);
+  saveLayout();
+  afterLayoutChange();
+  renderBag();
+  toast(back.length > 1 ? "올려 둔 물건과 함께 보관함에 넣었어요." : "보관함에 넣었어요.");
+}
+
+// 방향 돌리기 (가로·세로를 바꿔서 좌우가 뒤집힌 방향으로)
+function rotateItem(item) {
+  if (item.type === "wall") {
+    toast("벽에 건 물건은 벽을 따라 옮겨 주세요.");
+    return;
+  }
+  const carried = itemsOn(item);
+  const before = [item, ...carried].map((o) => ({ o, x: o.x, y: o.y, flip: o.flip }));
+  item.flip = !item.flip;
+  for (const o of carried) {
+    const dx = o.x - item.x, dy = o.y - item.y;
+    o.x = item.x + dy;
+    o.y = item.y + dx;
+    o.flip = !o.flip;
+  }
+  const ok = item.z > 0 || floorValid(item, carried);
+  if (!ok) {
+    for (const b of before) Object.assign(b.o, { x: b.x, y: b.y, flip: b.flip });
+    toast("돌릴 공간이 없어요. 주변을 조금 비워 주세요.");
+    return;
+  }
+  saveLayout();
+  afterLayoutChange();
+}
+
+// ---- 선택한 가구 (꾸미기 중) ----
+let selected = null;
+const selBar = document.getElementById("sel-bar");
+const editHint = document.querySelector(".edit-hint");
+
+function select(item) {
+  selected = item;
+  selBar.hidden = !item;
+  editHint.hidden = !!item;
+  if (item) document.getElementById("sel-name").textContent = item.name;
+}
+
+document.getElementById("sel-rotate").addEventListener("click", () => selected && rotateItem(selected));
+document.getElementById("sel-store").addEventListener("click", () => selected && storeItem(selected));
+document.getElementById("sel-cancel").addEventListener("click", () => select(null));
+
+// R 키로도 방향 돌리기
+function onKey(e) {
+  if (!editing || e.target.tagName === "INPUT") return;
+  if ((e.key === "r" || e.key === "R") && selected) rotateItem(selected);
+}
+document.addEventListener("keydown", onKey);
 
 // 배치가 바뀐 뒤: 정보 다시 계산하고 캐릭터가 갇히지 않게
 function afterLayoutChange() {
@@ -1577,7 +1666,7 @@ function afterLayoutChange() {
 // layer: "under"(가구 밑) / "over"(가구 위) / "drag"(옮기는 중)
 function drawEditMarker(layer) {
   if (!editing) return;
-  const target = drag ? drag.item : hoverItem;
+  const target = drag ? drag.item : hoverItem || selected;
   if (!target) return;
   if (drag) {
     if (layer !== "drag") return;
@@ -2024,6 +2113,7 @@ async function togglePip() {
   }
 
   pipWin.document.title = "My Cozy Room";
+  pipWin.document.addEventListener("keydown", onKey);
   pipWin.document.body.classList.add("pip");
   pipWin.document.body.append(app);
   placeholder.hidden = false;
