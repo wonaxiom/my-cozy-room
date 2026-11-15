@@ -832,3 +832,31 @@ button[hidden] { display: none; }
   justify-content: flex-end;
   gap: 8px;
 }
+
+.bottom-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bottom-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bottom-group > span {
+  width: 40px;
+  color: var(--sub);
+  font-size: 12px;
+}
+
+.field .swatches {
+  flex-wrap: wrap;
+  padding: 3px;
+}
+
+.field .swatch {
+  width: 24px;
+  height: 24px;
+}

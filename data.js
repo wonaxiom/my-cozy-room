@@ -212,30 +212,172 @@ const CHARACTER = {
 const CHARACTER_SHEET = null;
 
 // ---- 캐릭터 꾸미기 -----------------------------------------------
-// 머리 모양: 위의 기본 그림(짧은 머리)에 머리카락을 더해서 만듭니다.
+// 캐릭터는 위의 기본 그림에 머리, 눈, 표정, 옷을 차례로 얹어서 만듭니다.
+const GENDERS = [
+  { id: "female", name: "여자", hair: "long" },   // hair: 성별을 고르면 먼저 골라 두는 머리
+  { id: "male", name: "남자", hair: "short" },
+];
+
+// 머리 모양: rows의 H가 머리카락이 되는 자리입니다. (.은 그대로 둠)
+// extra는 머리 위로 더 올라가는 줄 (올림머리, 삐죽머리)
 const HAIR_STYLES = [
-  { id: "short", name: "짧은 머리" },
-  { id: "long", name: "긴 머리" },
-  { id: "bun", name: "올림머리" },
-  { id: "pigtails", name: "양갈래" },
+  { id: "short", name: "짧은 머리", rows: [
+    "...HHHH...",
+    "..HHHHHH..",
+    ".HHHHHHHH.",
+    ".H......H.",
+    ".H......H.",
+    ".H......H.",
+  ] },
+  { id: "buzz", name: "스포츠", rows: [
+    "...HHHH...",
+    "..HHHHHH..",
+    ".HHHHHHHH.",
+  ] },
+  { id: "bangs", name: "앞머리", rows: [
+    "...HHHH...",
+    "..HHHHHH..",
+    ".HHHHHHHH.",
+    ".HHHHHHHH.",
+    ".H......H.",
+    ".H......H.",
+  ] },
+  { id: "spiky", name: "삐죽머리", extra: ["..H..H..H."], rows: [
+    "..HHHHHH..",
+    ".HHHHHHHH.",
+    ".HHHHHHHH.",
+    ".H......H.",
+  ] },
+  { id: "bob", name: "단발", rows: [
+    "...HHHH...",
+    "..HHHHHH..",
+    ".HHHHHHHH.",
+    ".H......H.",
+    ".H......H.",
+    ".H......H.",
+    ".H......H.",
+  ] },
+  { id: "long", name: "긴 머리", rows: [
+    "...HHHH...",
+    "..HHHHHH..",
+    ".HHHHHHHH.",
+    ".H......H.",
+    ".H......H.",
+    ".H......H.",
+    ".H......H.",
+    ".HH....HH.",
+    ".H......H.",
+  ] },
+  { id: "ponytail", name: "포니테일", rows: [
+    "...HHHH...",
+    "..HHHHHH..",
+    ".HHHHHHHHH",
+    ".H......HH",
+    ".H......HH",
+    ".H.......H",
+    ".........H",
+  ] },
+  { id: "pigtails", name: "양갈래", rows: [
+    "...HHHH...",
+    "..HHHHHH..",
+    ".HHHHHHHH.",
+    "HH......HH",
+    "HH......HH",
+    "HH......HH",
+    "H........H",
+  ] },
+  { id: "bun", name: "올림머리", extra: ["....HH...."], rows: [
+    "...HHHH...",
+    "..HHHHHH..",
+    ".HHHHHHHH.",
+    ".H......H.",
+    ".H......H.",
+    ".H......H.",
+  ] },
+  { id: "curly", name: "곱슬", rows: [
+    "..HHHHHH..",
+    ".HHHHHHHH.",
+    "HHHHHHHHHH",
+    "HH......HH",
+    "H........H",
+    "H........H",
+  ] },
 ];
 
 const HAIR_COLORS = [
   { id: "brown", name: "갈색", color: "#4a3226" },
+  { id: "darkBrown", name: "짙은 갈색", color: "#33241c" },
   { id: "black", name: "검정", color: "#26211f" },
   { id: "blonde", name: "금발", color: "#d9b25c" },
+  { id: "orange", name: "주황", color: "#d9823f" },
+  { id: "red", name: "빨강", color: "#b5463b" },
   { id: "pink", name: "분홍", color: "#d98aa0" },
+  { id: "purple", name: "보라", color: "#8a6bb5" },
+  { id: "sky", name: "하늘", color: "#7fb2d9" },
+  { id: "mint", name: "민트", color: "#7fc4a8" },
   { id: "silver", name: "은발", color: "#b9b4ae" },
+  { id: "white", name: "흰색", color: "#ece8e2" },
 ];
 
-// 옷: shirt(윗옷), pants(바지), stripe(줄무늬 색, 선택)
-const OUTFITS = [
-  { id: "basic", name: "기본 옷", price: 0, shirt: "#f2e3b3", pants: "#5b6b8c" },
-  { id: "mint", name: "민트 셔츠", price: 80, shirt: "#a8d8c2", pants: "#4f5a66" },
-  { id: "pinkHoodie", name: "분홍 후드", price: 100, shirt: "#efb3c2", pants: "#6b5a7a" },
-  { id: "stripe", name: "줄무늬 티", price: 100, shirt: "#f4f1ec", stripe: "#5b7fb5", pants: "#3f4a5c" },
-  { id: "blackKnit", name: "검정 니트", price: 120, shirt: "#3a3a3f", pants: "#7a6a58" },
-  { id: "raincoat", name: "노란 우비", price: 150, shirt: "#f2c84b", pants: "#4a6a8a" },
+const SKIN_TONES = [
+  { id: "light", name: "밝은 피부", color: "#f6d2b8" },
+  { id: "peach", name: "살구 피부", color: "#efc19e" },
+  { id: "tan", name: "구릿빛 피부", color: "#d9a477" },
+  { id: "brown", name: "갈색 피부", color: "#a8714d" },
+];
+
+const EYES = [
+  { id: "basic", name: "기본 눈" },
+  { id: "big", name: "큰 눈" },
+  { id: "calm", name: "실눈" },
+  { id: "glasses", name: "안경" },
+  { id: "sunglasses", name: "선글라스" },
+];
+
+const MOUTHS = [
+  { id: "smile", name: "미소" },
+  { id: "grin", name: "활짝 웃음" },
+  { id: "neutral", name: "무표정" },
+  { id: "wow", name: "놀람" },
+];
+
+// 상의: style은 "tee"(티셔츠) / "collar"(셔츠 깃) / "stripe"(줄무늬) / "hood"(후드)
+// price가 0이면 처음부터 고를 수 있고, 나머지는 상점에서 삽니다.
+const TOPS = [
+  { id: "teeCream", name: "크림 티셔츠", price: 0, style: "tee", color: "#f2e3b3" },
+  { id: "teeWhite", name: "흰 티셔츠", price: 0, style: "tee", color: "#f4f1ec" },
+  { id: "teeSky", name: "하늘 티셔츠", price: 0, style: "tee", color: "#a9c8e8" },
+  { id: "teePink", name: "분홍 티셔츠", price: 0, style: "tee", color: "#f2b8c6" },
+  { id: "teeGreen", name: "연두 티셔츠", price: 0, style: "tee", color: "#bcdba0" },
+  { id: "teeGray", name: "회색 티셔츠", price: 0, style: "tee", color: "#b8b3ad" },
+  { id: "teeNavy", name: "남색 티셔츠", price: 0, style: "tee", color: "#4f5f86" },
+  { id: "mint", name: "민트 셔츠", price: 80, style: "collar", color: "#a8d8c2" },
+  { id: "stripe", name: "줄무늬 티", price: 100, style: "stripe", color: "#f4f1ec", stripe: "#5b7fb5" },
+  { id: "pinkHoodie", name: "분홍 후드", price: 100, style: "hood", color: "#efb3c2" },
+  { id: "blackKnit", name: "검정 니트", price: 120, style: "tee", color: "#3a3a3f" },
+  { id: "raincoat", name: "노란 우비", price: 150, style: "hood", color: "#f2c84b" },
+];
+
+// 하의: type은 "pants"(바지) / "shorts"(반바지) / "skirt"(치마)
+const BOTTOM_TYPES = [
+  { id: "pants", name: "바지" },
+  { id: "shorts", name: "반바지" },
+  { id: "skirt", name: "치마" },
+];
+
+const BOTTOMS = [
+  { id: "pantsNavy", name: "남색 바지", price: 0, type: "pants", color: "#5b6b8c" },
+  { id: "pantsDenim", name: "청바지", price: 0, type: "pants", color: "#5d7ea8" },
+  { id: "pantsBlack", name: "검정 바지", price: 0, type: "pants", color: "#3a3a40" },
+  { id: "pantsBeige", name: "베이지 바지", price: 0, type: "pants", color: "#c8b28e" },
+  { id: "pantsGray", name: "회색 바지", price: 0, type: "pants", color: "#7a7f88" },
+  { id: "shortsNavy", name: "남색 반바지", price: 0, type: "shorts", color: "#4f5f86" },
+  { id: "shortsBeige", name: "베이지 반바지", price: 0, type: "shorts", color: "#c8b28e" },
+  { id: "skirtNavy", name: "남색 치마", price: 0, type: "skirt", color: "#4f5f86" },
+  { id: "skirtPink", name: "분홍 치마", price: 0, type: "skirt", color: "#d98aa0" },
+  { id: "skirtBlack", name: "검정 치마", price: 0, type: "skirt", color: "#3a3a40" },
+  { id: "shortsGreen", name: "초록 반바지", price: 60, type: "shorts", color: "#6e9a5a" },
+  { id: "skirtRed", name: "빨간 치마", price: 80, type: "skirt", color: "#b5463b" },
 ];
 
 // ---- 사는 곳 (실제 날씨용) -----------------------------------------

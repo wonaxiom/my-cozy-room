@@ -1233,29 +1233,102 @@ function heroScreen() {
 }
 
 // ---- 캐릭터 꾸미기 ----
-// 머리 모양과 옷 무늬를 기본 글자 그림에 더합니다.
-function heroRows(name, look = save.look) {
-  const rows = (CHARACTER[name] || CHARACTER.idle).map((r) => r.split(""));
-  const put = (r, c, ch) => { if (rows[r] && rows[r][c] !== undefined) rows[r][c] = ch; };
-  if (look.hair === "long") {
-    for (let r = 6; r <= 8; r++) { put(r, 1, "H"); put(r, 8, "H"); }
-    put(7, 2, "H"); put(7, 7, "H"); // 어깨에 닿는 머리
-  } else if (look.hair === "pigtails") {
-    for (let r = 3; r <= 6; r++) { put(r, 0, "H"); put(r, 9, "H"); }
+// 예전 저장 데이터(옷 한 벌 방식)를 새 방식(상의·하의)으로 바꿔 줍니다.
+const OLD_OUTFIT_BOTTOM = {
+  basic: "pantsNavy", mint: "pantsGray", pinkHoodie: "pantsNavy",
+  stripe: "pantsBlack", blackKnit: "pantsBeige", raincoat: "pantsDenim",
+};
+
+function normLook(look = {}) {
+  const l = Object.assign({
+    gender: "female", hair: "short", hairColor: "brown", skin: "light", eyes: "basic", mouth: "smile",
+  }, look);
+  if (!l.top) l.top = TOPS.some((t) => t.id === l.outfit) ? l.outfit : "teeCream";
+  if (!l.bottom) l.bottom = OLD_OUTFIT_BOTTOM[l.outfit] || "pantsNavy";
+  delete l.outfit;
+  return l;
+}
+save.look = normLook(save.look);
+
+const findBy = (list, id) => list.find((x) => x.id === id) || list[0];
+
+// 기본 그림에 머리, 눈, 표정, 옷을 얹어서 캐릭터 그림을 만듭니다.
+function heroRows(name, lookIn = save.look) {
+  const look = normLook(lookIn);
+  const base = CHARACTER[name] || CHARACTER.idle;
+  const headOnly = name === "sleep";
+  const closed = name === "blink" || name === "sleep";
+  // 원래 그림의 머리카락·눈·볼은 지우고 맨얼굴에서 시작
+  const rows = base.map((r) => r.replace(/[HEB]/g, "S").split(""));
+  const put = (r, c, ch) => { if (rows[r] && c >= 0 && c < rows[r].length) rows[r][c] = ch; };
+
+  // 볼터치
+  if (look.gender === "female") { put(5, 2, "B"); put(5, 7, "B"); }
+
+  // 눈
+  if (look.eyes === "sunglasses") {
+    for (let c = 2; c <= 7; c++) put(4, c, "K");
+  } else {
+    if (look.eyes === "glasses") for (const c of [2, 4, 5, 7]) put(4, c, "G");
+    if (look.eyes === "calm") {
+      for (const c of [2, 3, 6, 7]) put(4, c, "E");
+    } else if (!closed) {
+      put(4, 3, "E"); put(4, 6, "E");
+      if (look.eyes === "big") { put(3, 3, "E"); put(3, 6, "E"); }
+    }
   }
-  const outfit = OUTFITS.find((o) => o.id === look.outfit);
-  if (outfit && outfit.stripe) {
-    for (const r of [8, 10]) if (rows[r]) rows[r] = rows[r].map((ch) => (ch === "C" ? "D" : ch));
+
+  // 표정 (잘 때는 입을 다뭄)
+  if (!headOnly) {
+    if (look.mouth === "smile") { put(5, 4, "M"); put(5, 5, "M"); }
+    else if (look.mouth === "grin") { for (let c = 3; c <= 6; c++) put(5, c, "M"); }
+    else if (look.mouth === "wow") { put(5, 4, "O"); put(5, 5, "O"); put(6, 4, "O"); put(6, 5, "O"); }
   }
+
+  // 머리카락
+  const hair = findBy(HAIR_STYLES, look.hair);
+  hair.rows.forEach((pat, r) => {
+    for (let c = 0; c < pat.length; c++) if (pat[c] === "H") put(r, c, "H");
+  });
+
+  // 옷
+  if (!headOnly) {
+    const top = findBy(TOPS, look.top);
+    if (top.style === "stripe") for (const r of [8, 10]) rows[r] = rows[r].map((ch) => (ch === "C" ? "D" : ch));
+    if (top.style === "hood") { put(7, 2, "C"); put(7, 7, "C"); }
+    if (top.style === "collar") { put(7, 3, "W"); put(7, 6, "W"); }
+    const bottom = findBy(BOTTOMS, look.bottom);
+    if (bottom.type === "shorts") rows[12] = rows[12].map((ch) => (ch === "P" ? "S" : ch));
+    if (bottom.type === "skirt") rows[12] = ".PPPPPPPP.".split("");
+  }
+
   const out = rows.map((r) => r.join(""));
-  if (look.hair === "bun") out.unshift("....HH....");
-  return out;
+  return hair.extra ? [...hair.extra, ...out] : out;
 }
 
-function heroColors(look = save.look) {
-  const hair = (HAIR_COLORS.find((h) => h.id === look.hairColor) || HAIR_COLORS[0]).color;
-  const outfit = OUTFITS.find((o) => o.id === look.outfit) || OUTFITS[0];
-  return Object.assign({}, CHAR_COLORS, { H: hair, C: outfit.shirt, P: outfit.pants, D: outfit.stripe || outfit.shirt });
+function heroColors(lookIn = save.look) {
+  const look = normLook(lookIn);
+  const top = findBy(TOPS, look.top);
+  return {
+    H: findBy(HAIR_COLORS, look.hairColor).color,
+    S: findBy(SKIN_TONES, look.skin).color,
+    E: "#2b2b2b",
+    B: "#f0a3a3",
+    C: top.color,
+    D: top.stripe || top.color,
+    W: "#fbf8f1",
+    P: findBy(BOTTOMS, look.bottom).color,
+    F: "#3b3b3b",
+    G: "#3b3b3b",
+    K: "#1f1f24",
+    M: "#c76b6b",
+    O: "#8a3b3b",
+  };
+}
+
+// 가지고 있는 옷인지 (무료 옷은 항상)
+function ownsCloth(item) {
+  return item.price === 0 || save.outfits.includes(item.id);
 }
 
 // 캐릭터 크기 (그림 파일이 있으면 그 크기, 없으면 글자 그림 크기)
@@ -2228,51 +2301,35 @@ function setLook(change) {
   renderShop();
 }
 
-// 캐릭터 탭: 머리 모양(무료), 머리색(무료), 옷(구매)
+// 옷 탭: 상점에서 파는 상의·하의 (머리·얼굴·기본 옷은 "내 정보"에서)
 function renderLook() {
-  sectionTitle("머리 모양");
-  for (const st of HAIR_STYLES) {
-    const look = Object.assign({}, save.look, { hair: st.id });
-    const on = save.look.hair === st.id;
-    shopList.append(makeCard(makeSpritePreview(heroRows("idle", look), heroColors(look)), st.name, "<span>무료</span>",
-      makeButton(on ? "사용 중" : "적용", on ? null : () => setLook({ hair: st.id }), on)));
-  }
-
-  sectionTitle("머리색");
-  const row = document.createElement("div");
-  row.className = "swatches";
-  for (const hc of HAIR_COLORS) {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "swatch" + (save.look.hairColor === hc.id ? " active" : "");
-    b.title = hc.name;
-    b.style.background = hc.color;
-    b.addEventListener("click", () => setLook({ hairColor: hc.id }));
-    row.append(b);
-  }
-  shopList.append(row);
-
-  sectionTitle("옷");
-  for (const o of OUTFITS) {
-    const look = Object.assign({}, save.look, { outfit: o.id });
-    const owned = o.price === 0 || save.outfits.includes(o.id);
-    const on = save.look.outfit === o.id;
-    let btn;
-    if (!owned) {
-      btn = makeButton("구매", () => {
-        if (save.coins < o.price) return;
-        save.coins -= o.price;
-        save.outfits.push(o.id);
-        updateCoins();
-        setLook({ outfit: o.id });
-        toast(`${withObject(o.name)} 샀어요.`);
-      });
-      btn.dataset.price = o.price;
-    } else {
-      btn = makeButton(on ? "입는 중" : "입기", on ? null : () => setLook({ outfit: o.id }), on);
+  const note = document.createElement("div");
+  note.className = "shop-section";
+  note.textContent = "머리, 얼굴, 기본 옷은 오른쪽 위 '내 정보'에서 바꿀 수 있어요.";
+  shopList.append(note);
+  for (const [title, list, key] of [["상의", TOPS, "top"], ["하의", BOTTOMS, "bottom"]]) {
+    sectionTitle(title);
+    for (const item of list.filter((x) => x.price > 0)) {
+      const look = Object.assign({}, save.look, { [key]: item.id });
+      const owned = ownsCloth(item);
+      const on = save.look[key] === item.id;
+      let btn;
+      if (!owned) {
+        btn = makeButton("구매", () => {
+          if (save.coins < item.price) return;
+          save.coins -= item.price;
+          save.outfits.push(item.id);
+          updateCoins();
+          setLook({ [key]: item.id });
+          toast(`${withObject(item.name)} 샀어요.`);
+        });
+        btn.dataset.price = item.price;
+      } else {
+        btn = makeButton(on ? "입는 중" : "입기", on ? null : () => setLook({ [key]: item.id }), on);
+      }
+      shopList.append(makeCard(makeSpritePreview(heroRows("idle", look), heroColors(look)), item.name,
+        priceHtml(item.price) + (owned ? "<span>보유</span>" : ""), btn));
     }
-    shopList.append(makeCard(makeSpritePreview(heroRows("idle", look), heroColors(look)), o.name,
-      priceHtml(o.price) + (owned && o.price ? "<span>보유</span>" : ""), btn));
   }
 }
 

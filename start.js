@@ -8,8 +8,10 @@ const Start = (() => {
   const $ = (id) => document.getElementById(id);
   const setState = (state) => { document.body.dataset.state = state; };
 
-  let editMode = false; // "내 정보"로 연 경우 (이미 시작한 사람)
-  const draft = { hair: "short", hairColor: "brown" };
+  let editMode = false;    // "내 정보"로 연 경우 (이미 시작한 사람)
+  let hairTouched = false; // 머리를 직접 골랐으면 성별을 바꿔도 머리는 그대로
+  let draft = {};          // 고르는 중인 모습 (저장 전)
+  let step = 1;
 
   // 로그인 화면에 보여줄 방 그림
   $("gate-preview").append(makeRoomPreview(ROOMS[0]));
@@ -52,8 +54,8 @@ const Start = (() => {
   // ---- 시작 설정 ----
   function openOnboarding(edit) {
     editMode = edit;
-    draft.hair = save.look.hair;
-    draft.hairColor = save.look.hairColor;
+    hairTouched = edit;
+    draft = Object.assign({}, save.look);
     $("ob-name").value = (save.profile && save.profile.name) || "";
     $("ob-city").value = (save.profile && save.profile.city) || "";
     $("ob-done").textContent = edit ? "저장" : "시작하기";
@@ -63,48 +65,89 @@ const Start = (() => {
   }
 
   function showStep(n) {
-    $("step1").hidden = n !== 1;
-    $("step2").hidden = n !== 2;
+    step = n;
+    for (let i = 1; i <= 4; i++) $("step" + i).hidden = i !== n;
+    $("ob-preview").hidden = n === 4;
     document.querySelectorAll(".steps [data-step]").forEach((el) => {
       el.classList.toggle("on", Number(el.dataset.step) === n);
     });
-    if (n === 1) renderLook();
+    render();
   }
 
-  function renderLook() {
-    const look = Object.assign({}, save.look, draft);
+  function pick(key, value) {
+    draft[key] = value;
+    if (key === "hair") hairTouched = true;
+    if (key === "gender" && !hairTouched) draft.hair = findBy(GENDERS, value).hair;
+    render();
+  }
+
+  // 글자 버튼 목록
+  function chips(el, list, key) {
+    el.innerHTML = "";
+    for (const item of list) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = item.name;
+      b.classList.toggle("active", draft[key] === item.id);
+      b.addEventListener("click", () => pick(key, item.id));
+      el.append(b);
+    }
+  }
+
+  // 색 동그라미 목록
+  function swatches(el, list, key) {
+    el.innerHTML = "";
+    for (const item of list) el.append(swatch(item, key));
+  }
+
+  function swatch(item, key) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "swatch" + (draft[key] === item.id ? " active" : "");
+    b.title = item.name;
+    b.style.background = item.color;
+    b.addEventListener("click", () => pick(key, item.id));
+    return b;
+  }
+
+  function render() {
     const preview = $("ob-preview");
     preview.innerHTML = "";
-    preview.append(makeSpritePreview(heroRows("idle", look), heroColors(look)));
+    preview.append(makeSpritePreview(heroRows("idle", draft), heroColors(draft)));
 
-    const hair = $("ob-hair");
-    hair.innerHTML = "";
-    for (const st of HAIR_STYLES) {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.textContent = st.name;
-      b.classList.toggle("active", draft.hair === st.id);
-      b.addEventListener("click", () => { draft.hair = st.id; renderLook(); });
-      hair.append(b);
-    }
-
-    const colors = $("ob-color");
-    colors.innerHTML = "";
-    for (const hc of HAIR_COLORS) {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "swatch" + (draft.hairColor === hc.id ? " active" : "");
-      b.title = hc.name;
-      b.style.background = hc.color;
-      b.addEventListener("click", () => { draft.hairColor = hc.id; renderLook(); });
-      colors.append(b);
+    if (step === 1) {
+      chips($("ob-gender"), GENDERS, "gender");
+      swatches($("ob-skin"), SKIN_TONES, "skin");
+    } else if (step === 2) {
+      chips($("ob-hair"), HAIR_STYLES, "hair");
+      swatches($("ob-color"), HAIR_COLORS, "hairColor");
+      chips($("ob-eyes"), EYES, "eyes");
+      chips($("ob-mouth"), MOUTHS, "mouth");
+    } else if (step === 3) {
+      // 무료 옷 + 상점에서 산 옷
+      swatches($("ob-top"), TOPS.filter(ownsCloth), "top");
+      const groups = $("ob-bottom");
+      groups.innerHTML = "";
+      for (const type of BOTTOM_TYPES) {
+        const list = BOTTOMS.filter((b) => b.type === type.id && ownsCloth(b));
+        if (!list.length) continue;
+        const row = document.createElement("div");
+        row.className = "bottom-group";
+        const label = document.createElement("span");
+        label.textContent = type.name;
+        const sw = document.createElement("div");
+        sw.className = "swatches";
+        list.forEach((b) => sw.append(swatch(b, "bottom")));
+        row.append(label, sw);
+        groups.append(row);
+      }
     }
   }
 
   function finish() {
     const name = $("ob-name").value.trim();
     save.profile = { name, city: $("ob-city").value || null };
-    save.look = Object.assign({}, save.look, draft);
+    save.look = normLook(draft);
     const first = !save.profileDone;
     save.profileDone = true;
     Save.save(save);
@@ -115,8 +158,9 @@ const Start = (() => {
   }
 
   // ---- 버튼 연결 ----
-  $("ob-next").addEventListener("click", () => showStep(2));
-  $("ob-back").addEventListener("click", () => showStep(1));
+  document.querySelectorAll("#onboard [data-go]").forEach((b) => {
+    b.addEventListener("click", () => showStep(Number(b.dataset.go)));
+  });
   $("ob-done").addEventListener("click", finish);
   $("ob-close").addEventListener("click", () => setState("game"));
   $("profile-btn").addEventListener("click", () => openOnboarding(true));

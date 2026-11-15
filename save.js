@@ -20,8 +20,8 @@ const Save = {
       ownedRooms: ["studio"], // 연 방
       ownedStyles: [],        // 산 벽지·바닥
       roomStyles: {},         // 방마다 고른 벽지·바닥 { 방: { wall, floor } }
-      look: { hair: "short", hairColor: "brown", outfit: "basic" }, // 캐릭터 꾸미기
-      outfits: [],            // 산 옷
+      look: {},               // 캐릭터 모습 (성별, 머리, 눈, 표정, 옷 등)
+      outfits: [],            // 산 옷 (상의·하의)
       pets: [],               // 데려온 반려동물
       pet: null,              // 함께 있는 반려동물
       profile: { name: "", city: null }, // 캐릭터 이름, 사는 곳 (실제 날씨용)
