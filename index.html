@@ -8,7 +8,14 @@
 </head>
 <body>
   <main class="page">
-    <h1 class="title">My Cozy Room</h1>
+    <header class="top">
+      <h1 class="title">My Cozy Room</h1>
+      <div class="account">
+        <span id="account-name"></span>
+        <span id="account-status"></span>
+        <button id="login-btn" type="button">구글로 로그인</button>
+      </div>
+    </header>
 
     <div id="app-home">
       <!-- 게임 전체. '항상 위에 띄우기'를 누르면 이 부분이 작은 창으로 옮겨집니다. -->
@@ -75,10 +82,13 @@
     <p id="pip-note" class="note"></p>
   </main>
 
-  <!-- 순서 중요: 데이터 → 방 → 저장 → 게임 -->
+  <!-- 순서 중요: 데이터 → 방 → 저장 → 게임 → 로그인 -->
   <script src="data.js"></script>
   <script src="rooms.js"></script>
   <script src="save.js"></script>
   <script src="game.js"></script>
+  <!-- 구글 로그인 (Supabase) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script src="cloud.js"></script>
 </body>
 </html>
