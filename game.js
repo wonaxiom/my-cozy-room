@@ -1918,16 +1918,17 @@ function drawEyewear(look, left, faceTop) {
     ctx.fillStyle = color;
     ctx.fillRect(left + x * u, faceTop + y * u, w * u, h * u);
   };
+  const y = 11; // 테 윗줄 (눈이 있는 줄(12~14)을 렌즈가 가리도록)
   for (const x0 of [5, 17]) {
-    rect(x0, 9, 8, 5, kind.frame);          // 테
-    rect(x0 + 1, 10, 6, 3, kind.lens);      // 렌즈
-    rect(x0 + 3, 10, 1, 1, kind.glint);     // 사선 반사광
-    rect(x0 + 2, 11, 1, 1, kind.glint);
-    if (kind === EYEWEAR.sunglasses) rect(x0 + 4, 10, 1, 1, kind.glint);
+    rect(x0, y, 8, 5, kind.frame);          // 테
+    rect(x0 + 1, y + 1, 6, 3, kind.lens);   // 렌즈
+    rect(x0 + 3, y + 1, 1, 1, kind.glint);  // 사선 반사광
+    rect(x0 + 2, y + 2, 1, 1, kind.glint);
+    if (kind === EYEWEAR.sunglasses) rect(x0 + 4, y + 1, 1, 1, kind.glint);
   }
-  rect(13, 10, 4, 1, kind.frame);           // 코다리
-  rect(3, 10, 2, 1, kind.frame);            // 안경다리
-  rect(25, 10, 2, 1, kind.frame);
+  rect(13, y + 1, 4, 1, kind.frame);        // 코다리
+  rect(3, y + 1, 2, 1, kind.frame);         // 안경다리
+  rect(25, y + 1, 2, 1, kind.frame);
 }
 
 // 동작 이름(idle, blink, walk1, walk2, sleep)에 맞는 그림을 그립니다.
