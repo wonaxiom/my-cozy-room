@@ -77,7 +77,7 @@ const Friends = (() => {
   function avatar(id) {
     const snap = st.snaps[id];
     const look = (snap && snap.data && snap.data.look) || {};
-    const c = makeSpritePreview(heroRows("idle", look), heroColors(look));
+    const c = makeHeroPreview(look);
     c.className = "friend-avatar";
     return c;
   }

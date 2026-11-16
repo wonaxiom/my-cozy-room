@@ -113,7 +113,7 @@ const Start = (() => {
   function render() {
     const preview = $("ob-preview");
     preview.innerHTML = "";
-    preview.append(makeSpritePreview(heroRows("idle", draft), heroColors(draft)));
+    preview.append(makeHeroPreview(draft));
 
     if (step === 1) {
       chips($("ob-gender"), GENDERS, "gender");
@@ -155,7 +155,7 @@ const Start = (() => {
     $("pf-city").textContent = city ? city.name : "정하지 않음 (무작위 날씨)";
     const avatar = $("pf-avatar");
     avatar.innerHTML = "";
-    avatar.append(makeSpritePreview(heroRows("idle"), heroColors()));
+    avatar.append(makeHeroPreview());
     showCode();
     $("profile").hidden = false;
 

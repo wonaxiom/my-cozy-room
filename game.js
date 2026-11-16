@@ -43,14 +43,16 @@ const roomName = document.getElementById("room-name");
 const vctx = view.getContext("2d");
 
 // 작은 해상도로 그린 뒤 크게 확대해서 도트 느낌을 냅니다.
+// 화면은 3배 촘촘하게 그립니다. (도트 한 칸 = 3×3, 안경테처럼 가는 선은 그 1/3 굵기로)
+const RES = 3;
 const buf = document.createElement("canvas");
-buf.width = W;
-buf.height = H;
+buf.width = W * RES;
+buf.height = H * RES;
 let ctx = buf.getContext("2d"); // 미리보기를 그릴 때 잠시 바뀝니다.
 
 const shade = document.createElement("canvas");
-shade.width = W;
-shade.height = H;
+shade.width = W * RES;
+shade.height = H * RES;
 const sctx = shade.getContext("2d");
 
 let save = Save.load(); // 친구 방을 구경하는 동안에는 잠시 친구의 공개 정보로 바뀝니다.
@@ -1032,6 +1034,7 @@ function drawLighting(phase) {
   // source-atop: 방이 그려진 부분에만 적용
   ctx.globalCompositeOperation = "source-atop";
   if (dark > 0) {
+    sctx.setTransform(RES, 0, 0, RES, 0, 0);
     sctx.clearRect(0, 0, W, H);
     sctx.globalCompositeOperation = "source-over";
     sctx.fillStyle = `rgba(20, 26, 51, ${dark})`;
@@ -1046,7 +1049,7 @@ function drawLighting(phase) {
       sctx.fillRect(0, 0, W, H);
     }
     sctx.globalCompositeOperation = "source-over";
-    ctx.drawImage(shade, 0, 0);
+    ctx.drawImage(shade, 0, 0, W, H);
   }
   for (const f of lights) {
     const p = lightPos(f), r = f.light.radius;
@@ -1349,19 +1352,6 @@ function heroRows(name, lookIn = save.look) {
     for (let c = 0; c < pat.length; c++) if (pat[c] === "H") put(r, c, "H");
   });
 
-  // 안경: 위쪽 줄은 테와 밝은 렌즈(유리 반사), 아래쪽 줄은 바깥 테와 눈 (가운데는 코가 보이게)
-  if (look.eyes === "glasses") {
-    for (const [outer, eye, inner] of [[2, 3, 4], [7, 6, 5]]) {
-      put(3, outer, "G"); put(3, eye, "L"); put(3, inner, "G");
-      put(4, outer, "G"); put(4, eye, closed ? "L" : "E");
-    }
-  }
-  // 선글라스: 두 줄을 까맣게, 렌즈마다 흰 반짝임
-  if (look.eyes === "sunglasses") {
-    for (let c = 2; c <= 7; c++) { put(3, c, "K"); put(4, c, "K"); }
-    put(3, 3, "W"); put(3, 6, "W");
-  }
-
   // 옷
   if (!headOnly) {
     const top = findBy(TOPS, look.top);
@@ -1412,6 +1402,32 @@ function heroSize() {
   return { w: rows[0].length, h: rows.length };
 }
 
+// 안경·선글라스: 도트 한 칸의 1/3 굵기로 그립니다. (left, faceTop: 캐릭터 그림 왼쪽 위, 얼굴 첫 줄)
+const EYEWEAR = {
+  glasses: { frame: "#2b2b2b", lens: "#d6ecf7", glint: "#ffffff" },
+  sunglasses: { frame: "#1a1a1e", lens: "#26262c", glint: "#ffffff" },
+};
+
+function drawEyewear(look, left, faceTop) {
+  const kind = EYEWEAR[look && look.eyes];
+  if (!kind) return;
+  const u = 1 / 3;
+  const rect = (x, y, w, h, color) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(left + x * u, faceTop + y * u, w * u, h * u);
+  };
+  for (const x0 of [5, 17]) {
+    rect(x0, 9, 8, 5, kind.frame);          // 테
+    rect(x0 + 1, 10, 6, 3, kind.lens);      // 렌즈
+    rect(x0 + 3, 10, 1, 1, kind.glint);     // 사선 반사광
+    rect(x0 + 2, 11, 1, 1, kind.glint);
+    if (kind === EYEWEAR.sunglasses) rect(x0 + 4, 10, 1, 1, kind.glint);
+  }
+  rect(13, 10, 4, 1, kind.frame);           // 코다리
+  rect(3, 10, 2, 1, kind.frame);            // 안경다리
+  rect(25, 10, 2, 1, kind.frame);
+}
+
 // 동작 이름(idle, blink, walk1, walk2, sleep)에 맞는 그림을 그립니다.
 // centerX: 가운데 위치, bottomY: 발(맨 아래) 위치
 function drawHeroFrame(name, centerX, bottomY, flip, look) {
@@ -1430,7 +1446,10 @@ function drawHeroFrame(name, centerX, bottomY, flip, look) {
     return;
   }
   const rows = heroRows(name, look);
-  drawSprite(rows, centerX - Math.floor(rows[0].length / 2), bottomY - rows.length, heroColors(look), flip);
+  const left = centerX - Math.floor(rows[0].length / 2), top = bottomY - rows.length;
+  drawSprite(rows, left, top, heroColors(look), flip);
+  const extra = rows.length - (CHARACTER[name] || CHARACTER.idle).length; // 머리 위로 더 올라간 줄
+  drawEyewear(normLook(look || save.look), left, top + extra);
 }
 
 function drawHero() {
@@ -2551,17 +2570,25 @@ function renderRooms() {
 }
 
 // 글자 그림 미리보기 (캐릭터, 반려동물)
-function makeSpritePreview(rows, colors, flip = false) {
+function makeSpritePreview(rows, colors, flip = false, look = null) {
   const size = Math.max(rows[0].length, rows.length) + 3; // 작은 그림은 더 크게 보이도록
   const c = document.createElement("canvas");
-  c.width = size;
-  c.height = size;
+  c.width = size * RES;
+  c.height = size * RES;
   c.className = "preview";
   const prev = ctx;
   ctx = c.getContext("2d");
-  drawSprite(rows, Math.floor((size - rows[0].length) / 2), size - rows.length - 1, colors, flip);
+  ctx.setTransform(RES, 0, 0, RES, 0, 0);
+  const left = Math.floor((size - rows[0].length) / 2), top = size - rows.length - 1;
+  drawSprite(rows, left, top, colors, flip);
+  if (look) drawEyewear(normLook(look), left, top + rows.length - CHARACTER.idle.length);
   ctx = prev;
   return c;
+}
+
+// 캐릭터 미리보기 (안경까지)
+function makeHeroPreview(look = save.look) {
+  return makeSpritePreview(heroRows("idle", look), heroColors(look), false, look);
 }
 
 function sectionTitle(text) {
@@ -2603,7 +2630,7 @@ function renderLook() {
       } else {
         btn = makeButton(on ? "입는 중" : "입기", on ? null : () => setLook({ [key]: item.id }), on);
       }
-      shopList.append(makeCard(makeSpritePreview(heroRows("idle", look), heroColors(look)), item.name,
+      shopList.append(makeCard(makeHeroPreview(look), item.name,
         priceHtml(item.price) + (owned ? "<span>보유</span>" : ""), btn));
     }
   }
@@ -2900,6 +2927,8 @@ function tick(dt) {
   updateGuest(dt);
   updateWalkers(dt);
 
+  ctx.setTransform(RES, 0, 0, RES, 0, 0);
+  ctx.imageSmoothingEnabled = false;
   ctx.clearRect(0, 0, W, H);
   drawShell();
   drawWallPattern();
