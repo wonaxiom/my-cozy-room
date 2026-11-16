@@ -2029,6 +2029,7 @@ function ownsCloth(item) {
 
 // 캐릭터 크기 (그림 파일이 있으면 그 크기, 없으면 글자 그림 크기)
 function heroSize() {
+  if (useHeroArt()) return { w: 8, h: 12 }; // ver.세밀 캐릭터 그림 (24×36 픽셀 = 8×12칸)
   if (readyImage(CHARACTER_SHEET && CHARACTER_SHEET.image)) {
     return { w: CHARACTER_SHEET.frameWidth, h: CHARACTER_SHEET.frameHeight };
   }
@@ -2063,9 +2064,109 @@ function drawEyewear(look, left, faceTop) {
   rect(25, y + 1, 2, 1, kind.frame);
 }
 
+// ---- ver.세밀 캐릭터 (hero-art.js의 그림) ----
+// 그림의 머리·피부·상의·하의 색을 고른 색으로 바꿔 칠합니다. (밝고 어두운 차이는 그대로)
+function useHeroArt() {
+  return artStyle === "detail" && typeof HERO_ART !== "undefined";
+}
+
+function hexToHsl(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = (n >> 16) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2;
+  if (max === min) return [0, 0, l];
+  const d = max - min, s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  const h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return [h / 6, s, l];
+}
+
+function hslToHex(h, s, l) {
+  const f = (n) => {
+    const k = (n + h * 12) % 12, a = s * Math.min(l, 1 - l);
+    const v = l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+    return Math.round(v * 255).toString(16).padStart(2, "0");
+  };
+  return "#" + f(0) + f(8) + f(4);
+}
+
+const clamp01 = (v) => Math.max(0, Math.min(1, v));
+function recolor(orig, base, target) {
+  const [, s0, l0] = hexToHsl(orig), [, sb, lb] = hexToHsl(base), [ht, st, lt] = hexToHsl(target);
+  return hslToHex(ht, clamp01(st + (s0 - sb) * 0.5), clamp01(lt + (l0 - lb)));
+}
+
+// 눈 위치 (안경을 그릴 자리): 눈 색 칸을 좌우로 묶은 상자들
+function heroArtEyes(rows) {
+  const pts = [];
+  rows.forEach((row, y) => [...row].forEach((ch, x) => {
+    const p = HERO_ART.palette[ch];
+    if (p && p[1] === "eye") pts.push([x, y]);
+  }));
+  pts.sort((a, b) => a[0] - b[0]);
+  const boxes = [];
+  for (const [x, y] of pts) {
+    const last = boxes[boxes.length - 1];
+    if (last && x <= last.x2 + 2) Object.assign(last, { x2: Math.max(last.x2, x), y1: Math.min(last.y1, y), y2: Math.max(last.y2, y) });
+    else boxes.push({ x1: x, x2: x, y1: y, y2: y });
+  }
+  return boxes;
+}
+
+const heroArtCache = new Map();
+function heroArtCanvas(name, lookIn, flip) {
+  const look = normLook(lookIn);
+  const frame = HERO_ART.frames[name] ? name : name === "walk0" ? "walk0" : "idle";
+  const colors = heroColors(look);
+  const key = [frame, colors.H, colors.S, colors.C, colors.P, look.eyes, flip].join("|");
+  if (heroArtCache.has(key)) return heroArtCache.get(key);
+  if (heroArtCache.size > 200) heroArtCache.clear();
+  const rows = HERO_ART.frames[frame];
+  const w = Math.max(...rows.map((r) => r.length)), h = rows.length;
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const g = c.getContext("2d");
+  const target = { hair: colors.H, skin: colors.S, top: colors.C, bottom: colors.P };
+  const px = (x, y, color) => {
+    g.fillStyle = color;
+    g.fillRect(flip ? w - 1 - x : x, y, 1, 1);
+  };
+  rows.forEach((row, y) => [...row].forEach((ch, x) => {
+    const p = HERO_ART.palette[ch];
+    if (!p) return;
+    const [orig, part] = p;
+    px(x, y, target[part] ? recolor(orig, HERO_ART.base[part], target[part]) : orig);
+  }));
+  // 안경·선글라스: 눈 자리에 테와 렌즈 (눈 감은 그림은 뜬 그림의 눈 자리를 씀)
+  const kind = EYEWEAR[look.eyes];
+  if (kind) {
+    const eyeRows = frame === "blink" || frame === "sleep" ? HERO_ART.frames.idle : rows;
+    const boxes = heroArtEyes(eyeRows);
+    for (const b of boxes) {
+      for (let y = b.y1 - 1; y <= b.y2 + 1; y++) {
+        for (let x = b.x1 - 1; x <= b.x2 + 1; x++) {
+          const edge = y === b.y1 - 1 || y === b.y2 + 1 || x === b.x1 - 1 || x === b.x2 + 1;
+          px(x, y, edge ? kind.frame : kind.lens);
+        }
+      }
+      px(b.x1, b.y1, kind.glint);
+    }
+    for (let i = 0; i + 1 < boxes.length; i++) {
+      for (let x = boxes[i].x2 + 2; x < boxes[i + 1].x1 - 1; x++) px(x, boxes[i].y1, kind.frame); // 코다리
+    }
+  }
+  heroArtCache.set(key, c);
+  return c;
+}
+
 // 동작 이름(idle, blink, walk1, walk2, sleep)에 맞는 그림을 그립니다.
 // centerX: 가운데 위치, bottomY: 발(맨 아래) 위치
 function drawHeroFrame(name, centerX, bottomY, flip, look) {
+  if (useHeroArt()) {
+    const c = heroArtCanvas(name, look || save.look, flip);
+    ctx.drawImage(c, centerX - c.width / 6, bottomY - c.height / 3, c.width / 3, c.height / 3);
+    return;
+  }
   const img = readyImage(CHARACTER_SHEET && CHARACTER_SHEET.image);
   if (img) {
     const fw = CHARACTER_SHEET.frameWidth, fh = CHARACTER_SHEET.frameHeight;
@@ -2092,7 +2193,7 @@ function drawHero() {
 
   let frame = "idle";
   if (hero.mode === "walk" || hero.mode === "toBed" || hero.mode === "toWork") {
-    const cycle = ["walk1", "idle", "walk2", "idle"];
+    const cycle = ["walk1", "walk0", "walk2", "walk0"]; // walk0: 걷는 중간 (ver.하찮은 가만히 그림)
     frame = cycle[Math.floor(hero.walkT * 8) % cycle.length];
   } else if (hero.blinkT < 0) {
     frame = "blink";
@@ -2349,7 +2450,7 @@ function updateWalkers(dt) {
 // 사람 캐릭터 그리기 (놀러 간 나, 다른 방문자)
 function drawPerson(c, look) {
   let frame = "idle";
-  if (c.mode === "walk") frame = ["walk1", "idle", "walk2", "idle"][Math.floor(c.walkT * 8) % 4];
+  if (c.mode === "walk") frame = ["walk1", "walk0", "walk2", "walk0"][Math.floor(c.walkT * 8) % 4];
   else if (c.blinkT < 0) frame = "blink";
   const p = project(c.x, c.y, 0);
   const x = Math.round(p.x), y = Math.round(p.y);
@@ -3285,6 +3386,16 @@ function makeSpritePreview(rows, colors, flip = false, look = null) {
 
 // 캐릭터 미리보기 (안경까지)
 function makeHeroPreview(look = save.look) {
+  if (useHeroArt()) {
+    const art = heroArtCanvas("idle", look, false);
+    const size = 17;
+    const c = document.createElement("canvas");
+    c.width = size * RES;
+    c.height = size * RES;
+    c.className = "preview";
+    c.getContext("2d").drawImage(art, Math.floor((c.width - art.width) / 2), c.height - art.height - RES);
+    return c;
+  }
   return makeSpritePreview(heroRows("idle", look), heroColors(look), false, look);
 }
 
