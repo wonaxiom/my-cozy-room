@@ -430,6 +430,17 @@ const BOTTOMS = [
 
 // ---- 사는 곳 (실제 날씨용) -----------------------------------------
 // 고른 도시의 좌표로 날씨를 받아옵니다. 도시를 추가하려면 이름과 위도(lat)·경도(lon)를 적으세요.
+// 장신구 (상점 '옷' 탭에서 사고, 시작 설정·캐릭터 변경에서 골라 씀)
+// color: 기본 색, dark: 그늘·띠 색, light: 밝은 부분
+const ACCESSORIES = [
+  { id: "cap", name: "야구 모자", price: 120, color: "#d9534f", dark: "#a83c39", light: "#ee8a86" },
+  { id: "beanie", name: "비니", price: 120, color: "#e0b84f", dark: "#b8913a", light: "#f2d27e" },
+  { id: "strawHat", name: "밀짚모자", price: 150, color: "#e8c983", dark: "#c0453b", light: "#f5e0a8" },
+  { id: "headband", name: "헤어밴드", price: 80, color: "#f29bb5", dark: "#d06f8f", light: "#fbc3d4" },
+  { id: "ribbon", name: "리본", price: 80, color: "#e05a6a", dark: "#b23f4e", light: "#f08c98" },
+  { id: "hairpin", name: "머리핀", price: 60, color: "#f4cf5b", dark: "#c9a238", light: "#fff0a8" },
+];
+
 const CITIES = [
   { id: "seoul", name: "서울", lat: 37.57, lon: 126.98 },
   { id: "incheon", name: "인천", lat: 37.46, lon: 126.71 },

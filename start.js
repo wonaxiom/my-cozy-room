@@ -88,7 +88,7 @@ const Start = (() => {
       const b = document.createElement("button");
       b.type = "button";
       b.textContent = item.name;
-      b.classList.toggle("active", draft[key] === item.id);
+      b.classList.toggle("active", (draft[key] || null) === item.id);
       b.addEventListener("click", () => pick(key, item.id));
       el.append(b);
     }
@@ -141,6 +141,9 @@ const Start = (() => {
         row.append(label, sw);
         groups.append(row);
       }
+      // 장신구: 없음 + 가지고 있는 것
+      const accs = [{ id: null, name: "없음" }].concat(ACCESSORIES.filter((a) => save.outfits.includes(a.id)));
+      chips($("ob-acc"), accs, "acc");
     }
   }
 

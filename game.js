@@ -2009,6 +2009,20 @@ function heroRows(name, lookIn = save.look) {
     for (let c = 0; c < pat.length; c++) if (pat[c] === "H") put(r, c, "H");
   });
 
+  // 장신구 (머리카락 위에)
+  const recolorRow = (r, from, to) => { if (rows[r]) rows[r] = rows[r].map((ch) => (ch === from ? to : ch)); };
+  if (look.acc === "cap" || look.acc === "beanie" || look.acc === "strawHat") {
+    recolorRow(0, "H", "X"); recolorRow(1, "H", "X");
+    if (look.acc === "beanie") recolorRow(2, "H", "Y");
+    else for (let c = look.acc === "strawHat" ? 0 : 1; c <= 9; c++) put(2, c, "Y"); // 챙
+  } else if (look.acc === "headband") {
+    recolorRow(2, "H", "X");
+  } else if (look.acc === "ribbon") {
+    put(0, 7, "X"); put(0, 9, "X"); put(0, 8, "Y");
+  } else if (look.acc === "hairpin") {
+    put(3, 1, "X");
+  }
+
   // 옷
   if (!headOnly) {
     const top = findBy(TOPS, look.top);
@@ -2026,6 +2040,7 @@ function heroRows(name, lookIn = save.look) {
 
 function heroColors(lookIn = save.look) {
   const look = normLook(lookIn);
+  const acc = ACCESSORIES.find((a) => a.id === look.acc);
   const top = findBy(TOPS, look.top);
   return {
     H: findBy(HAIR_COLORS, look.hairColor).color,
@@ -2040,6 +2055,8 @@ function heroColors(lookIn = save.look) {
     G: "#8c7462",   // 안경테
     L: "#cfe5f2",   // 안경 렌즈
     K: "#1f1f24",
+    X: acc ? acc.color : "#000",   // 장신구
+    Y: acc ? acc.dark : "#000",
     M: "#c76b6b",
     O: "#8a3b3b",
   };
@@ -2135,6 +2152,82 @@ function heroArtEyes(rows) {
   return boxes;
 }
 
+// ver.세밀 장신구: 그림마다 머리카락 범위를 찾아 그 위에 그립니다. (옆모습은 오른쪽을 봄)
+const SIDE_FRAMES = ["walk1", "walk2", "walk3", "walk4"];
+function drawAccessoryArt(look, rows, frame, w, h, px) {
+  const acc = ACCESSORIES.find((a) => a.id === look.acc);
+  if (!acc) return;
+  // 머리카락 범위 (윗부분)
+  let x1 = w, x2 = -1, y1 = h;
+  rows.forEach((row, y) => [...row].forEach((ch, x) => {
+    const p = HERO_ART.palette[ch];
+    if (p && p[1] === "hair" && y < h * 0.45) { x1 = Math.min(x1, x); x2 = Math.max(x2, x); y1 = Math.min(y1, y); }
+  }));
+  if (x2 < 0) return;
+  if (frame === "sleep") y1 = Math.max(y1, 0);
+  const side = SIDE_FRAMES.includes(frame);
+  const cx = (x1 + x2 + 1) / 2, half = (x2 - x1 + 1) / 2;
+  const isHair = (x, y) => { const p = HERO_ART.palette[(rows[y] || "")[x]]; return p && (p[1] === "hair" || p[1] === "keep"); };
+  const over = new Map(); // 새로 칠할 칸 (외곽선을 두르기 위해 모아 둠)
+  const set = (x, y, c) => { if (x >= 0 && y >= 0 && x < w && y < h) over.set(y * w + x, c); };
+  const dome = (top, bottom, extra, color, lightRows) => {
+    for (let y = top; y <= bottom; y++) {
+      for (let x = Math.floor(x1 - extra); x <= Math.ceil(x2 + extra); x++) {
+        const dx = (x + 0.5 - cx) / (half + extra), dy = (y + 0.5 - bottom - 0.5) / (bottom - top + 1.5);
+        if (dx * dx + dy * dy <= 1) set(x, y, y < top + lightRows && Math.abs(x + 0.5 - cx) < half * 0.6 ? acc.light : color);
+      }
+    }
+  };
+  if (acc.id === "cap") {
+    dome(y1 - 1, y1 + 5, 0.5, acc.color, 2);
+    for (let x = x1; x <= x2; x++) set(x, y1 + 5, acc.dark);
+    if (side) for (let x = Math.round(cx); x <= x2 + 4; x++) { set(x, y1 + 6, acc.dark); }
+    else for (let x = x1 + 3; x <= x2 - 3; x++) set(x, y1 + 6, acc.dark);
+    set(Math.round(cx), y1 - 1, acc.dark);
+  } else if (acc.id === "beanie") {
+    dome(y1 - 1, y1 + 7, 0.8, acc.color, 2);
+    for (let x = Math.floor(x1 - 1); x <= x2 + 1; x++) {
+      for (const y of [y1 + 6, y1 + 7]) if (over.has(y * w + x)) set(x, y, x % 2 ? acc.dark : acc.light);
+    }
+    for (let y = y1 - 4; y <= y1 - 1; y++) for (let x = Math.round(cx) - 2; x <= Math.round(cx) + 1; x++) {
+      if (Math.hypot(x + 0.5 - cx, y + 0.5 - (y1 - 2)) <= 2.1) set(x, y, acc.light);
+    }
+  } else if (acc.id === "strawHat") {
+    dome(y1 - 2, y1 + 4, -1, acc.color, 2);
+    for (let x = Math.round(cx - half + 1); x <= Math.round(cx + half - 2); x++) set(x, y1 + 3, acc.dark); // 띠
+    for (let y = y1 + 4; y <= y1 + 6; y++) {
+      for (let x = Math.floor(x1 - 4); x <= Math.ceil(x2 + 4); x++) {
+        const dx = (x + 0.5 - cx) / (half + 4.5), dy = (y + 0.5 - (y1 + 5)) / 1.6;
+        if (dx * dx + dy * dy <= 1) set(x, y, y === y1 + 4 ? acc.light : acc.color);
+      }
+    }
+  } else if (acc.id === "headband") {
+    for (let x = x1; x <= x2; x++) {
+      const y = Math.round(y1 + 4 + Math.abs(x + 0.5 - cx) * 0.3);
+      for (const yy of [y, y + 1]) if (isHair(x, yy)) set(x, yy, yy === y ? acc.light : acc.color);
+    }
+  } else if (acc.id === "ribbon") {
+    const bx = side ? Math.round(x1 + 4) : Math.round(x2 - 4), by = y1 + 1;
+    for (const [dx, dy, c] of [[-3, -1, "c"], [-2, -1, "c"], [-3, 0, "c"], [-2, 0, "l"], [-1, 0, "d"], [-3, 1, "c"], [-2, 1, "c"],
+      [1, -1, "c"], [2, -1, "c"], [1, 0, "l"], [2, 0, "c"], [1, 1, "c"], [2, 1, "c"], [0, 0, "d"], [0, 1, "d"], [-1, 2, "d"], [1, 2, "d"]]) {
+      set(bx + dx, by + dy, c === "c" ? acc.color : c === "l" ? acc.light : acc.dark);
+    }
+  } else if (acc.id === "hairpin") {
+    const y = y1 + 10, xs = side ? [x2 - 7, x2 - 6, x2 - 5, x2 - 4] : [x1 + 3, x1 + 4, x1 + 5, x1 + 6];
+    xs.forEach((x, i) => set(x, y - (i > 1 ? 1 : 0), i === 0 ? acc.light : acc.color));
+  }
+  // 외곽선: 새로 칠한 칸 바로 바깥의 빈칸
+  const empty = (x, y) => x < 0 || y < 0 || x >= w || y >= h || !HERO_ART.palette[(rows[y] || "")[x]];
+  for (const k of over.keys()) {
+    const x = k % w, y = Math.floor(k / w);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx, ny = y + dy;
+      if (ny >= 0 && ny < h && nx >= 0 && nx < w && !over.has(ny * w + nx) && empty(nx, ny)) px(nx, ny, OUTLINE);
+    }
+  }
+  for (const [k, c] of over) px(k % w, Math.floor(k / w), c);
+}
+
 const heroArtCache = new Map();
 function heroArtCanvas(name, lookIn, flip) {
   const look = normLook(lookIn);
@@ -2142,7 +2235,7 @@ function heroArtCanvas(name, lookIn, flip) {
   const set = HERO_ART.styles[hair] || HERO_ART.styles.short;
   const frame = set[name] ? name : "idle";
   const colors = heroColors(look);
-  const key = [hair, frame, colors.H, colors.S, colors.C, colors.P, look.eyes, flip].join("|");
+  const key = [hair, frame, colors.H, colors.S, colors.C, colors.P, look.eyes, look.acc, flip].join("|");
   if (heroArtCache.has(key)) return heroArtCache.get(key);
   if (heroArtCache.size > 200) heroArtCache.clear();
   const rows = set[frame];
@@ -2162,6 +2255,7 @@ function heroArtCanvas(name, lookIn, flip) {
     const [orig, part] = p;
     px(x, y, target[part] ? recolor(orig, HERO_ART.base[part], target[part]) : orig);
   }));
+  drawAccessoryArt(look, rows, frame, w, h, px);
   // 안경·선글라스: 눈 자리에 테와 렌즈 (눈 감은 그림은 뜬 그림의 눈 자리를 씀)
   const kind = EYEWEAR[look.eyes];
   if (kind) {
@@ -2213,13 +2307,18 @@ function drawHeroFrame(name, centerX, bottomY, flip, look) {
   drawEyewear(normLook(look || save.look), left, top + extra);
 }
 
+// 걷는 그림 순서: ver.세밀은 4장을 이어서, ver.하찮은 두 발 그림 사이에 가만히 그림
+function walkFrame(t) {
+  const cycle = useHeroArt() ? ["walk1", "walk2", "walk3", "walk4"] : ["walk1", "idle", "walk2", "idle"];
+  return cycle[Math.floor(t * 8) % cycle.length];
+}
+
 function drawHero() {
   if (hero.mode === "sleep") return; // 잘 때는 잠자리 위에 따로 그림
 
   let frame = "idle";
   if (hero.mode === "walk" || hero.mode === "toBed" || hero.mode === "toWork") {
-    const cycle = ["walk1", "walk0", "walk2", "walk0"]; // walk0: 걷는 중간 (ver.하찮은 가만히 그림)
-    frame = cycle[Math.floor(hero.walkT * 8) % cycle.length];
+    frame = walkFrame(hero.walkT);
   } else if (hero.waveT > 0) {
     frame = Math.floor(hero.waveT * 6) % 2 ? "wave1" : "wave2";
   } else if (hero.mode === "work" || hero.mode === "read" || hero.mode === "snack") {
@@ -2493,7 +2592,7 @@ function updateWalkers(dt) {
 // 사람 캐릭터 그리기 (놀러 간 나, 다른 방문자)
 function drawPerson(c, look) {
   let frame = "idle";
-  if (c.mode === "walk") frame = ["walk1", "walk0", "walk2", "walk0"][Math.floor(c.walkT * 8) % 4];
+  if (c.mode === "walk") frame = walkFrame(c.walkT);
   else if (c.blinkT < 0) frame = "blink";
   const p = project(c.x, c.y, 0);
   const x = Math.round(p.x), y = Math.round(p.y);
@@ -3487,6 +3586,29 @@ function renderLook() {
       shopList.append(makeCard(makeHeroPreview(look), item.name,
         priceHtml(item.price) + (owned ? "<span>보유</span>" : ""), btn));
     }
+  }
+  // 장신구: 하나만 쓸 수 있고, 다시 누르면 벗음
+  sectionTitle("장신구");
+  for (const item of ACCESSORIES) {
+    const look = Object.assign({}, save.look, { acc: item.id });
+    const owned = save.outfits.includes(item.id);
+    const on = save.look.acc === item.id;
+    let btn;
+    if (!owned) {
+      btn = makeButton("구매", () => confirmBuy(item.name, item.price, makeHeroPreview(look), () => {
+        if (save.coins < item.price) return;
+        save.coins -= item.price;
+        save.outfits.push(item.id);
+        updateCoins();
+        setLook({ acc: item.id });
+        toast(`${withObject(item.name)} 샀어요.`);
+      }));
+      btn.dataset.price = item.price;
+    } else {
+      btn = makeButton(on ? "벗기" : "쓰기", () => setLook({ acc: on ? null : item.id }));
+    }
+    shopList.append(makeCard(makeHeroPreview(look), item.name,
+      priceHtml(item.price) + (owned ? (on ? "<span>쓰는 중</span>" : "<span>보유</span>") : ""), btn));
   }
 }
 
