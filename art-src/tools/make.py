@@ -60,6 +60,16 @@ def build(pre):
         hf=load(f'hair_{i:02d}.png'); hb=load(f'hair_{i+1:02d}.png')
         _,fdx,fdy=fit3(idle,hf,ii,int(round((cs[i][0]-CROWN[r])/P))-2)
         _,bdx,bdy=fit3(back,hb,bi,int(round((cs[i+1][0]-CROWN[r])/P))-2)
+        if st=='ponytail':
+            # 포니테일: 원본은 얼굴 앞 잔머리가 많아서, 앞머리 머리(bangs) 위에 원본의 꼬리 부분만 붙임
+            bh=load('hair_08.png'); _,bdx0,bdy0=fit3(idle,bh,ii,int(round((cs[8][0]-CROWN[2])/P))-2)
+            tail=hf.copy(); tail[:,9:]=0; tail[:6]=0; fdx-=7   # 꼬리는 뒤통수 왼쪽으로 빼서 보이게
+            x0=min(bdx0,fdx); y0=min(bdy0,fdy)
+            Wm=max(bdx0+bh.shape[1],fdx+tail.shape[1])-x0; Hm=max(bdy0+bh.shape[0],fdy+tail.shape[0])-y0
+            mg=np.zeros((Hm,Wm,4),np.uint8)
+            t=tail[:,:,3]>0; mg[fdy-y0:fdy-y0+tail.shape[0],fdx-x0:fdx-x0+tail.shape[1]][t]=tail[t]
+            b=bh[:,:,3]>0; mg[bdy0-y0:bdy0-y0+bh.shape[0],bdx0-x0:bdx0-x0+bh.shape[1]][b]=bh[b]
+            hf=mg; fdx,fdy=x0,y0
         hf=trim_face_side(hf,fdx,fdy,ii,0 if st=='spiky' else 5)
         res[st]={}
         for k,a in enumerate(frames):

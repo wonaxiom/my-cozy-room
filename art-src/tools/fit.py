@@ -90,3 +90,18 @@ def trim_face_side(hair,dx,dy,info,up=0):
                 if len(pts)<6:
                     for py,px in pts: h[py,px]=0
     return h
+
+def clear_face(hair,dx,dy,info,ear=9,fromY=None):
+    """묶은 머리: 눈높이부터 얼굴(귀 앞쪽) 위로 내려온 머리카락을 지움"""
+    al=info['al']; h=hair.copy()
+    eyetop=min(np.nonzero(info['eye'])[0]) if info['eye'].any() else 14
+    y0=eyetop-1 if fromY is None else fromY
+    for y in range(h.shape[0]):
+        Y=y+dy
+        if Y<y0 or Y>=al.shape[0]: continue
+        xs=np.nonzero(al[Y])[0]
+        if not len(xs): continue
+        for x in range(h.shape[1]):
+            X=x+dx
+            if h[y,x,3] and ear<=X<=xs.max(): h[y,x]=0
+    return h
