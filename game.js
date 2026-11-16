@@ -2656,26 +2656,57 @@ function drawSleeper() {
   if (hero.mode !== "sleep") return;
   const p = project(...pillowPos());
   const b = bedItem();
-  if (useHeroArt() && drawLying(b, p)) return;
+  if (useHeroArt() ? drawLying(b, p) : drawLyingSimple(b, p)) return;
   // 머리만 그린 뒤, 베개보다 앞(화면 아래)에 있는 잠자리 부분을 다시 그려 머리가 베개에 묻히게 함
   drawHeroFrame("sleep", Math.round(p.x), Math.round(p.y), false);
   drawBedFront(b);
 }
 
-// ver.세밀: 베개가 뒤쪽(화면 위)이면 누운 그림을 이불 위에 눕힘
-function drawLying(b, p) {
+// 누울 방향: 베개에서 가구 가운데 쪽. x로 누우면 오른쪽 아래, y로 누우면 왼쪽 아래(그림을 뒤집음)
+// 베개가 앞쪽(화면 아래)이면 누운 그림이 없어서 null
+function lyingFlip(b) {
   const [px, py] = turnedPoint(b, b.sleep.pillow);
   const { W, D } = baseSpan(b);
   const [w, d] = swapped(b) ? [D, W] : [W, D];
-  // 몸이 놓일 방향: 베개에서 가구 가운데 쪽. x로 누우면 오른쪽 아래, y로 누우면 왼쪽 아래(그림을 뒤집음)
   const alongX = Math.abs(px - w / 2) > Math.abs(py - d / 2);
   const toward = alongX ? w / 2 - px : d / 2 - py;
-  if (toward <= 0) return false; // 베개가 앞쪽이면 누운 그림 없음
+  return toward > 0 ? !alongX : null;
+}
+
+// ver.하찮: 눈 감고 선 그림을 침대 기울기에 맞게 돌려서 이불 위에 눕힘
+function drawLyingSimple(b, p) {
+  const flip = lyingFlip(b);
+  if (flip === null || readyImage(CHARACTER_SHEET && CHARACTER_SHEET.image)) return false;
+  const look = Object.assign({}, normLook(save.look));
+  if (["cap", "beanie", "strawHat"].includes(look.acc)) look.acc = null; // 잘 때는 모자를 벗음
+  const rows = heroRows("blink", look);
+  const w = rows[0].length, h = rows.length;
+  const c = document.createElement("canvas");
+  c.width = w * RES;
+  c.height = h * RES;
+  const prev = ctx;
+  ctx = c.getContext("2d");
+  ctx.setTransform(RES, 0, 0, RES, 0, 0);
+  drawSprite(rows, 0, 0, heroColors(look), false);
+  ctx = prev;
+  const headY = h - CHARACTER.idle.length + 3.5; // 머리 가운데 (머리 위로 더 올라간 줄 포함)
+  ctx.save();
+  ctx.translate(p.x, p.y - 2);
+  if (flip) ctx.scale(-1, 1);
+  ctx.rotate(-Math.atan2(1, 0.5)); // 아래를 향한 몸을 바닥 기울기(가로 2 : 세로 1) 쪽으로
+  ctx.drawImage(c, -w / 2, -headY, w, h);
+  ctx.restore();
+  return true;
+}
+
+// ver.세밀: 베개가 뒤쪽(화면 위)이면 누운 그림을 이불 위에 눕힘
+function drawLying(b, p) {
+  const flip = lyingFlip(b);
+  if (flip === null) return false;
   const look = normLook(save.look);
   const gender = look.gender === "female" ? "female" : "male";
   const at = (HERO_ART.genders[gender].lieAt || {})[look.hair] || (HERO_ART.genders[gender].lieAt || {}).short;
   if (!at) return false;
-  const flip = !alongX;
   const c = heroArtCanvas("lie", look, flip);
   const cx = flip ? c.width - 1 - at[0] : at[0];
   const lift = 3; // 머리 가운데가 베개 윗면보다 얼마나 위에 있는지 (칸)
