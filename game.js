@@ -480,8 +480,9 @@ function setRoom(id) {
   const addDecor = !save.decorDone[room.id] && room.decor && room.decor.length;
   if (addDecor) placed = placed.concat(room.decor);
   items = placed.filter((p) => FURNITURE[p.id]).map(makeItem);
+  const settled = settleItems();
   refreshItems();
-  if (addDecor && !visiting && ownsRoom()) {
+  if ((addDecor || settled) && !visiting && ownsRoom()) {
     save.decorDone[room.id] = true;
     saveLayout();
   }
@@ -552,6 +553,20 @@ function buyRoom(r) {
   updateCoins();
   setRoom(r.id);
   toast(`${r.name}이 열렸어요. 상점에서 가구를 사서 꾸며 보세요.`);
+}
+
+// 위에 올린 작은 물건을 받침 가구의 윗면 높이에 맞춥니다.
+// (가구 높이를 바꾼 뒤 예전 저장 데이터의 물건이 뜨거나 묻히지 않게) 바뀐 게 있으면 true
+function settleItems() {
+  let changed = false;
+  for (const it of items) {
+    if (it.type || !it.small || it.z <= 0) continue;
+    const base = items.find((o) => o !== it && !o.type && !o.small && o.surface && o.z === 0 && centerOn(it, o));
+    if (!base || it.z === base.surface) continue;
+    it.z = base.surface;
+    changed = true;
+  }
+  return changed;
 }
 
 function makeItem(p) {
