@@ -1187,3 +1187,13 @@ body.pip .visit-bar button {
 }
 
 #friends-close { margin-left: auto; }
+
+.gate-links {
+  margin: 0;
+  color: var(--sub);
+  font-size: 12px;
+}
+
+.gate-links a { color: var(--sub); }
+
+.page-links { margin-top: 10px; text-align: right; }
