@@ -2662,7 +2662,7 @@ function drawSleeper() {
   drawBedFront(b);
 }
 
-// ver.세밀: 베개가 뒤쪽(화면 위)이면 누운 그림을 눕히고, 허리 아래는 이불을 다시 그려 덮음
+// ver.세밀: 베개가 뒤쪽(화면 위)이면 누운 그림을 이불 위에 눕힘
 function drawLying(b, p) {
   const [px, py] = turnedPoint(b, b.sleep.pillow);
   const { W, D } = baseSpan(b);
@@ -2680,8 +2680,7 @@ function drawLying(b, p) {
   const cx = flip ? c.width - 1 - at[0] : at[0];
   const lift = 3; // 머리 가운데가 베개 윗면보다 얼마나 위에 있는지 (칸)
   ctx.drawImage(c, Math.round(p.x - cx / 3), Math.round(p.y - lift - at[1] / 3), c.width / 3, c.height / 3);
-  drawBedFront(b);
-  return true;
+  return true; // 이불은 덮지 않고 이불 위에 누움
 }
 
 // 베개보다 확실히 앞에 있는 잠자리 상자들

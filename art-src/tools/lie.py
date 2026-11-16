@@ -4,7 +4,7 @@ from PIL import Image
 SL='/tmp/claude-0/-home-user-my-cozy-room/1861c5a4-a6fd-5d71-8605-4c1741f5e8c0/scratchpad/sleep/'
 exec(open(SL+'rot.py').read().split('best=None')[0].replace("load('lie.png')","load(SL+'lie.png')").replace("load('../base/bm_00.png')","load(SL+'../base/bm_00.png')"))
 HAIRS=pickle.load(open(SL+'hairs.pkl','rb'))
-ANG=10; PADL=14
+ANG=10; ANG2=15; PADL=14   # ANG: 머리 모양을 누운 머리에 맞추는 각도, ANG2: 몸 전체를 침대 기울기에 맞추는 각도
 def lie_labels(a):
     H,W=a.shape[:2]; L=np.full((H,W),'',object)
     for y in range(H):
@@ -57,17 +57,42 @@ def build_lie(pre, base, accs):
         put(R['front'],dx,dy,lambda y,x: hairlab(R['front'][y,x]))
         def mark(k):
             ys,xs=np.nonzero(R[k][:,:,3]>0); return (int(xs.mean())+dx+pad,int(ys.mean())+dy+pad)
-        out[st]=(C,G,mark('org'),mark('ctr'))
+        # 몸 전체를 침대 기울기(가로 2 : 세로 1)에 맞게 더 돌림
+        LABS=['','hair','keep','skin','leg','top','bottom','eye']
+        def toimg(fn):
+            im=np.zeros(C.shape,np.uint8)
+            for y in range(C.shape[0]):
+                for x in range(C.shape[1]):
+                    v=fn(y,x)
+                    if v: im[y,x]=(v,0,0,255)
+            return im
+        org0,ctr0=mark('org'),mark('ctr')
+        Cr=rot(C,ANG2)
+        Gi=rot(toimg(lambda y,x: LABS.index(G[y,x]) if C[y,x,3] and G[y,x] else 0),ANG2)
+        Gr=np.full(Cr.shape[:2],'',object)
+        for y in range(Cr.shape[0]):
+            for x in range(Cr.shape[1]):
+                if Cr[y,x,3]: Gr[y,x]=LABS[Gi[y,x,0]] if Gi[y,x,3] else 'keep'
+        def mk(pt):
+            im=np.zeros(C.shape,np.uint8); im[pt[1],pt[0]]=255; r=rot(im,ANG2); ys,xs=np.nonzero(r[:,:,3]>0)
+            return (int(xs.mean()),int(ys.mean()))
+        out[st]=(Cr,Gr,mk(org0),mk(ctr0))
         if not accout:
-            o=mark('org')
+            o=mk(org0)
             for name,(spr,ax,ay) in accs.items():
                 l=np.zeros((Hc,Wc,4),np.uint8)
                 for y in range(spr.shape[0]):
                     for x in range(spr.shape[1]):
                         Y,X=PADL+ay+y,PADL+hl+ax+x
                         if spr[y,x,3] and 0<=Y<Hc and 0<=X<Wc: l[Y,X]=spr[y,x]
-                r=rot(l,ANG); ys,xs=np.nonzero(r[:,:,3]>0)
+                r=rot(l,ANG)
+                # 누운 그림 칸에 옮긴 뒤 몸과 같이 한 번 더 돌림
+                big=np.zeros(C.shape,np.uint8); ys,xs=np.nonzero(r[:,:,3]>0)
+                for y,x in zip(ys,xs):
+                    Y,X=y+dy+pad,x+dx+pad
+                    if 0<=Y<big.shape[0] and 0<=X<big.shape[1]: big[Y,X]=r[y,x]
+                r=rot(big,ANG2); ys,xs=np.nonzero(r[:,:,3]>0)
                 if not len(ys): continue
                 y0,x0=ys.min(),xs.min()
-                accout[name]=(r[y0:ys.max()+1,x0:xs.max()+1],int(x0+dx+pad-o[0]),int(y0+dy+pad-o[1]))
+                accout[name]=(r[y0:ys.max()+1,x0:xs.max()+1],int(x0-o[0]),int(y0-o[1]))
     return out,accout
