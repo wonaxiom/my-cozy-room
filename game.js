@@ -356,10 +356,11 @@ function swapped(item) {
   return item.type === "wall" ? !!item.flip : rotOf(item) % 2 === 1;
 }
 
-// 원래 방향일 때 가구가 차지하는 범위 (돌리는 기준)
+// 원래 방향일 때 가구가 차지하는 범위 (돌리는 기준, 그림 스타일과 상관없이 parts 기준)
 function baseSpan(item) {
   let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
-  for (const [dx, dy, , w, d] of rawParts(item)) {
+  const simple = item.parts || [[0, 0, 0, item.size[0], item.size[1], item.size[2] || 10]];
+  for (const [dx, dy, , w, d] of simple) {
     x1 = Math.min(x1, dx); y1 = Math.min(y1, dy);
     x2 = Math.max(x2, dx + w); y2 = Math.max(y2, dy + d);
   }
@@ -377,39 +378,47 @@ function rotPoint(item, x, y) {
 }
 
 function partsOf(item) {
-  const parts = rawParts(item);
-  if (item.type === "wall") {
-    if (!item.flip) return parts;
-    return parts.map(([dx, dy, dz, w, d, h, c]) => [dy, dx, dz, d, w, h, c]);
-  }
+  const wall = item.type === "wall";
   const r = rotOf(item);
-  if (!r) return parts;
-  const key = `${item.id}|${r}|${artStyle}`;
+  const key = `${item.id}|${wall ? (item.flip ? "L" : "R") : r}|${artStyle}`;
   if (!turnedParts.has(key)) {
-    const moved = parts.map(([dx, dy, dz, w, d, h, c]) => {
-      const [ax, ay] = rotPoint(item, dx, dy);
-      const [bx, by] = rotPoint(item, dx + w, dy + d);
-      return [Math.min(ax, bx), Math.min(ay, by), dz, Math.abs(bx - ax), Math.abs(by - ay), h, c];
-    });
-    turnedParts.set(key, depthSort(moved));
+    let parts = rawParts(item);
+    if (wall && item.flip) {
+      parts = parts.map(([dx, dy, dz, w, d, h, c]) => [dy, dx, dz, d, w, h, c]);
+    } else if (r) {
+      parts = parts.map(([dx, dy, dz, w, d, h, c]) => {
+        const [ax, ay] = rotPoint(item, dx, dy);
+        const [bx, by] = rotPoint(item, dx + w, dy + d);
+        return [Math.min(ax, bx), Math.min(ay, by), dz, Math.abs(bx - ax), Math.abs(by - ay), h, c];
+      });
+    }
+    turnedParts.set(key, depthSort(parts));
   }
   return turnedParts.get(key);
 }
 
-// 돌린 가구의 상자 목록 (돌릴 때마다 다시 계산하지 않게 기억)
+// 방향·스타일별 상자 목록 (그릴 때마다 다시 계산하지 않게 기억)
 const turnedParts = new Map();
 
 // 상자 그리는 순서 정하기: 뒤(또는 아래)에 있는 상자를 먼저.
 // 가구를 돌리면 원래 순서로는 앞뒤가 바뀌어 보여서 다시 정합니다.
-// 앞뒤가 분명하지 않은 상자끼리는 data.js에 적힌 순서를 따릅니다.
+// 화면에서 겹치는데 앞뒤가 분명하지 않은 상자끼리는 data.js에 적힌 순서를 따릅니다.
 function depthSort(parts) {
   const n = parts.length;
   const behind = (a, b) => // a가 b보다 확실히 뒤(또는 아래)에 있는지
     a[0] + a[3] <= b[0] || a[1] + a[4] <= b[1] || a[2] + a[5] <= b[2];
+  // 화면에서 차지하는 범위 (겹치지 않는 상자끼리는 순서를 따지지 않음)
+  const scr = parts.map(([x, y, z, w, d, h]) => ({
+    x1: x - y - d, x2: x + w - y, y1: (x + y) / 2 - z - h, y2: (x + w + y + d) / 2 - z,
+  }));
+  const meet = (a, b) => a.x1 < b.x2 - 0.01 && b.x1 < a.x2 - 0.01 && a.y1 < b.y2 - 0.01 && b.y1 < a.y2 - 0.01;
   const before = parts.map(() => []); // before[j]: j보다 먼저 그려야 할 상자들
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < n; j++) {
-      if (i !== j && behind(parts[i], parts[j]) && !behind(parts[j], parts[i])) before[j].push(i);
+      if (i === j || !meet(scr[i], scr[j])) continue;
+      const ij = behind(parts[i], parts[j]), ji = behind(parts[j], parts[i]);
+      if (ij && !ji) before[j].push(i);
+      else if (!ij && !ji && i < j) before[j].push(i); // 앞뒤가 분명하지 않으면 적힌 순서대로
     }
   }
   const done = new Array(n).fill(false);
