@@ -1899,12 +1899,23 @@ const INTERACT = {
   bookcase: "read", shelf: "read",
   lowTable: "snack", windowTable: "snack", chest: "snack",
   cushion: "sit",
+  chair: "chair", stool: "chair", armchair: "chair", trainSeat: "chair",
   windowCurtain: "look", windowShoji: "look", windowRound: "look", windowTrain: "look", telescope: "look", globe: "look",
   plant: "water",
   lamp: "lamp", andon: "lamp",
 };
-const USE_MODES = ["read", "snack", "look", "water", "lamp"];
-const USE_TIME = { read: [10, 18], snack: [8, 12], look: [6, 10], water: [3, 4], lamp: [1.2, 1.2] };
+const USE_MODES = ["read", "snack", "look", "water", "lamp", "sitChair"];
+const USE_TIME = { read: [10, 18], snack: [8, 12], look: [6, 10], water: [3, 4], lamp: [1.2, 1.2], sitChair: [8, 14] };
+
+// 의자에 앉았을 때 바라보는 쪽 (등받이 반대쪽). 화면에서 오른쪽이면 1, 왼쪽이면 -1
+function seatFacing(item) {
+  const back = item.seat && item.seat.back;
+  if (!back) return 0;
+  let [vx, vy] = back === "+x" ? [-1, 0] : [1, 0]; // 등받이 반대 방향
+  for (let r = rotOf(item); r > 0; r--) [vx, vy] = [-vy, vx];
+  const sdx = vx - vy;
+  return Math.abs(sdx) > 0.01 ? Math.sign(sdx) : 0;
+}
 
 // 가구 앞에 설 자리 (벽 장식은 벽에서 조금 떨어진 곳, 방석은 그 위)
 function useSpot(item, act) {
@@ -1916,7 +1927,7 @@ function useSpot(item, act) {
     return isFree(spot.x, spot.y) ? spot : null;
   }
   const f = footprint(item);
-  if (act === "sit") return { x: f.x + f.w / 2, y: f.y + f.d / 2 };
+  if (act === "sit" || act === "chair") return { x: f.x + f.w / 2, y: f.y + f.d / 2 };
   const sides = [
     { x: f.x + f.w / 2, y: f.y + f.d + 3.5 }, { x: f.x + f.w + 3.5, y: f.y + f.d / 2 },
     { x: f.x + f.w / 2, y: f.y - 3.5 }, { x: f.x - 3.5, y: f.y + f.d / 2 },
@@ -1948,6 +1959,9 @@ function startUse() {
   if (mode === "sit") {
     hero.seat = plan.item; // 방석 위에 앉음 (방석을 그린 다음 캐릭터를 그림)
     mode = Math.random() < 0.6 ? "read" : "snack";
+  } else if (mode === "chair") {
+    hero.seat = plan.item; // 의자에 앉아 쉬기
+    mode = "sitChair";
   }
   hero.mode = mode;
   const [a, b] = USE_TIME[mode];
@@ -1957,6 +1971,7 @@ function startUse() {
   const f = footprint(plan.item);
   const sdx = c ? 0 : (f.x + f.w / 2 - hero.x) - (f.y + f.d / 2 - hero.y);
   if (Math.abs(sdx) > 0.5) hero.dir = Math.sign(sdx);
+  if (mode === "sitChair" && seatFacing(plan.item)) hero.dir = seatFacing(plan.item);
   if (mode === "lamp") toggleLight(plan.item);
 }
 
@@ -1984,9 +1999,19 @@ function updateHeroLocal(dt, h) {
     if (hero.mode === "sleep") Object.assign(hero, bedSide());
     stopUse();
     hero.mode = "toWork";
-    hero.target = spotNear(desk, turnedPoint(desk, desk.work));
+    // 책상 가까이에 의자가 있으면 의자에 앉아서, 없으면 책상 옆 바닥에서
+    const df = footprint(desk);
+    const chair = items.find((o) => o.seat && o.seat.back && o.z === 0 && (() => {
+      const f = footprint(o);
+      return Math.hypot(f.x + f.w / 2 - (df.x + df.w / 2), f.y + f.d / 2 - (df.y + df.d / 2)) < 16;
+    })());
+    hero.workSeat = chair || null;
+    if (chair) { const f = footprint(chair); hero.target = { x: f.x + f.w / 2, y: f.y + f.d / 2 }; }
+    else hero.target = spotNear(desk, turnedPoint(desk, desk.work));
   }
   if (!desk && (hero.mode === "work" || hero.mode === "toWork")) {
+    hero.seat = null;
+    hero.workSeat = null;
     hero.mode = "idle";
     hero.timer = 1;
   }
@@ -2043,6 +2068,7 @@ function updateHeroLocal(dt, h) {
       } else if (hero.mode === "toWork") {
         // 책상 쪽을 바라보고 일하기
         hero.mode = "work";
+        if (hero.workSeat && items.includes(hero.workSeat)) hero.seat = hero.workSeat;
         const f = footprint(desk);
         const sdx = (f.x + f.w / 2 - hero.x) - (f.y + f.d / 2 - hero.y);
         if (Math.abs(sdx) > 0.01) hero.dir = Math.sign(sdx);
@@ -2062,7 +2088,9 @@ function updateHeroLocal(dt, h) {
 }
 
 function heroScreen() {
-  const p = project(hero.x, hero.y, 0);
+  // 의자에 앉아 있으면 앉는 자리 높이만큼 올려서 그림
+  const z = hero.seat && hero.seat.seat ? hero.seat.z + hero.seat.seat.z : 0;
+  const p = project(hero.x, hero.y, z);
   return { x: Math.round(p.x), y: Math.round(p.y) };
 }
 
@@ -2342,7 +2370,7 @@ function drawFaceArt(look, rows, frame, set, px, colors) {
   const bottom = Math.max(...boxes.map((b) => b.y2));
   // 여자: 눈꼬리 속눈썹, 볼터치
   if (look.gender === "female") {
-    if (!closed && look.eyes !== "calm") {
+    if (!closed && look.eyes !== "calm" && look.gender !== "female") { // 여자 그림은 원래 속눈썹이 있음
       const outer = boxes.length > 1 ? [[boxes[0], -1], [boxes[boxes.length - 1], 1]] : [[boxes[0], 1]];
       for (const [b, d] of outer) px(d < 0 ? b.x1 - 1 : b.x2 + 1, b.y1 - (look.eyes === "big" ? 1 : 0), FACE.eye);
     }
@@ -2367,7 +2395,7 @@ function drawFaceArt(look, rows, frame, set, px, colors) {
 }
 
 // ver.세밀 장신구: 그림마다 머리카락 범위를 찾아 그 위에 그립니다. (옆모습은 오른쪽을 봄)
-const SIDE_FRAMES = ["walk1", "walk2", "walk3", "walk4"];
+const SIDE_FRAMES = ["walk1", "walk2", "walk3", "walk4", "walk5", "walk6", "walk7", "walk8", "sitChair", "type", "water", "switch"];
 function drawAccessoryArt(look, rows, frame, w, h, px) {
   const acc = ACCESSORIES.find((a) => a.id === look.acc);
   if (!acc) return;
@@ -2443,13 +2471,39 @@ function drawAccessoryArt(look, rows, frame, w, h, px) {
 }
 
 const heroArtCache = new Map();
+
+// 줄인 표기 풀기: "12." = "." 12개
+function unRle(row) {
+  let out = "";
+  for (let i = 0; i < row.length;) {
+    let n = "";
+    while (row[i] >= "0" && row[i] <= "9") n += row[i++];
+    out += row[i++].repeat(n ? Number(n) : 1);
+  }
+  return out;
+}
+
+// 성별·머리 모양별 그림 묶음 (처음 쓸 때 한 번만 풀어 둠). "=이름"은 같은 그림을 가리킴
+const heroArtSets = new Map();
+function heroArtSet(gender, hair) {
+  const key = gender + "|" + hair;
+  if (heroArtSets.has(key)) return heroArtSets.get(key);
+  const styles = HERO_ART.genders[gender].styles;
+  const raw = styles[hair] || styles.short;
+  const set = {};
+  for (const [f, v] of Object.entries(raw)) if (typeof v !== "string") set[f] = v.map(unRle);
+  for (const [f, v] of Object.entries(raw)) if (typeof v === "string") set[f] = set[v.slice(1)];
+  heroArtSets.set(key, set);
+  return set;
+}
 function heroArtCanvas(name, lookIn, flip) {
   const look = normLook(lookIn);
-  const hair = HERO_ART.same[look.hair] || look.hair;
-  const set = HERO_ART.styles[hair] || HERO_ART.styles.short;
+  const gender = look.gender === "female" ? "female" : "male";
+  const hair = look.hair;
+  const set = heroArtSet(gender, hair);
   const frame = set[name] ? name : "idle";
   const colors = heroColors(look);
-  const key = [hair, frame, colors.H, colors.S, colors.C, colors.P, look.eyes, look.mouth, look.gender, look.acc, flip].join("|");
+  const key = [gender, hair, frame, colors.H, colors.S, colors.C, colors.P, look.eyes, look.mouth, look.bottom, look.acc, flip].join("|");
   if (heroArtCache.has(key)) return heroArtCache.get(key);
   if (heroArtCache.size > 200) heroArtCache.clear();
   const rows = set[frame];
@@ -2467,9 +2521,9 @@ function heroArtCanvas(name, lookIn, flip) {
     const p = HERO_ART.palette[ch];
     if (!p) return;
     const [orig, part] = p;
-    px(x, y, target[part] ? recolor(orig, HERO_ART.base[part], target[part]) : orig);
+    px(x, y, target[part] ? recolor(orig, HERO_ART.genders[gender].base[part] || orig, target[part]) : orig);
   }));
-  drawBottomArt(look, rows, w, h, px, colors);
+  if (gender === "male") drawBottomArt(look, rows, w, h, px, colors); // 여자 그림은 원래 치마
   drawFaceArt(look, rows, frame, set, px, colors);
   drawAccessoryArt(look, rows, frame, w, h, px);
   // 안경·선글라스: 눈 자리에 테와 렌즈 (눈 감은 그림은 뜬 그림의 눈 자리를 씀)
@@ -2525,7 +2579,8 @@ function drawHeroFrame(name, centerX, bottomY, flip, look) {
 
 // 걷는 그림 순서: ver.세밀은 4장을 이어서, ver.하찮은 두 발 그림 사이에 가만히 그림
 function walkFrame(t) {
-  const cycle = useHeroArt() ? ["walk1", "walk2", "walk3", "walk4"] : ["walk1", "idle", "walk2", "idle"];
+  if (useHeroArt()) return "walk" + (1 + (Math.floor(t * 12) % 8)); // ver.세밀: 8장을 이어서
+  const cycle = ["walk1", "idle", "walk2", "idle"];
   return cycle[Math.floor(t * 8) % cycle.length];
 }
 
@@ -2537,16 +2592,22 @@ function drawHero() {
     frame = walkFrame(hero.walkT);
   } else if (hero.waveT > 0) {
     frame = Math.floor(hero.waveT * 6) % 2 ? "wave1" : "wave2";
-  } else if (hero.mode === "work" || hero.mode === "read" || hero.mode === "snack") {
-    frame = hero.mode; // ver.세밀: 방석에 앉아 노트북·책·간식 (ver.하찮은 가만히 그림)
+  } else if (hero.mode === "work") {
+    frame = hero.seat ? "type" : "work"; // 의자가 있으면 의자에 앉아 타자, 없으면 바닥에서 노트북
+  } else if (hero.mode === "read" || hero.mode === "snack") {
+    frame = hero.mode; // ver.세밀: 앉아서 책·간식 (ver.하찮은 가만히 그림)
+  } else if (hero.mode === "sitChair") {
+    frame = "sitChair";
   } else if (hero.mode === "look") {
     frame = "back"; // 창밖·망원경·지구본을 바라보는 뒷모습
   } else if (hero.mode === "lamp") {
-    frame = "wave1"; // 손을 뻗어 조명 켜기
+    frame = "switch"; // 손을 뻗어 스위치 누르기
   } else if (hero.mode === "water") {
-    frame = "idle";
+    frame = "water"; // 물뿌리개로 물 주기
   } else if (hero.blinkT < 0) {
     frame = "blink";
+  } else if (Math.floor(time / 0.9) % 2) {
+    frame = "breathe"; // 가만히 있을 때 숨쉬기 (ver.하찮은 가만히 그림)
   }
 
   const p = heroScreen();
@@ -2664,8 +2725,45 @@ function petRows() {
   return frames.idle;
 }
 
+// ---- ver.세밀 반려동물 (pet-art.js의 그림, 털 색은 반려동물마다 바꿔 칠함) ----
+const petArtCache = new Map();
+function petArtCanvas(pd, frame, flip) {
+  const key = pd.id + "|" + frame + "|" + flip;
+  if (petArtCache.has(key)) return petArtCache.get(key);
+  const rows = PET_ART.frames[pd.kind][frame].map(unRle);
+  const w = rows[0].length, h = rows.length;
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const g = c.getContext("2d");
+  rows.forEach((row, y) => [...row].forEach((ch, x) => {
+    const p = PET_ART.palette[ch];
+    if (!p) return;
+    g.fillStyle = p[1] === "fur" ? recolor(p[0], PET_ART.base[pd.kind], pd.colors.K) : p[0];
+    g.fillRect(flip ? w - 1 - x : x, y, 1, 1);
+  }));
+  petArtCache.set(key, c);
+  return c;
+}
+
+function petArtFrame() {
+  if (pet.mode === "sleep") return "sleep";
+  if (pet.mode === "walk") return Math.floor(pet.walkT * 6) % 2 ? "walk1" : "walk2";
+  return "sit";
+}
+
+const usePetArt = () => artStyle === "detail" && typeof PET_ART !== "undefined";
+
 function drawPet() {
   const p = petScreen();
+  if (usePetArt()) {
+    const c = petArtCanvas(petDef(), petArtFrame(), pet.dir < 0);
+    const jump = pet.jumpT > 0 ? Math.round(Math.sin((1 - pet.jumpT / 0.3) * Math.PI) * 3) : 0;
+    ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
+    ctx.fillRect(p.x - 4, p.y - 1, 8, 1);
+    ctx.drawImage(c, p.x - c.width / 6, p.y - c.height / 3 - jump, c.width / 3, c.height / 3);
+    return;
+  }
   const rows = petRows();
   const jump = pet.jumpT > 0 ? Math.round(Math.sin((1 - pet.jumpT / 0.3) * Math.PI) * 3) : 0;
   ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
@@ -3762,6 +3860,21 @@ function makeSpritePreview(rows, colors, flip = false, look = null) {
 }
 
 // 캐릭터 미리보기 (안경까지)
+// 반려동물 미리보기 (상점, 구매 확인)
+function makePetPreview(pd) {
+  if (usePetArt()) {
+    const art = petArtCanvas(pd, "sit", false);
+    const size = 12;
+    const c = document.createElement("canvas");
+    c.width = size * RES;
+    c.height = size * RES;
+    c.className = "preview";
+    c.getContext("2d").drawImage(art, Math.floor((c.width - art.width) / 2), c.height - art.height - RES);
+    return c;
+  }
+  return makeSpritePreview(PET_FRAMES[pd.kind].idle, pd.colors);
+}
+
 function makeHeroPreview(look = save.look) {
   if (useHeroArt()) {
     const art = heroArtCanvas("idle", look, false);
@@ -3851,7 +3964,7 @@ function renderPets() {
     const on = save.pet === pd.id;
     let btn;
     if (!owned) {
-      btn = makeButton("데려오기", () => confirmBuy(pd.name, pd.price, makeSpritePreview(PET_FRAMES[pd.kind].idle, pd.colors), () => {
+      btn = makeButton("데려오기", () => confirmBuy(pd.name, pd.price, makePetPreview(pd), () => {
         if (save.coins < pd.price) return;
         save.coins -= pd.price;
         save.pets.push(pd.id);
@@ -3869,7 +3982,7 @@ function renderPets() {
       btn = makeButton("함께하기", () => { save.pet = pd.id; Save.save(save); placePet(); renderShop(); });
     }
     const meta = owned ? (on ? "<span>함께하는 중</span>" : "<span>보유</span>") : priceHtml(pd.price);
-    shopList.append(makeCard(makeSpritePreview(PET_FRAMES[pd.kind].idle, pd.colors), pd.name, meta, btn));
+    shopList.append(makeCard(makePetPreview(pd), pd.name, meta, btn));
   }
 }
 

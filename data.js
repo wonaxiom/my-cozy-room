@@ -576,6 +576,10 @@ const PETS = [
     colors: { K: "#3a3a42", D: "#2a2a30", E: "#e8d36a", N: "#d88a9a" } },
   { id: "whiteDog", name: "하얀 강아지", kind: "dog", price: 350,
     colors: { K: "#ebe3d5", D: "#c9a27a", E: "#2b2b2b", N: "#3a3030" } },
+  { id: "grayCat", name: "회색 고양이", kind: "cat", price: 300,
+    colors: { K: "#9a9298", D: "#7b7379", E: "#2b2b2b", N: "#e48a8a" } },
+  { id: "beagle", name: "갈색 강아지", kind: "dog", price: 350,
+    colors: { K: "#bc8c74", D: "#8f6450", E: "#2b2b2b", N: "#3a3030" } },
 ];
 
 const EFFECTS = {
@@ -794,6 +798,7 @@ const FURNITURE = {
     ],
   },
   chair: {
+    seat: { z: 6, back: "+x" },   // 앉는 높이, 등받이 쪽 (캐릭터가 앉을 때 씀)
     name: "의자",
     category: "furniture", price: 80,
     parts: [
@@ -1198,6 +1203,7 @@ const FURNITURE = {
   },
 
   stool: {
+    seat: { z: 6 },
     name: "보조 의자",
     category: "furniture", price: 60,
     parts: [
@@ -1491,6 +1497,7 @@ const FURNITURE = {
 
   // ---- 원형 탑방 ----
   armchair: {
+    seat: { z: 6, back: "-x" },
     name: "안락의자",
     category: "furniture", price: 130,
     parts: [
@@ -1572,6 +1579,7 @@ const FURNITURE = {
 
   // ---- 기차 객실 ----
   trainSeat: {
+    seat: { z: 8, back: "-x" },
     name: "객실 좌석",
     category: "furniture", price: 100,
     parts: [
