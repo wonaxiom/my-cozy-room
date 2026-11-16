@@ -793,6 +793,14 @@ button.primary {
 
 button.primary:hover { background: #6a4529; }
 
+button.primary:disabled,
+button.primary:disabled:hover {
+  color: #b3aca4;
+  cursor: default;
+  background: #f4f1ec;
+  border-color: #e4ddd3;
+}
+
 button[hidden] { display: none; }
 
 .gate-title {

@@ -151,16 +151,28 @@ const Start = (() => {
   const cloudReady = () => typeof Cloud !== "undefined" && Cloud.isSignedIn();
   const formatCode = (code) => (code ? `${code.slice(0, 4)}-${code.slice(4)}` : "");
 
+  // 친구 방 구경 중에는 save가 잠시 친구 정보로 바뀌므로, 맡겨 둔 내 정보를 씀
+  const mine = () => (typeof visiting !== "undefined" && visiting && ownSave ? ownSave : save);
+
   async function openProfile() {
-    const name = (save.profile && save.profile.name) || "이름 없음";
-    const city = CITIES.find((c) => c.id === (save.profile && save.profile.city));
+    const me = mine();
+    const away = me !== save;
+    const name = (me.profile && me.profile.name) || "이름 없음";
+    const city = CITIES.find((c) => c.id === (me.profile && me.profile.city));
     $("pf-name").textContent = name;
     $("pf-city").textContent = city ? city.name : "정하지 않음 (무작위 날씨)";
     const avatar = $("pf-avatar");
     avatar.innerHTML = "";
-    avatar.append(makeHeroPreview());
+    avatar.append(makeHeroPreview(me.look));
     showCode();
+    // 구경 중에는 캐릭터를 바꿀 수 없음 (내 방으로 돌아가서)
+    $("pf-edit").disabled = away;
+    $("pf-edit").title = away ? "내 방으로 돌아가면 바꿀 수 있어요" : "";
+    $("pf-note").textContent = away
+      ? "친구 방을 구경하는 중이에요. 캐릭터는 내 방으로 돌아가서 바꿀 수 있어요."
+      : "고유번호는 나중에 친구를 추가할 때 써요.";
     $("profile").hidden = false;
+    if (away) return;
 
     // 고유번호가 아직 없으면 받아오기
     if (!save.friendCode && cloudReady()) {
@@ -171,7 +183,7 @@ const Start = (() => {
   }
 
   function showCode() {
-    const code = save.friendCode;
+    const code = mine().friendCode;
     $("pf-code").textContent = code ? formatCode(code) : cloudReady() ? "받아오지 못했어요" : "로그인하면 생겨요";
     $("pf-copy").hidden = !code;
     $("pf-copy").textContent = "복사";
@@ -183,7 +195,7 @@ const Start = (() => {
 
   async function copyCode() {
     try {
-      await navigator.clipboard.writeText(formatCode(save.friendCode));
+      await navigator.clipboard.writeText(formatCode(mine().friendCode));
       $("pf-copy").textContent = "복사됨";
     } catch (e) {
       $("pf-copy").textContent = "복사 실패";
@@ -219,6 +231,7 @@ const Start = (() => {
   $("pf-close").addEventListener("click", closeProfile);
   $("pf-copy").addEventListener("click", copyCode);
   $("pf-edit").addEventListener("click", () => {
+    if (mine() !== save) return; // 구경 중에는 막기
     closeProfile();
     openOnboarding(true);
   });
