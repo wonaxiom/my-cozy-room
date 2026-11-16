@@ -788,12 +788,13 @@ function setRoom(id) {
   refreshItems();
   if ((addDecor || settled) && !visiting && ownsRoom()) {
     save.decorDone[room.id] = true;
-    saveLayout();
+    saveLayout({ auto: true }); // 앱을 열 때 하는 정리
   }
   if (typeof setEditing === "function") setEditing(editing);
   roomName.textContent = room.name;
+  const moved = save.roomId !== room.id;
   save.roomId = room.id;
-  Save.save(save);
+  Save.save(save, { auto: !moved });
   placeHeroInRoom();
   placePet();
   for (const w of walkers.values()) placeWalker(w);
@@ -894,10 +895,10 @@ function lightPeriod() {
   return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()} ${night ? "밤" : "낮"}`;
 }
 
-function toggleLight(item) {
+function toggleLight(item, auto = false) {
   item.off = isLit(item);
   item.lightAt = lightPeriod(); // 사람이든 캐릭터든 이 시간대에 이미 만졌음
-  saveLayout();
+  saveLayout({ auto }); // 캐릭터가 켜고 끈 것은 자동 저장
 }
 
 function makeItem(p) {
@@ -914,7 +915,7 @@ function refreshItems() {
   blockers = objects.filter((f) => f.z === 0).map(footprint);
 }
 
-function saveLayout() {
+function saveLayout(opts) {
   save.layouts = save.layouts || {};
   save.layouts[room.id] = items.map((f) => ({
     id: f.id, x: f.x, y: f.y, z: f.z,
@@ -924,7 +925,7 @@ function saveLayout() {
     off: typeof f.off === "boolean" ? f.off : undefined, // 조명 켜짐·꺼짐
     lightAt: f.lightAt || undefined,                      // 조명을 마지막으로 만진 시간대
   }));
-  Save.save(save);
+  Save.save(save, opts);
 }
 
 function changeRoom(step) {
@@ -1983,7 +1984,7 @@ function startUse() {
   const sdx = c ? 0 : (f.x + f.w / 2 - hero.x) - (f.y + f.d / 2 - hero.y);
   if (Math.abs(sdx) > 0.5) hero.dir = Math.sign(sdx);
   if (mode === "sitChair" && seatFacing(plan.item)) hero.dir = seatFacing(plan.item);
-  if (mode === "lamp") toggleLight(plan.item);
+  if (mode === "lamp") toggleLight(plan.item, true);
 }
 
 function endUse() {
@@ -4155,7 +4156,7 @@ function earn() {
     updateCoins(gained);
     if (offline) toast(`자리를 비운 동안 ${gained}코인이 모였어요.`);
   }
-  Save.save(save);
+  Save.save(save, { auto: true }); // 코인이 쌓이는 것은 자동 저장
 }
 
 // 테스트용: 주소 뒤에 ?coins=1000 을 붙이면 코인이 그 값으로 바뀝니다.

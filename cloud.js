@@ -21,6 +21,9 @@ const Cloud = (() => {
   let ready = false;   // 계정 데이터를 한 번 맞춘 뒤부터 올리기 시작
   let syncing = false;
   let timer = null;
+  // 여러 기기 맞추기: 실제로 바꾼 시각(editedAt)이 더 최근인 쪽을 씁니다.
+  // (코인이 쌓이는 자동 저장은 바꾼 것으로 치지 않아서, 켜 두기만 한 기기가 덮어쓰지 않음)
+  const editedOf = (d) => (d && (d.editedAt || d.savedAt)) || 0;
 
   function setStatus(text) {
     statusEl.textContent = text ? "· " + text : "";
@@ -56,11 +59,8 @@ const Cloud = (() => {
 
     // 계정에 데이터가 있고, 이 컴퓨터 데이터가 다른 사람(또는 로그인 전) 것이거나 더 오래됐으면
     // 계정 데이터로 바꾸고 다시 엽니다.
-    if (remote && (save.owner !== user.id || (remote.savedAt || 0) > (save.savedAt || 0))) {
-      remote.owner = user.id;
-      Save.locked = true; // 페이지를 다시 여는 동안 옛 데이터가 덮어쓰지 않게
-      localStorage.setItem(Save.KEY, JSON.stringify(remote));
-      location.reload();
+    if (remote && (save.owner !== user.id || editedOf(remote) > editedOf(save))) {
+      adopt(remote);
       return;
     }
 
@@ -68,8 +68,12 @@ const Cloud = (() => {
     // (처음 로그인하면 지금까지 한 진행 상황이 계정으로 옮겨집니다)
     save.owner = user.id;
     ready = true;
-    Save.save(save);
+    Save.save(save, { auto: true }); // 로그인할 때의 저장은 바꾼 것으로 치지 않음
     Start.ready();
+    if (sessionStorage.getItem("cozy-pulled")) {
+      sessionStorage.removeItem("cozy-pulled");
+      toast("다른 기기에서 바꾼 내용을 불러왔어요.");
+    }
     await upload();
     await loadProfile();
     if (typeof Friends !== "undefined") Friends.start(client, user);
@@ -83,9 +87,31 @@ const Cloud = (() => {
     if (error || !data) return null;
     if (save.friendCode !== data) {
       save.friendCode = data;
-      Save.save(save);
+      Save.save(save, { auto: true });
     }
     return data;
+  }
+
+  // 계정 데이터로 바꾸고 페이지를 다시 엶
+  function adopt(remote) {
+    remote.owner = user.id;
+    Save.locked = true; // 페이지를 다시 여는 동안 옛 데이터가 덮어쓰지 않게
+    localStorage.setItem(Save.KEY, JSON.stringify(remote));
+    location.reload();
+  }
+
+  // 다른 기기가 그사이에 올렸으면 그 내용을 받아옴 (덮어쓰지 않게). 받아왔으면 true
+  async function pullIfChanged() {
+    if (!user || !ready || visiting) return false;
+    const { data, error } = await client
+      .from("game_saves")
+      .select("data")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (error || !data || !data.data || editedOf(data.data) <= editedOf(save)) return false;
+    sessionStorage.setItem("cozy-pulled", "1");
+    adopt(data.data);
+    return true;
   }
 
   async function upload() {
@@ -93,6 +119,7 @@ const Cloud = (() => {
     timer = null;
     if (!user || !ready) return;
     if (visiting) { queue(); return; } // 친구 방 구경 중에는 돌아온 뒤에 저장
+    if (await pullIfChanged()) return; // 다른 기기에서 바뀌었으면 올리지 않고 받아옴
     setStatus("저장 중…");
     const { error } = await client.from("game_saves").upsert({
       user_id: user.id,
@@ -150,7 +177,10 @@ const Cloud = (() => {
     // 창을 닫거나 다른 창으로 갈 때는 바로 올립니다.
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "hidden" && timer) upload();
+      if (document.visibilityState === "visible") pullIfChanged(); // 다시 볼 때 다른 기기 변경 확인
     });
+    // 켜 둔 동안에도 1분마다 확인
+    setInterval(() => { if (document.visibilityState === "visible") pullIfChanged(); }, 60000);
 
     client.auth.onAuthStateChange((event, session) => {
       const before = user && user.id;

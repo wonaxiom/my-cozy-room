@@ -45,9 +45,12 @@ const Save = {
   locked: false,  // 계정 데이터로 바꿔 끼우는 동안 저장을 멈춤
   onSave: null,   // 저장할 때마다 부를 함수 (계정 저장용)
 
-  save(data) {
+  // opts.auto: 코인이 쌓이는 것처럼 저절로 일어난 저장. "바꾼 시각(editedAt)"은 그대로 둡니다.
+  // 여러 기기를 쓸 때 editedAt이 더 최근인 쪽의 데이터를 씁니다. (cloud.js)
+  save(data, opts = {}) {
     if (this.locked) return;
     data.savedAt = Date.now();
+    if (!opts.auto) data.editedAt = data.savedAt;
     if (this.onSave) this.onSave();
     try {
       localStorage.setItem(this.KEY, JSON.stringify(data));
