@@ -2162,7 +2162,7 @@ function heroRows(name, lookIn = save.look) {
 
   // 장신구 (머리카락 위에)
   const recolorRow = (r, from, to) => { if (rows[r]) rows[r] = rows[r].map((ch) => (ch === from ? to : ch)); };
-  if (look.acc === "cap" || look.acc === "beanie" || look.acc === "strawHat") {
+  if ((look.acc === "cap" || look.acc === "beanie" || look.acc === "strawHat") && !headOnly) { // 잘 때는 모자를 벗음
     recolorRow(0, "H", "X"); recolorRow(1, "H", "X");
     if (look.acc === "beanie") recolorRow(2, "H", "Y");
     else for (let c = look.acc === "strawHat" ? 0 : 1; c <= 9; c++) put(2, c, "Y"); // 챙
@@ -2389,6 +2389,7 @@ const HAT_IDS = ["cap", "beanie", "strawHat"]; // 머리를 덮는 모자 (모�
 function drawAccessoryArt(look, rows, frame, w, h, px, clear, gender) {
   const acc = ACCESSORIES.find((a) => a.id === look.acc);
   if (!acc) return;
+  if (frame === "sleep" && HAT_IDS.includes(acc.id)) return; // 잘 때는 모자를 벗음 (머리띠·리본·머리핀은 그대로)
   const art = typeof ACC_ART !== "undefined" && ACC_ART.items[acc.id];
   const head = art && heroArtHead(gender, look.hair, frame);
   if (art && head) {
