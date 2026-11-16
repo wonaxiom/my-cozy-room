@@ -1679,3 +1679,14 @@ const FURNITURE = {
   },
 
 };
+
+// 잠자리 가구는 처음 방향에서 베개(머리)가 벽 쪽(화면 뒤)에 오도록 앞뒤를 뒤집어 둡니다.
+// (모양은 베개가 앞쪽인 기준으로 적혀 있어서, 불러올 때 x 방향만 거울처럼 바꿈)
+for (const f of Object.values(FURNITURE)) {
+  if (!f.sleep) continue;
+  const W = Math.min(...f.parts.map((q) => q[0])) + Math.max(...f.parts.map((q) => q[0] + q[3]));
+  const flip = (q) => [W - q[0] - q[3], ...q.slice(1)];
+  f.parts = f.parts.map(flip);
+  if (f.detail) f.detail = f.detail.map(flip);
+  f.sleep = { side: [W - f.sleep.side[0], f.sleep.side[1]], pillow: [W - f.sleep.pillow[0], ...f.sleep.pillow.slice(1)] };
+}

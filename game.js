@@ -2654,7 +2654,52 @@ function drawActivityIcon(p) {
 function drawSleeper() {
   if (hero.mode !== "sleep") return;
   const p = project(...pillowPos());
-  drawHeroFrame("sleep", Math.round(p.x), Math.round(p.y), false);
+  const b = bedItem();
+  // 머리를 그린 뒤, 베개보다 앞(화면 아래)에 있는 잠자리 부분(머리판 등)을 다시 그려 머리를 가리게 함
+  const head = () => { drawHeroFrame("sleep", Math.round(p.x), Math.round(p.y), false); drawBedFront(b); };
+  const mound = useHeroArt() && sleepMound(b);
+  if (!mound) { head(); return; }
+  // ver.세밀: 이불 위에 몸 모양으로 볼록한 부분을 그림. 머리가 이불보다 뒤(화면 위)면 머리를 먼저 그려 이불이 턱을 덮게 함
+  const [x, y, z, w, d, h, color] = mound;
+  const drawMound = () => { outlineBox(x, y, z, w, d, h); box(x, y, z, w, d, h, color); };
+  const [hx, hy] = pillowPos();
+  if (hx + hy < x + w / 2 + y + d / 2) { head(); drawMound(); }
+  else { drawMound(); head(); }
+}
+
+// 베개보다 확실히 앞에 있는 잠자리 상자들
+function drawBedFront(b) {
+  const [px, py] = turnedPoint(b, b.sleep.pillow);
+  const [, , pz] = b.sleep.pillow;
+  // 얼굴을 다 가리지 않게, 베개 높이 근처까지 오는 낮은 부분만 (머리판처럼 높은 판은 빼기)
+  const front = partsOf(b).filter(([x, y, z, w, d, h]) => (x >= px + 1.5 || y >= py + 1.5) && z + h <= pz + 2 && w >= 0.05 && d >= 0.05); // 판에 붙인 얇은 무늬도 빼기
+  if (artStyle === "detail") for (const [x, y, z, w, d, h] of front) outlineBox(b.x + x, b.y + y, b.z + z, w, d, h);
+  for (const [x, y, z, w, d, h, color] of front) box(b.x + x, b.y + y, b.z + z, w, d, h, color);
+}
+
+// 이불 속 몸: 잠자리의 이불 상자 위, 베개 바로 앞까지 몸 폭만큼 볼록하게 (가구 방향에 맞춰)
+function sleepMound(b) {
+  const covers = partsOf(b).filter((q) => /^(blanket|blanketRed|futonQuilt)$/.test(q[6]));
+  if (!covers.length) return null;
+  const [cx, cy, cz, cw, cd, ch, color] = covers.reduce((a, q) => (q[3] * q[4] * q[5] > a[3] * a[4] * a[5] ? q : a));
+  const [px, py] = turnedPoint(b, b.sleep.pillow);
+  const top = cz + ch, half = 2.6, gap = 1.8;
+  let x1, x2, y1, y2;
+  if (Math.abs(px - (cx + cw / 2)) > Math.abs(py - (cy + cd / 2))) { // 몸이 x 방향으로 누움
+    [x1, x2] = px > cx + cw / 2 ? [cx + 1, px - gap] : [px + gap, cx + cw - 1];
+    [y1, y2] = [py - half, py + half];
+  } else {
+    [y1, y2] = py > cy + cd / 2 ? [cy + 1, py - gap] : [py + gap, cy + cd - 1];
+    [x1, x2] = [px - half, px + half];
+  }
+  return [b.x + x1, b.y + y1, b.z + top, x2 - x1, y2 - y1, 1.2, color];
+}
+
+// 상자 하나의 외곽선 (ver.세밀)
+function outlineBox(x, y, z, w, d, h) {
+  const u = 1 / RES;
+  const pts = [[x, y, z + h], [x + w, y, z + h], [x + w, y, z], [x + w, y + d, z], [x, y + d, z], [x, y + d, z + h]].map((q) => project(...q));
+  for (const [ox, oy] of [[u, 0], [-u, 0], [0, u], [0, -u]]) fillPoly(ctx, pts.map((q) => ({ x: q.x + ox, y: q.y + oy })), OUTLINE);
 }
 
 // ---- 반려동물 ----------------------------------------------------

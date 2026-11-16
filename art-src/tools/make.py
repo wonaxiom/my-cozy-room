@@ -98,7 +98,7 @@ def build(pre):
             EB=[] if isback else [[b[0]+ox+ox0,b[2]+oy+padT,b[1]+ox+ox0,b[3]+oy+padT] for b in sorted(eyeb)]
             res[st][f]=(C,G,EB,HL)
             if f=='blink':
-                cut=ii['chin']+oy+padT+3
+                cut=ii['chin']+oy+padT+1   # 턱까지만 (몸은 이불 속)
                 res[st]['sleep']=(C[:cut].copy(),G[:cut].copy(),EB,HL)
         res[st]['work']=res[st]['type']
     return res
