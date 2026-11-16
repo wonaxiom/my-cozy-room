@@ -2254,6 +2254,59 @@ function heroArtEyes(rows) {
   return boxes;
 }
 
+// ver.세밀 하의 모양: 바지 그림을 반바지(무릎 아래 맨다리)나 치마(허리에서 퍼짐)로 바꿈
+function drawBottomArt(look, rows, w, h, px, colors) {
+  const type = findBy(BOTTOMS, look.bottom).type;
+  if (type !== "shorts" && type !== "skirt") return;
+  const partAt = (x, y) => { const p = HERO_ART.palette[(rows[y] || "")[x]]; return p ? p[1] : null; };
+  let y1 = h, y2 = -1;
+  const span = {};
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (partAt(x, y) !== "bottom") continue;
+      y1 = Math.min(y1, y); y2 = Math.max(y2, y);
+      const sp = span[y] || (span[y] = [x, x]);
+      sp[0] = Math.min(sp[0], x); sp[1] = Math.max(sp[1], x);
+    }
+  }
+  if (y2 < 0) return;
+  const skin = colors.S, skinShade = mixColor(colors.S, "#000000", 0.12);
+  const cut = y1 + Math.max(2, Math.round((y2 - y1 + 1) * (type === "shorts" ? 0.45 : 0.6)));
+  // 바지 아랫부분 → 맨다리
+  for (let y = cut; y <= y2; y++) {
+    for (let x = 0; x < w; x++) {
+      if (partAt(x, y) !== "bottom") continue;
+      const edge = partAt(x + 1, y) !== "bottom";
+      px(x, y, edge ? skinShade : skin);
+    }
+  }
+  if (type === "shorts") {
+    const sp = span[cut - 1];
+    if (sp) for (let x = sp[0]; x <= sp[1]; x++) if (partAt(x, cut - 1) === "bottom") px(x, cut - 1, mixColor(colors.P, "#000000", 0.18)); // 밑단
+    return;
+  }
+  // 치마: 허리에서 아래로 갈수록 한 칸씩 넓어짐, 다리 사이도 채움
+  const top = span[y1];
+  const hem = mixColor(colors.P, "#000000", 0.2), light = mixColor(colors.P, "#ffffff", 0.18);
+  const filled = new Set();
+  for (let y = y1; y < cut + 1; y++) {
+    const grow = Math.floor((y - y1) / 2);
+    const x1 = top[0] - grow, x2 = top[1] + grow;
+    for (let x = x1; x <= x2; x++) {
+      px(x, y, y === cut ? hem : x === x1 ? light : x === x2 ? hem : colors.P);
+      filled.add(y * w + x);
+    }
+  }
+  // 새로 넓어진 치마 바깥에 외곽선
+  for (const k of filled) {
+    const x = k % w, y = Math.floor(k / w);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1]]) {
+      const nx = x + dx, ny = y + dy;
+      if (!filled.has(ny * w + nx) && !partAt(nx, ny)) px(nx, ny, OUTLINE);
+    }
+  }
+}
+
 // ver.세밀 얼굴: 눈 모양(큰 눈·실눈), 입 모양, 성별(여자는 속눈썹과 볼터치)
 // 그림마다 눈 위치를 찾아 그 자리를 기준으로 그립니다. (뒷모습·잠자기는 건너뜀)
 const FACE = { eye: "#2a2530", mouth: "#b85a5a", open: "#7a2e35", teeth: "#ffffff", blush: "#f4a3a3" };
@@ -2407,6 +2460,7 @@ function heroArtCanvas(name, lookIn, flip) {
     const [orig, part] = p;
     px(x, y, target[part] ? recolor(orig, HERO_ART.base[part], target[part]) : orig);
   }));
+  drawBottomArt(look, rows, w, h, px, colors);
   drawFaceArt(look, rows, frame, set, px, colors);
   drawAccessoryArt(look, rows, frame, w, h, px);
   // 안경·선글라스: 눈 자리에 테와 렌즈 (눈 감은 그림은 뜬 그림의 눈 자리를 씀)
