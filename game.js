@@ -196,9 +196,9 @@ function shadeOf(key, amount) {
 // ---- 입체 그리기 도우미 ------------------------------------------
 // 방 좌표(x, y, z)를 화면 좌표로 바꿉니다.
 let viewOX = OX, viewOY = OY; // 미리보기를 그릴 때 잠시 바뀝니다.
-// ver.세밀에서는 방과 가구를 조금 작게 그려서 캐릭터가 상대적으로 커 보이게 합니다.
+// 방과 가구를 조금 작게 그려서 캐릭터가 상대적으로 커 보이게 합니다. (ver.하찮·세밀 모두 같은 크기)
 // (캐릭터 도트는 크기를 바꾸면 고르지 않게 깨지므로, 대신 방 쪽을 줄임)
-const WORLD_DETAIL = 0.8;
+const WORLD_SCALE = 0.8;
 let WS = 1;
 function project(x, y, z) {
   return { x: viewOX + (x - y) * WS, y: viewOY + ((x + y) / 2 - z) * WS };
@@ -805,7 +805,7 @@ function setRoom(id) {
 function setOrigin(r) {
   viewOX = OX + ((r.offset && r.offset[0]) || 0);
   viewOY = OY + ((r.offset && r.offset[1]) || 0);
-  WS = typeof artStyle !== "undefined" && artStyle === "detail" ? WORLD_DETAIL : 1;
+  WS = WORLD_SCALE;
   if (WS !== 1) {
     // 방 가운데가 같은 자리에 오도록 (가운데를 기준으로 줄임)
     const cx = (r.width || ROOM) / 2, cy = (r.depth || ROOM) / 2, cz = (r.wallHeight || 44) / 3;
