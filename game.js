@@ -381,6 +381,10 @@ function drawDecor(item) {
     drawClockOnWall(wall, a0 + 6, z0 + 6);
     return;
   }
+  if (item.decor === "digital") {
+    drawDigitalClockOnWall(wall, a0 + 8, z0 + 4.5);
+    return;
+  }
   const win = { wall, style: item.style, closed: item.closed };
   if (item.style === "curtain") Object.assign(win, { y1: a0 + 5, y2: a0 + 29, z1: z0 + 3, z2: z0 + 23 });
   else if (item.style === "shoji") Object.assign(win, { y1: a0 + 1, y2: a0 + 33, z1: z0 + 2, z2: z0 + 26 });
@@ -1129,6 +1133,70 @@ function drawClockOnWall(wall, ca, cz) {
       ctx.fillRect(px * u, py * u, u, u);
     }
   }
+}
+
+// 벽면 위의 작은 점(1/3칸)마다 color(h, v)를 물어서 칠합니다.
+// h: 보는 사람 기준 오른쪽(+), v: 위쪽(+) — 벽 위 칸 단위. 빈칸이면 null.
+function paintOnWall(wall, ca, cz, halfA, halfZ, color) {
+  const c = project(...surfacePoint(wall, ca, cz));
+  const n = project(...surfacePoint(wall, ca + 0.5, cz));
+  const ex = (n.x - c.x) * 2, ey = (n.y - c.y) * 2;
+  const faceRight = ex > 0 ? 1 : -1;
+  const u = 1 / 3;
+  const spanX = Math.abs(ex) * halfA + 1, spanY = Math.abs(ey) * halfA + halfZ + 1;
+  const x0 = Math.floor((c.x - spanX) * 3), x1 = Math.ceil((c.x + spanX) * 3);
+  const y0 = Math.floor((c.y - spanY) * 3), y1 = Math.ceil((c.y + spanY) * 3);
+  for (let py = y0; py < y1; py++) {
+    for (let px = x0; px < x1; px++) {
+      const sx = (px + 0.5) / 3 - c.x, sy = (py + 0.5) / 3 - c.y;
+      const da = sx / ex;
+      const col = color(da * faceRight, da * ey - sy);
+      if (!col) continue;
+      ctx.fillStyle = col;
+      ctx.fillRect(px * u, py * u, u, u);
+    }
+  }
+}
+
+// 전자 시계: 7칸짜리 숫자 조각으로 24시간 HH:MM, 콜론은 1초마다 깜빡임
+const DIGITAL = {
+  case: "#2f3136",
+  caseLight: "#4a4d54",
+  screen: "#141619",
+  on: "#ff7a45",
+  off: "#1f1716",
+};
+// 숫자별로 켜지는 조각 (a 위, b 오른쪽 위, c 오른쪽 아래, d 아래, e 왼쪽 아래, f 왼쪽 위, g 가운데)
+const SEGMENTS = ["abcdef", "bc", "abged", "abgcd", "fgbc", "afgcd", "afgedc", "abc", "abcdefg", "abcdfg"];
+
+function segmentAt(h, v) {
+  const w = 1.9, top = 2, t = 0.45;
+  const inH = (a, b) => h >= a && h <= b, inV = (a, b) => v >= a && v <= b;
+  if (inV(top - t, top) && inH(-w / 2 + t / 2, w / 2 - t / 2)) return "a";
+  if (inV(-top, -top + t) && inH(-w / 2 + t / 2, w / 2 - t / 2)) return "d";
+  if (inV(-t / 2, t / 2) && inH(-w / 2 + t / 2, w / 2 - t / 2)) return "g";
+  if (inH(w / 2 - t, w / 2)) return inV(0.15, top - 0.2) ? "b" : inV(-top + 0.2, -0.15) ? "c" : null;
+  if (inH(-w / 2, -w / 2 + t)) return inV(0.15, top - 0.2) ? "f" : inV(-top + 0.2, -0.15) ? "e" : null;
+  return null;
+}
+
+function drawDigitalClockOnWall(wall, ca, cz) {
+  const d = now();
+  const text = String(d.getHours()).padStart(2, "0") + String(d.getMinutes()).padStart(2, "0");
+  const colon = d.getSeconds() % 2 === 0;
+  const digitX = [-4.6, -2.1, 2.1, 4.6];
+  paintOnWall(wall, ca, cz, 8, 4.5, (h, v) => {
+    if (Math.abs(h) > 8 || Math.abs(v) > 4.5) return null;
+    if (Math.abs(h) > 7.3 || Math.abs(v) > 3.8) return v > 3.8 ? DIGITAL.caseLight : DIGITAL.case;
+    // 숫자
+    for (let i = 0; i < 4; i++) {
+      const seg = segmentAt(h - digitX[i], v);
+      if (seg) return SEGMENTS[+text[i]].includes(seg) ? DIGITAL.on : DIGITAL.off;
+    }
+    // 콜론
+    if (Math.abs(h) < 0.3 && (Math.abs(v - 0.9) < 0.3 || Math.abs(v + 0.9) < 0.3)) return colon ? DIGITAL.on : DIGITAL.off;
+    return DIGITAL.screen;
+  });
 }
 
 function drawClockAt(c) {

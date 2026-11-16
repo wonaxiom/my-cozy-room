@@ -742,7 +742,7 @@ const FURNITURE = {
   },
 
   // ---- 창문과 시계 (벽에 거는 장식) ----
-  // decor: "window"(창문) / "clock"(시계), style: 창문 모양
+  // decor: "window"(창문) / "clock"(시계) / "digital"(전자 시계), style: 창문 모양
   // parts는 벽에서 차지하는 크기(가로·높이)를 정하는 데 씁니다. 실제 모양은 game.js가 그립니다.
   windowCurtain: {
     name: "커튼 창문", type: "wall", decor: "window", style: "curtain",
@@ -768,6 +768,11 @@ const FURNITURE = {
     name: "벽시계", type: "wall", decor: "clock",
     category: "prop", price: 50,
     parts: [[0, 0, 0, 12, 1, 12, "woodDark"]],
+  },
+  digitalClock: {
+    name: "전자 시계", type: "wall", decor: "digital",
+    category: "prop", price: 70,
+    parts: [[0, 0, 0, 16, 1, 9, "metal"]],
   },
 
   // ---- 원형 탑방 ----
