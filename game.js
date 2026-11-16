@@ -314,8 +314,31 @@ function imageRect(item, img) {
   return { x: Math.round(left + ox), y: Math.round(bottom - img.height + oy), w: img.width, h: img.height };
 }
 
+// ---- 그림 스타일 ---------------------------------------------------
+// "simple" = ver.하찮 (기본), "detail" = ver.세밀 (data.js의 detail 상자를 씀)
+// 보는 사람 기기에만 저장합니다. (친구 방에 놀러 가도 내가 고른 스타일로 보임)
+const ART_KEY = "cozyroom-art";
+let artStyle = "simple";
+try { artStyle = localStorage.getItem(ART_KEY) === "detail" ? "detail" : "simple"; } catch (e) { /* 저장소를 못 쓰면 기본 */ }
+
+const artBtn = document.getElementById("art-btn");
+function showArtStyle() {
+  artBtn.textContent = artStyle === "detail" ? "ver.세밀" : "ver.하찮";
+}
+showArtStyle();
+artBtn.addEventListener("click", () => {
+  artStyle = artStyle === "detail" ? "simple" : "detail";
+  try { localStorage.setItem(ART_KEY, artStyle); } catch (e) { /* 이번에만 적용 */ }
+  showArtStyle();
+  afterLayoutChange();
+  renderBag();
+  if (!shopEl.hidden) renderShop();
+  toast(artStyle === "detail" ? "ver.세밀로 볼게요." : "ver.하찮으로 볼게요.");
+});
+
 // 상자 목록 (parts가 없으면 size 크기의 상자 하나)
 function rawParts(item) {
+  if (artStyle === "detail" && item.detail) return item.detail;
   if (item.parts) return item.parts;
   if (item.size) return [[0, 0, 0, item.size[0], item.size[1], item.size[2] || 10, "wood"]];
   return [];
