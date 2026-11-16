@@ -24,22 +24,23 @@ def rle(row):
 out={}
 for g,pre in (('male','bm'),('female','bf')):
     R=build(pre)
-    C,G,_=R['short']['idle']; cnt={}
+    C,G,_,_=R['short']['idle']; cnt={}
     for y in range(C.shape[0]):
         for x in range(C.shape[1]):
             if C[y,x,3] and G[y,x]: cnt.setdefault(G[y,x],Counter())[hx(C[y,x])]+=1
     base={k:cnt[k].most_common(1)[0][0] for k in ('hair','skin','top','bottom')}
     base['leg']=base['skin']
-    styles={}; eyes={}
+    styles={}; eyes={}; heads={}
     for st,frs in R.items():
-        seen={}; o={}; eyes[st]={}
-        for f,(C,G,EB) in frs.items():
+        seen={}; o={}; eyes[st]={}; heads[st]={}
+        for f,(C,G,EB,HL) in frs.items():
             rows,t=enc(C,G); key='/'.join(rows)
+            heads[st][f]=[int(HL[0]),int(HL[1])-t]
             if EB: eyes[st][f]=[[b[0],b[1]-t,b[2],b[3]-t] for b in EB]
             if key in seen: o[f]='='+seen[key]
             else: seen[key]=f; o[f]=[rle(r) for r in rows]
         styles[st]=o
-    out[g]={'base':base,'styles':styles,'eyes':eyes}; print(g,base,len(pal))
+    out[g]={'base':base,'styles':styles,'eyes':eyes,'heads':heads}; print(g,base,len(pal))
 data={'palette':{v:[k[0],k[1]] for k,v in pal.items()},'genders':out}
 js='''// =============================================================
 // hero-art.js — ver.세밀 캐릭터 그림 (기본 인간 모형 + 머리 모양 파츠를 합쳐 만든 도트 그림)
@@ -47,6 +48,7 @@ js='''// =============================================================
 // 글자 하나가 화면 픽셀 1개입니다. 옆을 보는 그림은 오른쪽을 보고, 왼쪽은 뒤집어 씁니다.
 // palette: 글자 → [원래 색, 부위]. 부위(hair·skin·leg·top·bottom)는 고른 색으로 바꿔 칠합니다.
 // eyes: 머리 모양·동작별 눈 위치 [x1, y1, x2, y2] (안경과 눈 모양을 그릴 자리)
+// heads: 머리 모양·동작별 민머리 머리의 왼쪽 위 [x, y] (모자 같은 장식을 얹을 자리)
 // leg: 하의 아래로 보이는 다리 (긴 바지를 고르면 바지 색으로 칠함)
 // 그림은 모두 가로 폭이 같고, 머리 가운데와 발 바닥이 맞춰져 있습니다.
 // =============================================================

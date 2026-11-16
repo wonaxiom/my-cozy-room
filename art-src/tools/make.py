@@ -53,6 +53,7 @@ def build(pre):
     eyeb=sorted(eyeb,key=len)[-2:]
     eyeb=[(min(p[1] for p in e),max(p[1] for p in e),min(p[0] for p in e),max(p[0] for p in e)) for e in eyeb]
     print(pre,'eyes',eyeb)
+    hli=int(min(np.nonzero((idle[:20,:,3]>0).any(0))[0])); hlb=int(min(np.nonzero((back[:20,:,3]>0).any(0))[0]))
     offs=[head_offset(idle,ii['chin'],a) if k!=20 else (0,0) for k,a in enumerate(frames)]
     res={}
     for si,st in enumerate(STYLES):
@@ -93,10 +94,11 @@ def build(pre):
                     if a[y,x,3]: put(a[y,x],L[y,x],x+ox0,y+padT)
             for y,x in hp:
                 if chinY is None or y+dy<chinY: put(hair[y,x],hl(hair[y,x]),x+dx+ox0,y+dy+padT)
+            HL=(hlb+ox0, padT) if isback else (hli+ox+ox0, oy+padT)   # 머리(민머리) 왼쪽 위
             EB=[] if isback else [[b[0]+ox+ox0,b[2]+oy+padT,b[1]+ox+ox0,b[3]+oy+padT] for b in sorted(eyeb)]
-            res[st][f]=(C,G,EB)
+            res[st][f]=(C,G,EB,HL)
             if f=='blink':
                 cut=ii['chin']+oy+padT+3
-                res[st]['sleep']=(C[:cut].copy(),G[:cut].copy(),EB)
+                res[st]['sleep']=(C[:cut].copy(),G[:cut].copy(),EB,HL)
         res[st]['work']=res[st]['type']
     return res

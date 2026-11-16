@@ -26,6 +26,8 @@
 | `start.js` | 첫 화면 (로그인, 캐릭터 만들기, 사는 곳) |
 | `friends.js` | 친구 (요청, 방 구경, 하트, 방명록, 선물, 채팅) |
 | `cloud.js` | 구글 로그인과 계정 저장 (Supabase) |
+| `hero-art.js`, `acc-art.js`, `pet-art.js` | ver.세밀 캐릭터, 장식, 반려동물 그림 (자동 생성) |
+| `art-src/` | 그림 원본과 정리 스크립트 |
 | `game.js` | 게임 동작 |
 
 ## 직접 바꿔보기

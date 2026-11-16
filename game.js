@@ -2377,9 +2377,44 @@ function drawFaceArt(look, rows, frame, gender, px, colors) {
 
 // ver.세밀 장신구: 그림마다 머리카락 범위를 찾아 그 위에 그립니다. (옆모습은 오른쪽을 봄)
 const SIDE_FRAMES = ["walk1", "walk2", "walk3", "walk4", "walk5", "walk6", "walk7", "walk8", "sitChair", "type", "water", "switch"];
-function drawAccessoryArt(look, rows, frame, w, h, px) {
+// 장식 그림(acc-art.js)을 얹을 자리: 민머리 머리의 왼쪽 위
+function heroArtHead(gender, hair, frame) {
+  const heads = HERO_ART.genders[gender].heads;
+  if (!heads) return null;
+  const byStyle = heads[hair] || heads.short;
+  return byStyle[frame] || byStyle.idle;
+}
+
+const HAT_IDS = ["cap", "beanie", "strawHat"]; // 머리를 덮는 모자 (모자 밖으로 삐져나온 머리카락을 지움)
+function drawAccessoryArt(look, rows, frame, w, h, px, clear, gender) {
   const acc = ACCESSORIES.find((a) => a.id === look.acc);
   if (!acc) return;
+  const art = typeof ACC_ART !== "undefined" && ACC_ART.items[acc.id];
+  const head = art && heroArtHead(gender, look.hair, frame);
+  if (art && head) {
+    const part = art[frame === "back" ? "back" : "front"];
+    const ox = head[0] + part.x, oy = head[1] + part.y;
+    const grid = part.rows.map(unRle);
+    const filled = (x, y) => { const ch = (grid[y - oy] || "")[x - ox]; return ch && ch !== "."; };
+    if (HAT_IDS.includes(acc.id)) {
+      // 모자 세로줄마다 모자 아래 끝보다 위에 있는 머리카락은 모자 속으로 들어간 것으로 보고 지움
+      for (let gx = 0; gx < Math.max(...grid.map((r) => r.length)); gx++) {
+        let bottom = -1;
+        grid.forEach((r, gy) => { if (r[gx] && r[gx] !== ".") bottom = gy; });
+        if (bottom < 0) continue;
+        const x = ox + gx;
+        for (let y = 0; y <= oy + bottom; y++) {
+          if (filled(x, y)) continue;
+          const p = HERO_ART.palette[(rows[y] || "")[x]];
+          if (p && (p[1] === "hair" || (p[1] === "keep" && y < head[1] + 4))) clear(x, y);
+        }
+      }
+    }
+    grid.forEach((r, gy) => [...r].forEach((ch, gx) => {
+      if (ch !== ".") px(ox + gx, oy + gy, ACC_ART.palette[ch]);
+    }));
+    return;
+  }
   // 머리카락 범위 (윗부분)
   let x1 = w, x2 = -1, y1 = h;
   rows.forEach((row, y) => [...row].forEach((ch, x) => {
@@ -2508,7 +2543,7 @@ function heroArtCanvas(name, lookIn, flip) {
   }));
   drawBottomArt(look, rows, w, h, px, colors, HERO_ART.genders[gender].base);
   drawFaceArt(look, rows, frame, gender, px, colors);
-  drawAccessoryArt(look, rows, frame, w, h, px);
+  drawAccessoryArt(look, rows, frame, w, h, px, (x, y) => g.clearRect(flip ? w - 1 - x : x, y, 1, 1), gender);
   // 안경·선글라스: 눈 자리에 테와 렌즈 (눈 감은 그림은 뜬 그림의 눈 자리를 씀)
   const kind = EYEWEAR[look.eyes];
   if (kind) {
