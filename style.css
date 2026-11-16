@@ -323,6 +323,12 @@ body.pip #sel-name { color: #e9e3da; }
   padding: 6px 10px;
 }
 
+.tabs .tab[hidden] { display: none; }
+
+/* 기간 한정 탭 */
+.tabs .tab-event { color: #b8463f; border-color: #e6c2bd; }
+.tabs .tab-event.active { color: #ffffff; background: #b8463f; border-color: #b8463f; }
+
 .card {
   display: flex;
   flex-direction: column;

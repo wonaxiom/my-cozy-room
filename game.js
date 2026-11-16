@@ -29,6 +29,8 @@ const WEATHER_DARK = { clear: 0, cloudy: 0.05, rain: 0.12, snow: 0.04 };
 // ?room=attic 처럼 붙이면 해당 방으로 시작합니다.
 const params = new URLSearchParams(location.search);
 const TEST_HOUR = params.has("hour") ? Number(params.get("hour")) : null;
+// ?month=7 처럼 붙이면 그 달처럼 보입니다. (기간 한정 상점 탭 확인용, 1~12)
+const TEST_MONTH = params.has("month") ? Number(params.get("month")) : null;
 
 // ---- 화면 준비 ---------------------------------------------------
 const app = document.getElementById("app");
@@ -66,6 +68,7 @@ let time = 0; // 게임 시작 후 흐른 시간(초)
 function now() {
   const d = new Date();
   if (TEST_HOUR !== null) d.setHours(TEST_HOUR);
+  if (TEST_MONTH !== null) d.setMonth(TEST_MONTH - 1, 15);
   return d;
 }
 
@@ -738,8 +741,16 @@ function drawItem(item) {
   for (const [dx, dy, dz, w, d, h, color] of partsOf(item)) {
     let key = color;
     if (item.light && !save.lampOn && PALETTE[key + "Off"]) key += "Off";
+    if (item.twinkle && key.startsWith("bulb")) key = twinkleColor(key);
     box(item.x + dx, item.y + dy, item.z + dz, w, d, h, key);
   }
+}
+
+// 반짝이는 전구: bulb1~bulb4가 시간에 따라 빨강·노랑·파랑·초록을 돌아가며 바뀜
+const BULBS = ["bulbR", "bulbY", "bulbB", "bulbG"];
+function twinkleColor(key) {
+  const n = Number(key.slice(4)) || 0;
+  return BULBS[(n + Math.floor(time * 1.5)) % BULBS.length];
 }
 
 // ver.세밀 외곽선: 가구 모양 전체를 1/3칸씩 상하좌우로 밀어 진한 색으로 먼저 칠하고,
@@ -3750,7 +3761,16 @@ function renderPets() {
   }
 }
 
+// 기간 한정 탭: 크리스마스는 11월 1일 ~ 1월 31일 (산 물건은 기간이 끝나도 계속 씀)
+function isXmasSeason() {
+  const m = now().getMonth(); // 0 = 1월
+  return m === 10 || m === 11 || m === 0;
+}
+
 function renderShop() {
+  const xmasTab = shopEl.querySelector('.tab[data-cat="xmas"]');
+  xmasTab.hidden = !isXmasSeason();
+  if (xmasTab.hidden && shopCategory === "xmas") shopCategory = "furniture";
   shopEl.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.cat === shopCategory));
   shopList.innerHTML = "";
   shopList.classList.toggle("wide", ["wall", "floor", "room"].includes(shopCategory));
@@ -3773,6 +3793,12 @@ function renderShop() {
     renderRooms();
     updateShopButtons();
     return;
+  }
+  if (shopCategory === "xmas") {
+    const note = document.createElement("div");
+    note.className = "shop-section";
+    note.textContent = "기간 한정 · 1월 31일까지 살 수 있어요. 산 물건은 기간이 끝나도 계속 쓸 수 있어요.";
+    shopList.append(note);
   }
   const entries = Object.entries(FURNITURE)
     .filter(([, f]) => f.category === shopCategory && f.price != null)
