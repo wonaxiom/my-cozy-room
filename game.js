@@ -315,24 +315,73 @@ function imageRect(item, img) {
 }
 
 // 상자 목록 (parts가 없으면 size 크기의 상자 하나)
-// flip이 켜진 가구(왼쪽 벽에 건 물건)는 가로·세로를 바꿔서 그립니다.
+function rawParts(item) {
+  if (item.parts) return item.parts;
+  if (item.size) return [[0, 0, 0, item.size[0], item.size[1], item.size[2] || 10, "wood"]];
+  return [];
+}
+
+// ---- 가구 방향 ----------------------------------------------------
+// 벽 가구: flip이 켜져 있으면 왼쪽 벽 (가로·세로를 바꿔서 그림)
+// 바닥 가구: rot 0~3 (90도씩 돌린 횟수). 예전 저장의 flip은 rot 1로 읽습니다.
+function rotOf(item) {
+  return item.type === "wall" ? 0 : (item.rot || 0) & 3;
+}
+
+// 가로·세로가 바뀌었는지
+function swapped(item) {
+  return item.type === "wall" ? !!item.flip : rotOf(item) % 2 === 1;
+}
+
+// 원래 방향일 때 가구가 차지하는 범위 (돌리는 기준)
+function baseSpan(item) {
+  let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+  for (const [dx, dy, , w, d] of rawParts(item)) {
+    x1 = Math.min(x1, dx); y1 = Math.min(y1, dy);
+    x2 = Math.max(x2, dx + w); y2 = Math.max(y2, dy + d);
+  }
+  return { W: x1 + x2, D: y1 + y2 };
+}
+
+// 가구 안의 한 점(x, y)을 돌린 방향에 맞게 옮깁니다.
+function rotPoint(item, x, y) {
+  const r = rotOf(item);
+  if (!r) return [x, y];
+  const { W, D } = baseSpan(item);
+  if (r === 1) return [D - y, x];
+  if (r === 2) return [W - x, D - y];
+  return [y, W - x];
+}
+
 function partsOf(item) {
-  let parts = [];
-  if (item.parts) parts = item.parts;
-  else if (item.size) parts = [[0, 0, 0, item.size[0], item.size[1], item.size[2] || 10, "wood"]];
-  if (!item.flip) return parts;
-  return parts.map(([dx, dy, dz, w, d, h, c]) => [dy, dx, dz, d, w, h, c]);
+  const parts = rawParts(item);
+  if (item.type === "wall") {
+    if (!item.flip) return parts;
+    return parts.map(([dx, dy, dz, w, d, h, c]) => [dy, dx, dz, d, w, h, c]);
+  }
+  if (!rotOf(item)) return parts;
+  return parts.map(([dx, dy, dz, w, d, h, c]) => {
+    const [ax, ay] = rotPoint(item, dx, dy);
+    const [bx, by] = rotPoint(item, dx + w, dy + d);
+    return [Math.min(ax, bx), Math.min(ay, by), dz, Math.abs(bx - ax), Math.abs(by - ay), h, c];
+  });
 }
 
 // ---- 가구 정보 계산 ----------------------------------------------
-// 바닥에서 차지하는 영역
-// 방향을 돌린(flip) 가구는 가로·세로 값이 서로 바뀝니다.
+// 크기 값 (가로·세로가 바뀌었으면 서로 바꿈)
 function turned(item, v) {
-  return item.flip ? [v[1], v[0], ...v.slice(2)] : v;
+  return swapped(item) ? [v[1], v[0], ...v.slice(2)] : v;
 }
 
+// 가구 안의 자리 (베개, 서는 곳 등)를 돌린 방향에 맞게
+function turnedPoint(item, v) {
+  if (item.type === "wall") return turned(item, v);
+  return [...rotPoint(item, v[0], v[1]), ...v.slice(2)];
+}
+
+// 바닥에서 차지하는 영역
 function footprint(item) {
-  if (item.size) {
+  if (item.size && !item.parts) {
     const [w, d] = turned(item, item.size);
     return { x: item.x, y: item.y, w, d };
   }
@@ -361,7 +410,7 @@ function screenBounds(item) {
 
 // 그림 가구: 방향을 돌렸으면 좌우를 뒤집어 그립니다.
 function drawMirrored(item, img, r) {
-  if (!item.flip) {
+  if (!swapped(item)) {
     ctx.drawImage(img, r.x, r.y);
     return;
   }
@@ -506,7 +555,10 @@ function buyRoom(r) {
 }
 
 function makeItem(p) {
-  return Object.assign({}, FURNITURE[p.id], { id: p.id, x: p.x, y: p.y, z: p.z, flip: !!p.flip, closed: !!p.closed });
+  const f = FURNITURE[p.id];
+  const wall = f.type === "wall";
+  const rot = wall ? 0 : p.rot != null ? p.rot : p.flip ? 1 : 0; // 예전 저장은 flip
+  return Object.assign({}, f, { id: p.id, x: p.x, y: p.y, z: p.z, flip: wall && !!p.flip, rot, closed: !!p.closed });
 }
 
 function refreshItems() {
@@ -519,7 +571,10 @@ function refreshItems() {
 function saveLayout() {
   save.layouts = save.layouts || {};
   save.layouts[room.id] = items.map((f) => ({
-    id: f.id, x: f.x, y: f.y, z: f.z, flip: f.flip || undefined, closed: f.closed || undefined,
+    id: f.id, x: f.x, y: f.y, z: f.z,
+    flip: (f.type === "wall" && f.flip) || undefined,
+    rot: rotOf(f) || undefined,
+    closed: f.closed || undefined,
   }));
   Save.save(save);
 }
@@ -1252,7 +1307,7 @@ function drawLighting(phase) {
   const dark = Math.min(0.6, darknessOf(phase) + (phase !== "night" && curtainsAllClosed() ? 0.15 : 0));
   const lights = save.lampOn ? items.filter((f) => f.light) : [];
   const lightPos = (f) => {
-    const [lx, ly, lz] = turned(f, [f.light.x, f.light.y, f.light.z]);
+    const [lx, ly, lz] = turnedPoint(f, [f.light.x, f.light.y, f.light.z]);
     return project(f.x + lx, f.y + ly, f.z + lz);
   };
 
@@ -1332,14 +1387,14 @@ function bedItem() {
 
 function pillowPos() {
   const b = bedItem();
-  const [px, py, pz] = turned(b, b.sleep.pillow);
+  const [px, py, pz] = turnedPoint(b, b.sleep.pillow);
   return [b.x + px, b.y + py, b.z + pz];
 }
 
 // 잠들기 전 서는 자리 (막혀 있으면 잠자리 주변의 빈 곳)
 function bedSide() {
   const b = bedItem();
-  return spotNear(b, turned(b, b.sleep.side));
+  return spotNear(b, turnedPoint(b, b.sleep.side));
 }
 
 // 가구 옆에 설 자리 (정해 둔 자리가 막혀 있으면 가구 주변의 빈 곳)
@@ -1459,7 +1514,7 @@ function updateHeroLocal(dt, h) {
   if (desk && hero.mode !== "work" && hero.mode !== "toWork") {
     if (hero.mode === "sleep") Object.assign(hero, bedSide());
     hero.mode = "toWork";
-    hero.target = spotNear(desk, turned(desk, desk.work));
+    hero.target = spotNear(desk, turnedPoint(desk, desk.work));
   }
   if (!desk && (hero.mode === "work" || hero.mode === "toWork")) {
     hero.mode = "idle";
@@ -2458,29 +2513,60 @@ function storeItem(item) {
   toast(back.length > 1 ? "올려 둔 물건과 함께 보관함에 넣었어요." : "보관함에 넣었어요.");
 }
 
-// 방향 돌리기 (가로·세로를 바꿔서 좌우가 뒤집힌 방향으로)
+// 방향 돌리기 (누를 때마다 시계 방향으로 90도씩, 네 번이면 처음으로)
+// 위에 올린 물건도 함께 돌아갑니다.
 function rotateItem(item) {
   if (item.type === "wall") {
     toast("벽에 건 물건은 벽을 따라 옮겨 주세요.");
     return;
   }
   const carried = itemsOn(item);
-  const before = [item, ...carried].map((o) => ({ o, x: o.x, y: o.y, flip: o.flip }));
-  item.flip = !item.flip;
-  for (const o of carried) {
-    const dx = o.x - item.x, dy = o.y - item.y;
-    o.x = item.x + dy;
-    o.y = item.y + dx;
-    o.flip = !o.flip;
+  const before = [item, ...carried].map((o) => ({ o, x: o.x, y: o.y, rot: o.rot }));
+  const f = footprint(item);
+  const centers = carried.map((o) => {
+    const g = footprint(o);
+    return [g.x + g.w / 2, g.y + g.d / 2];
+  });
+  const restore = () => before.forEach((b) => Object.assign(b.o, { x: b.x, y: b.y, rot: b.rot }));
+
+  item.rot = (rotOf(item) + 1) % 4;
+  const g = footprint(item);
+  // 가운데를 유지하는 자리부터, 안 되면 모서리를 맞춘 자리로
+  const cx = f.x + f.w / 2, cy = f.y + f.d / 2;
+  const ox = item.x - g.x, oy = item.y - g.y; // 가구 기준점과 영역 모서리의 차이
+  const tries = [
+    [Math.round((cx - g.w / 2) / GRID) * GRID + ox, Math.round((cy - g.d / 2) / GRID) * GRID + oy],
+    [f.x + ox, f.y + oy],
+    [f.x + f.w - g.w + ox, f.y + oy],
+    [f.x + ox, f.y + f.d - g.d + oy],
+    [f.x + f.w - g.w + ox, f.y + f.d - g.d + oy],
+  ];
+  const place = ([x, y]) => {
+    item.x = x;
+    item.y = y;
+    const n = footprint(item);
+    carried.forEach((o, i) => {
+      // 옛 영역 안의 위치를 90도 돌려서 새 영역에 옮김
+      const [px, py] = centers[i];
+      const nx = n.x + (f.y + f.d - py), ny = n.y + (px - f.x);
+      o.rot = (rotOf(o) + 1) % 4;
+      const h = footprint(o);
+      o.x += nx - (h.x + h.w / 2);
+      o.y += ny - (h.y + h.d / 2);
+    });
+    return item.z > 0 || floorValid(item, carried);
+  };
+  for (const t of tries) {
+    if (place(t)) {
+      saveLayout();
+      afterLayoutChange();
+      return;
+    }
+    restore();
+    item.rot = (rotOf(item) + 1) % 4;
   }
-  const ok = item.z > 0 || floorValid(item, carried);
-  if (!ok) {
-    for (const b of before) Object.assign(b.o, { x: b.x, y: b.y, flip: b.flip });
-    toast("돌릴 공간이 없어요. 주변을 조금 비워 주세요.");
-    return;
-  }
-  saveLayout();
-  afterLayoutChange();
+  restore();
+  toast("돌릴 공간이 없어요. 주변을 조금 비워 주세요.");
 }
 
 // ---- 선택한 가구 (꾸미기 중) ----
