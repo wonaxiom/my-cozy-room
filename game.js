@@ -2356,7 +2356,7 @@ function drawBottomArt(look, rows, w, h, px, colors) {
   }
 }
 
-// ver.세밀 얼굴: 눈 모양(큰 눈·실눈), 입 모양, 성별(여자는 속눈썹과 볼터치)
+// ver.세밀 얼굴: 눈 모양(큰 눈·실눈). 입과 볼터치는 그림에 원래 있음
 // 그림마다 눈 위치를 찾아 그 자리를 기준으로 그립니다. (뒷모습·잠자기는 건너뜀)
 const FACE = { eye: "#2a2530", mouth: "#b85a5a", open: "#7a2e35", teeth: "#ffffff", blush: "#f4a3a3" };
 function drawFaceArt(look, rows, frame, set, px, colors) {
@@ -2379,31 +2379,15 @@ function drawFaceArt(look, rows, frame, set, px, colors) {
       }
     }
   }
+  // 작은 입 (2픽셀). 두 눈 사이 아래. 옆모습은 앞쪽 눈 아래
   const bottom = Math.max(...boxes.map((b) => b.y2));
-  // 여자: 눈꼬리 속눈썹, 볼터치
-  if (look.gender === "female") {
-    if (!closed && look.eyes !== "calm" && look.gender !== "female") { // 여자 그림은 원래 속눈썹이 있음
-      const outer = boxes.length > 1 ? [[boxes[0], -1], [boxes[boxes.length - 1], 1]] : [[boxes[0], 1]];
-      for (const [b, d] of outer) px(d < 0 ? b.x1 - 1 : b.x2 + 1, b.y1 - (look.eyes === "big" ? 1 : 0), FACE.eye);
-    }
-    // 볼터치는 눈 바깥쪽 아래
-    const outerX = boxes.length > 1 ? [boxes[0].x1 - 1, boxes[boxes.length - 1].x2] : [boxes[0].x2];
-    for (const x of outerX) { px(x, bottom + 1, FACE.blush); px(x + 1, bottom + 1, FACE.blush); }
-  }
-  // 입: 두 눈 사이 아래 (옆모습은 눈 바로 아래 조금 앞)
-  const mx = boxes.length > 1 ? Math.round((boxes[0].x2 + boxes[boxes.length - 1].x1) / 2) : boxes[0].x1;
-  const my = bottom + 2;
+  const mx = boxes.length > 1 ? Math.round((boxes[0].x2 + boxes[boxes.length - 1].x1) / 2) : boxes[0].x1 + (side ? -1 : 0);
+  const my = bottom + 3;
   const mouth = look.mouth || "smile";
-  if (mouth === "smile") {
-    px(mx - 1, my - 1, FACE.mouth); px(mx, my, FACE.mouth); px(mx + 1, my - 1, FACE.mouth);
-  } else if (mouth === "grin") {
-    for (let x = mx - 1; x <= mx + 1; x++) px(x, my - 1, FACE.mouth);
-    px(mx, my, FACE.open); px(mx - 1, my, FACE.mouth); px(mx + 1, my, FACE.mouth);
-  } else if (mouth === "neutral") {
-    px(mx - 1, my - 1, FACE.mouth); px(mx, my - 1, FACE.mouth);
-  } else if (mouth === "wow") {
-    px(mx, my - 1, FACE.open); px(mx, my, FACE.open); px(mx - 1, my - 1, FACE.open); px(mx - 1, my, FACE.open);
-  }
+  if (mouth === "wow") { px(mx, my, FACE.open); px(mx, my + 1, FACE.open); }
+  else if (mouth === "grin") { px(mx - 1, my, FACE.mouth); px(mx, my + 1, FACE.open); px(mx + 1, my, FACE.mouth); }
+  else { px(mx, my, FACE.mouth); px(mx + 1, my, FACE.mouth); }
+  if (look.gender === "female") for (const b of boxes) px(b.x1 - 1, bottom + 2, FACE.blush); // 볼터치 한 점
 }
 
 // ver.세밀 장신구: 그림마다 머리카락 범위를 찾아 그 위에 그립니다. (옆모습은 오른쪽을 봄)
