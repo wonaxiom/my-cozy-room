@@ -378,7 +378,7 @@ function drawDecor(item) {
   const wall = wallOf(item);
   const a0 = wall === "right" ? item.x : item.y, z0 = item.z;
   if (item.decor === "clock") {
-    drawClockAt(project(...surfacePoint(wall, a0 + 6, z0 + 6)));
+    drawClockOnWall(wall, a0 + 6, z0 + 6);
     return;
   }
   const win = { wall, style: item.style, closed: item.closed };
@@ -1051,7 +1051,11 @@ function drawRoundWindow(win, phase) {
 // 실제 시간을 가리키는 벽시계
 function drawClock() {
   if (!room.clock) return;
-  drawClockAt(project(...room.clock));
+  // 둥근 벽의 고정 시계: 그 자리의 벽 위치(a)를 구해서 벽면에 그림
+  const [x, y, z] = room.clock;
+  let t = Math.atan2(y - RC, x - RC) - ROUND_START;
+  while (t < 0) t += Math.PI * 2;
+  drawClockOnWall("round", t * RC, z);
 }
 
 // 벽시계: 도트 한 칸의 1/3 크기 점으로 정교하게 그립니다.
@@ -1064,6 +1068,68 @@ const CLOCK = {
   hand: "#2f2b28",     // 시침·분침
   second: "#d0573f",   // 초침
 };
+
+// 벽면 위에 시계를 그립니다. (벽 방향에 맞춰 비스듬하게 보임)
+// 화면의 작은 점(1/3칸)마다 "벽 위의 어느 위치인지"를 거꾸로 계산해서,
+// 그 위치가 시계판·눈금·바늘 중 어디인지에 따라 색을 칠합니다.
+function drawClockOnWall(wall, ca, cz) {
+  const R = 6; // 반지름 (벽 위 칸 수)
+  const c = project(...surfacePoint(wall, ca, cz));
+  const n = project(...surfacePoint(wall, ca + 0.5, cz));
+  // 벽을 따라 1칸 갈 때 화면에서 움직이는 양 (높이 1칸은 화면 위로 1칸)
+  const ex = (n.x - c.x) * 2, ey = (n.y - c.y) * 2;
+  const faceRight = ex > 0 ? 1 : -1; // 보는 사람 기준 오른쪽이 벽의 +방향인지
+
+  const d = now();
+  const sec = d.getSeconds();
+  const min = d.getMinutes() + sec / 60;
+  const hour = (d.getHours() % 12) + min / 60;
+  const hands = [
+    { angle: (hour / 12) * Math.PI * 2, len: 2.7, half: 0.36, color: CLOCK.hand },
+    { angle: (min / 60) * Math.PI * 2, len: 4.2, half: 0.2, color: CLOCK.hand },
+    { angle: (sec / 60) * Math.PI * 2, len: 4.5, half: 0.17, color: CLOCK.second },
+  ];
+  // (h, v): 시계판 위 위치 (h는 오른쪽, v는 위쪽이 +)
+  const onHand = (h, v, k) => {
+    const dx = Math.sin(k.angle), dy = Math.cos(k.angle);
+    const along = h * dx + v * dy;
+    if (along < -0.3 || along > k.len) return false;
+    return Math.abs(h * dy - v * dx) <= k.half;
+  };
+
+  const u = 1 / 3;
+  const spanX = Math.abs(ex) * R + 1, spanY = Math.abs(ey) * R + R + 1;
+  const x0 = Math.floor((c.x - spanX) * 3), x1 = Math.ceil((c.x + spanX) * 3);
+  const y0 = Math.floor((c.y - spanY) * 3), y1 = Math.ceil((c.y + spanY) * 3);
+  for (let py = y0; py < y1; py++) {
+    for (let px = x0; px < x1; px++) {
+      const sx = (px + 0.5) / 3 - c.x, sy = (py + 0.5) / 3 - c.y;
+      const da = sx / ex;          // 벽을 따라 떨어진 거리
+      const v = da * ey - sy;      // 위로 떨어진 거리
+      const h = da * faceRight;
+      const r = Math.hypot(h, v);
+      if (r > R) continue;
+      let color;
+      if (r > R - 0.55) color = CLOCK.rim;
+      else if (r > R - 0.9) color = CLOCK.rimLight;
+      else if (r < 0.4) color = CLOCK.second;               // 가운데 축
+      else if (onHand(h, v, hands[2])) color = CLOCK.second;
+      else if (onHand(h, v, hands[1]) || onHand(h, v, hands[0])) color = CLOCK.hand;
+      else {
+        color = CLOCK.face;
+        // 눈금: 바깥쪽 고리에서 30도마다
+        const ang = Math.atan2(h, v);
+        const step = Math.PI / 6;
+        const k = Math.round(ang / step);
+        const off = Math.abs(ang - k * step) * r;
+        const major = ((k % 3) + 3) % 3 === 0;
+        if (r > R - (major ? 2.1 : 1.6) && r < R - 1.0 && off < (major ? 0.32 : 0.2)) color = major ? CLOCK.mark : CLOCK.tick;
+      }
+      ctx.fillStyle = color;
+      ctx.fillRect(px * u, py * u, u, u);
+    }
+  }
+}
 
 function drawClockAt(c) {
   const u = 1 / 3;
