@@ -29,11 +29,24 @@ for (name,view),(spr,ox,oy) in SPR.items():
             line+=pal[h]
         rows.append(rle(line))
     items.setdefault(name,{})[view]={'x':ox,'y':oy,'rows':rows}
+LIE=pickle.load(open('lie_acc.pkl','rb'))
+for name,(spr,ox,oy) in LIE.items():
+    rows=[]
+    for y in range(spr.shape[0]):
+        line=''
+        for x in range(spr.shape[1]):
+            p=spr[y,x]
+            if not p[3]: line+='.'; continue
+            h='#%02x%02x%02x'%tuple(int(round(v)) for v in q(p))
+            if h not in pal: pal[h]=chars[len(pal)]
+            line+=pal[h]
+        rows.append(rle(line))
+    items[name]['lie']={'x':ox,'y':oy,'rows':rows}
 data={'palette':{v:k for k,v in pal.items()},'items':items}
 js='''// =============================================================
 // acc-art.js — ver.세밀 모자·머리 장식 그림 (GPT 그림을 민머리 기본형에 맞춰 정리한 도트)
 // 원본: art-src/acc. 그림 정리 스크립트로 만든 파일이라 직접 고치지 않습니다.
-// items.<장식>.front / back: x, y = 민머리 머리 왼쪽 위에서 떨어진 칸 수, rows = 글자 그림 (숫자+글자는 반복)
+// items.<장식>.front / back / lie(누운 그림용, 10도 돌림): x, y = 민머리 머리 왼쪽 위에서 떨어진 칸 수, rows = 글자 그림 (숫자+글자는 반복)
 // 앞모습은 오른쪽을 보고, 왼쪽을 볼 때는 캐릭터와 함께 뒤집힙니다.
 // =============================================================
 '''
