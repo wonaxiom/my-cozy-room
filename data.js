@@ -570,6 +570,7 @@ const FURNITURE = {
     name: "의자",
     category: "furniture", price: 80,
     parts: [
+      [0, 0, 0, 1, 1, 5, "woodDark"],
       [0, 6, 0, 1, 1, 5, "woodDark"],
       [6, 6, 0, 1, 1, 5, "woodDark"],
       [6, 0, 0, 1, 1, 5, "woodDark"],
