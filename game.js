@@ -2220,7 +2220,7 @@ function ownsCloth(item) {
 
 // 캐릭터 크기 (그림 파일이 있으면 그 크기, 없으면 글자 그림 크기)
 function heroSize() {
-  if (useHeroArt()) return { w: 8, h: 12 }; // ver.세밀 캐릭터 그림 (24×36 픽셀 = 8×12칸)
+  if (useHeroArt()) return { w: 10, h: 15 }; // ver.세밀 캐릭터 그림 (약 30×45 픽셀 = 10×15칸)
   if (readyImage(CHARACTER_SHEET && CHARACTER_SHEET.image)) {
     return { w: CHARACTER_SHEET.frameWidth, h: CHARACTER_SHEET.frameHeight };
   }
@@ -2420,6 +2420,8 @@ function drawAccessoryArt(look, rows, frame, w, h, px) {
   if (x2 < 0) return;
   if (frame === "sleep") y1 = Math.max(y1, 0);
   const side = SIDE_FRAMES.includes(frame);
+  const k = (x2 - x1 + 1) / 24; // 예전 그림(머리 폭 약 24칸) 기준 길이를 지금 그림 크기에 맞춤
+  const K = (v) => Math.round(v * k);
   const cx = (x1 + x2 + 1) / 2, half = (x2 - x1 + 1) / 2;
   const isHair = (x, y) => { const p = HERO_ART.palette[(rows[y] || "")[x]]; return p && (p[1] === "hair" || p[1] === "keep"); };
   const over = new Map(); // 새로 칠할 칸 (외곽선을 두르기 위해 모아 둠)
@@ -2433,41 +2435,41 @@ function drawAccessoryArt(look, rows, frame, w, h, px) {
     }
   };
   if (acc.id === "cap") {
-    dome(y1 - 1, y1 + 5, 0.5, acc.color, 2);
-    for (let x = x1; x <= x2; x++) set(x, y1 + 5, acc.dark);
-    if (side) for (let x = Math.round(cx); x <= x2 + 4; x++) { set(x, y1 + 6, acc.dark); }
-    else for (let x = x1 + 3; x <= x2 - 3; x++) set(x, y1 + 6, acc.dark);
+    dome(y1 - 1, y1 + K(5), 0.5, acc.color, 2);
+    for (let x = x1; x <= x2; x++) set(x, y1 + K(5), acc.dark);
+    if (side) for (let x = Math.round(cx); x <= x2 + K(4); x++) { set(x, y1 + K(5) + 1, acc.dark); }
+    else for (let x = x1 + K(3); x <= x2 - K(3); x++) set(x, y1 + K(5) + 1, acc.dark);
     set(Math.round(cx), y1 - 1, acc.dark);
   } else if (acc.id === "beanie") {
-    dome(y1 - 1, y1 + 7, 0.8, acc.color, 2);
+    dome(y1 - 1, y1 + K(7), 0.8, acc.color, 2);
     for (let x = Math.floor(x1 - 1); x <= x2 + 1; x++) {
-      for (const y of [y1 + 6, y1 + 7]) if (over.has(y * w + x)) set(x, y, x % 2 ? acc.dark : acc.light);
+      for (const y of [y1 + K(7) - 1, y1 + K(7)]) if (over.has(y * w + x)) set(x, y, x % 2 ? acc.dark : acc.light);
     }
-    for (let y = y1 - 4; y <= y1 - 1; y++) for (let x = Math.round(cx) - 2; x <= Math.round(cx) + 1; x++) {
-      if (Math.hypot(x + 0.5 - cx, y + 0.5 - (y1 - 2)) <= 2.1) set(x, y, acc.light);
+    for (let y = y1 - K(4); y <= y1 - 1; y++) for (let x = Math.round(cx) - K(2); x <= Math.round(cx) + K(2); x++) {
+      if (Math.hypot(x + 0.5 - cx, y + 0.5 - (y1 - K(2))) <= 2.1 * k) set(x, y, acc.light);
     }
   } else if (acc.id === "strawHat") {
-    dome(y1 - 2, y1 + 4, -1, acc.color, 2);
-    for (let x = Math.round(cx - half + 1); x <= Math.round(cx + half - 2); x++) set(x, y1 + 3, acc.dark); // 띠
-    for (let y = y1 + 4; y <= y1 + 6; y++) {
-      for (let x = Math.floor(x1 - 4); x <= Math.ceil(x2 + 4); x++) {
-        const dx = (x + 0.5 - cx) / (half + 4.5), dy = (y + 0.5 - (y1 + 5)) / 1.6;
-        if (dx * dx + dy * dy <= 1) set(x, y, y === y1 + 4 ? acc.light : acc.color);
+    dome(y1 - K(2), y1 + K(4), -1, acc.color, 2);
+    for (let x = Math.round(cx - half + 1); x <= Math.round(cx + half - 2); x++) set(x, y1 + K(3), acc.dark); // 띠
+    for (let y = y1 + K(4); y <= y1 + K(6); y++) {
+      for (let x = Math.floor(x1 - K(4)); x <= Math.ceil(x2 + K(4)); x++) {
+        const dx = (x + 0.5 - cx) / (half + 4.5 * k), dy = (y + 0.5 - (y1 + K(5))) / (1.6 * k);
+        if (dx * dx + dy * dy <= 1) set(x, y, y === y1 + K(4) ? acc.light : acc.color);
       }
     }
   } else if (acc.id === "headband") {
     for (let x = x1; x <= x2; x++) {
-      const y = Math.round(y1 + 4 + Math.abs(x + 0.5 - cx) * 0.3);
+      const y = Math.round(y1 + K(4) + Math.abs(x + 0.5 - cx) * 0.3);
       for (const yy of [y, y + 1]) if (isHair(x, yy)) set(x, yy, yy === y ? acc.light : acc.color);
     }
   } else if (acc.id === "ribbon") {
-    const bx = side ? Math.round(x1 + 4) : Math.round(x2 - 4), by = y1 + 1;
+    const bx = side ? Math.round(x1 + K(4)) : Math.round(x2 - K(4)), by = y1 + 1;
     for (const [dx, dy, c] of [[-3, -1, "c"], [-2, -1, "c"], [-3, 0, "c"], [-2, 0, "l"], [-1, 0, "d"], [-3, 1, "c"], [-2, 1, "c"],
       [1, -1, "c"], [2, -1, "c"], [1, 0, "l"], [2, 0, "c"], [1, 1, "c"], [2, 1, "c"], [0, 0, "d"], [0, 1, "d"], [-1, 2, "d"], [1, 2, "d"]]) {
       set(bx + dx, by + dy, c === "c" ? acc.color : c === "l" ? acc.light : acc.dark);
     }
   } else if (acc.id === "hairpin") {
-    const y = y1 + 10, xs = side ? [x2 - 7, x2 - 6, x2 - 5, x2 - 4] : [x1 + 3, x1 + 4, x1 + 5, x1 + 6];
+    const y = y1 + K(10), xs = side ? [x2 - K(7), x2 - K(7) + 1, x2 - K(7) + 2, x2 - K(7) + 3] : [x1 + K(3), x1 + K(3) + 1, x1 + K(3) + 2, x1 + K(3) + 3];
     xs.forEach((x, i) => set(x, y - (i > 1 ? 1 : 0), i === 0 ? acc.light : acc.color));
   }
   // 외곽선: 새로 칠한 칸 바로 바깥의 빈칸
