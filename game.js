@@ -1328,17 +1328,12 @@ function heroRows(name, lookIn = save.look) {
   // 볼터치
   if (look.gender === "female") { put(5, 2, "B"); put(5, 7, "B"); }
 
-  // 눈
-  if (look.eyes === "sunglasses") {
-    for (let c = 2; c <= 7; c++) put(4, c, "K");
-  } else {
-    if (look.eyes === "glasses") for (const c of [2, 4, 5, 7]) put(4, c, "G");
-    if (look.eyes === "calm") {
-      for (const c of [2, 3, 6, 7]) put(4, c, "E");
-    } else if (!closed) {
-      put(4, 3, "E"); put(4, 6, "E");
-      if (look.eyes === "big") { put(3, 3, "E"); put(3, 6, "E"); }
-    }
+  // 눈 (안경·선글라스는 머리카락 위에 따로 그림)
+  if (look.eyes === "calm") {
+    for (const c of [2, 3, 6, 7]) put(4, c, "E");
+  } else if (!closed && look.eyes !== "sunglasses") {
+    put(4, 3, "E"); put(4, 6, "E");
+    if (look.eyes === "big") { put(3, 3, "E"); put(3, 6, "E"); }
   }
 
   // 표정 (잘 때는 입을 다뭄)
@@ -1353,6 +1348,19 @@ function heroRows(name, lookIn = save.look) {
   hair.rows.forEach((pat, r) => {
     for (let c = 0; c < pat.length; c++) if (pat[c] === "H") put(r, c, "H");
   });
+
+  // 안경: 위쪽 줄은 테와 밝은 렌즈(유리 반사), 아래쪽 줄은 바깥 테와 눈 (가운데는 코가 보이게)
+  if (look.eyes === "glasses") {
+    for (const [outer, eye, inner] of [[2, 3, 4], [7, 6, 5]]) {
+      put(3, outer, "G"); put(3, eye, "L"); put(3, inner, "G");
+      put(4, outer, "G"); put(4, eye, closed ? "L" : "E");
+    }
+  }
+  // 선글라스: 두 줄을 까맣게, 렌즈마다 흰 반짝임
+  if (look.eyes === "sunglasses") {
+    for (let c = 2; c <= 7; c++) { put(3, c, "K"); put(4, c, "K"); }
+    put(3, 3, "W"); put(3, 6, "W");
+  }
 
   // 옷
   if (!headOnly) {
@@ -1382,7 +1390,8 @@ function heroColors(lookIn = save.look) {
     W: "#fbf8f1",
     P: findBy(BOTTOMS, look.bottom).color,
     F: "#3b3b3b",
-    G: "#3b3b3b",
+    G: "#8c7462",   // 안경테
+    L: "#cfe5f2",   // 안경 렌즈
     K: "#1f1f24",
     M: "#c76b6b",
     O: "#8a3b3b",
