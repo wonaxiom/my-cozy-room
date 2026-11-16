@@ -382,12 +382,48 @@ function partsOf(item) {
     if (!item.flip) return parts;
     return parts.map(([dx, dy, dz, w, d, h, c]) => [dy, dx, dz, d, w, h, c]);
   }
-  if (!rotOf(item)) return parts;
-  return parts.map(([dx, dy, dz, w, d, h, c]) => {
-    const [ax, ay] = rotPoint(item, dx, dy);
-    const [bx, by] = rotPoint(item, dx + w, dy + d);
-    return [Math.min(ax, bx), Math.min(ay, by), dz, Math.abs(bx - ax), Math.abs(by - ay), h, c];
-  });
+  const r = rotOf(item);
+  if (!r) return parts;
+  const key = `${item.id}|${r}|${artStyle}`;
+  if (!turnedParts.has(key)) {
+    const moved = parts.map(([dx, dy, dz, w, d, h, c]) => {
+      const [ax, ay] = rotPoint(item, dx, dy);
+      const [bx, by] = rotPoint(item, dx + w, dy + d);
+      return [Math.min(ax, bx), Math.min(ay, by), dz, Math.abs(bx - ax), Math.abs(by - ay), h, c];
+    });
+    turnedParts.set(key, depthSort(moved));
+  }
+  return turnedParts.get(key);
+}
+
+// 돌린 가구의 상자 목록 (돌릴 때마다 다시 계산하지 않게 기억)
+const turnedParts = new Map();
+
+// 상자 그리는 순서 정하기: 뒤(또는 아래)에 있는 상자를 먼저.
+// 가구를 돌리면 원래 순서로는 앞뒤가 바뀌어 보여서 다시 정합니다.
+// 앞뒤가 분명하지 않은 상자끼리는 data.js에 적힌 순서를 따릅니다.
+function depthSort(parts) {
+  const n = parts.length;
+  const behind = (a, b) => // a가 b보다 확실히 뒤(또는 아래)에 있는지
+    a[0] + a[3] <= b[0] || a[1] + a[4] <= b[1] || a[2] + a[5] <= b[2];
+  const before = parts.map(() => []); // before[j]: j보다 먼저 그려야 할 상자들
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      if (i !== j && behind(parts[i], parts[j]) && !behind(parts[j], parts[i])) before[j].push(i);
+    }
+  }
+  const done = new Array(n).fill(false);
+  const out = [];
+  while (out.length < n) {
+    let pick = -1;
+    for (let j = 0; j < n && pick < 0; j++) {
+      if (!done[j] && before[j].every((i) => done[i])) pick = j;
+    }
+    if (pick < 0) pick = done.indexOf(false); // 순서가 꼬이면 적힌 순서대로
+    done[pick] = true;
+    out.push(parts[pick]);
+  }
+  return out;
 }
 
 // ---- 가구 정보 계산 ----------------------------------------------
