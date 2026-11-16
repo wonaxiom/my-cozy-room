@@ -193,8 +193,12 @@ function shadeOf(key, amount) {
 // ---- 입체 그리기 도우미 ------------------------------------------
 // 방 좌표(x, y, z)를 화면 좌표로 바꿉니다.
 let viewOX = OX, viewOY = OY; // 미리보기를 그릴 때 잠시 바뀝니다.
+// ver.세밀에서는 방과 가구를 조금 작게 그려서 캐릭터가 상대적으로 커 보이게 합니다.
+// (캐릭터 도트는 크기를 바꾸면 고르지 않게 깨지므로, 대신 방 쪽을 줄임)
+const WORLD_DETAIL = 0.8;
+let WS = 1;
 function project(x, y, z) {
-  return { x: viewOX + (x - y), y: viewOY + (x + y) / 2 - z };
+  return { x: viewOX + (x - y) * WS, y: viewOY + ((x + y) / 2 - z) * WS };
 }
 
 // 다각형을 도트 경계가 또렷하게 칠합니다.
@@ -530,6 +534,7 @@ artBtn.addEventListener("click", () => {
   artStyle = artStyle === "detail" ? "simple" : "detail";
   try { localStorage.setItem(ART_KEY, artStyle); } catch (e) { /* 이번에만 적용 */ }
   showArtStyle();
+  setOrigin(room);
   afterLayoutChange();
   renderBag();
   if (!shopEl.hidden) renderShop();
@@ -788,6 +793,13 @@ function setRoom(id) {
 function setOrigin(r) {
   viewOX = OX + ((r.offset && r.offset[0]) || 0);
   viewOY = OY + ((r.offset && r.offset[1]) || 0);
+  WS = typeof artStyle !== "undefined" && artStyle === "detail" ? WORLD_DETAIL : 1;
+  if (WS !== 1) {
+    // 방 가운데가 같은 자리에 오도록 (가운데를 기준으로 줄임)
+    const cx = (r.width || ROOM) / 2, cy = (r.depth || ROOM) / 2, cz = (r.wallHeight || 44) / 3;
+    viewOX += (cx - cy) * (1 - WS);
+    viewOY += ((cx + cy) / 2 - cz) * (1 - WS);
+  }
 }
 
 // ---- 벽지 · 바닥 -------------------------------------------------
@@ -1511,14 +1523,14 @@ function drawClockOnWall(wall, ca, cz) {
   };
 
   const u = 1 / 3;
-  const spanX = Math.abs(ex) * R + 1, spanY = Math.abs(ey) * R + R + 1;
+  const spanX = Math.abs(ex) * R + 1, spanY = Math.abs(ey) * R + R * WS + 1;
   const x0 = Math.floor((c.x - spanX) * 3), x1 = Math.ceil((c.x + spanX) * 3);
   const y0 = Math.floor((c.y - spanY) * 3), y1 = Math.ceil((c.y + spanY) * 3);
   for (let py = y0; py < y1; py++) {
     for (let px = x0; px < x1; px++) {
       const sx = (px + 0.5) / 3 - c.x, sy = (py + 0.5) / 3 - c.y;
       const da = sx / ex;          // 벽을 따라 떨어진 거리
-      const v = da * ey - sy;      // 위로 떨어진 거리
+      const v = (da * ey - sy) / WS; // 위로 떨어진 거리 (방을 줄여 그릴 때도 같은 모양)
       const h = da * faceRight;
       const r = Math.hypot(h, v);
       if (r > R) continue;
@@ -1552,14 +1564,14 @@ function paintOnWall(wall, ca, cz, halfA, halfZ, color) {
   const ex = (n.x - c.x) * 2, ey = (n.y - c.y) * 2;
   const faceRight = ex > 0 ? 1 : -1;
   const u = 1 / 3;
-  const spanX = Math.abs(ex) * halfA + 1, spanY = Math.abs(ey) * halfA + halfZ + 1;
+  const spanX = Math.abs(ex) * halfA + 1, spanY = Math.abs(ey) * halfA + halfZ * WS + 1;
   const x0 = Math.floor((c.x - spanX) * 3), x1 = Math.ceil((c.x + spanX) * 3);
   const y0 = Math.floor((c.y - spanY) * 3), y1 = Math.ceil((c.y + spanY) * 3);
   for (let py = y0; py < y1; py++) {
     for (let px = x0; px < x1; px++) {
       const sx = (px + 0.5) / 3 - c.x, sy = (py + 0.5) / 3 - c.y;
       const da = sx / ex;
-      const col = color(da * faceRight, da * ey - sy);
+      const col = color(da * faceRight, (da * ey - sy) / WS);
       if (!col) continue;
       ctx.fillStyle = col;
       ctx.fillRect(px * u, py * u, u, u);
@@ -1675,7 +1687,7 @@ function drawLighting(phase) {
     sctx.fillRect(0, 0, W, H);
     sctx.globalCompositeOperation = "destination-out";
     for (const f of lights) {
-      const p = lightPos(f), r = f.light.radius;
+      const p = lightPos(f), r = f.light.radius * WS;
       const g = sctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
       g.addColorStop(0, "rgba(0,0,0,0.9)");
       g.addColorStop(1, "rgba(0,0,0,0)");
@@ -1686,7 +1698,7 @@ function drawLighting(phase) {
     ctx.drawImage(shade, 0, 0, W, H);
   }
   for (const f of lights) {
-    const p = lightPos(f), r = f.light.radius;
+    const p = lightPos(f), r = f.light.radius * WS;
     const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
     g.addColorStop(0, `rgba(255, 190, 110, ${dark > 0 ? 0.25 : 0.1})`);
     g.addColorStop(1, "rgba(255, 190, 110, 0)");
@@ -1701,7 +1713,7 @@ const hero = {
   x: 32,
   y: 52,
   dir: 1,
-  mode: "idle",   // idle(가만히) / walk(걷기) / toBed(자러 가기) / sleep(자기)
+  mode: "idle",   // idle(가만히) / walk(걷기) / toBed(자러 가기) / sleep(자기) / read(책 읽기) / snack(간식) / work(집중)
   timer: 2,
   target: null,
   walkT: 0,
@@ -1887,8 +1899,19 @@ function updateHeroLocal(dt, h) {
     hero.timer = 2;
   }
 
-  if (hero.mode === "idle") {
+  hero.waveT = Math.max(0, (hero.waveT || 0) - dt);
+  if (hero.mode === "read" || hero.mode === "snack") {
+    // 책 읽기·간식 먹기: 정해 둔 시간이 지나면 다시 돌아다님
+    hero.actT -= dt;
+    if (hero.actT <= 0) { hero.mode = "idle"; hero.timer = 2 + Math.random() * 3; }
+  } else if (hero.mode === "idle") {
     hero.timer -= dt;
+    if (hero.timer <= 0 && Math.random() < 0.3) {
+      // 가끔 그 자리에서 책을 읽거나 간식을 먹음
+      hero.mode = Math.random() < 0.6 ? "read" : "snack";
+      hero.actT = 8 + Math.random() * 8;
+      return;
+    }
     if (hero.timer <= 0) {
       const t = Math.random() < 0.7 ? pickTarget() : null;
       if (t) {
@@ -2115,12 +2138,14 @@ function heroArtEyes(rows) {
 const heroArtCache = new Map();
 function heroArtCanvas(name, lookIn, flip) {
   const look = normLook(lookIn);
-  const frame = HERO_ART.frames[name] ? name : name === "walk0" ? "walk0" : "idle";
+  const hair = HERO_ART.same[look.hair] || look.hair;
+  const set = HERO_ART.styles[hair] || HERO_ART.styles.short;
+  const frame = set[name] ? name : "idle";
   const colors = heroColors(look);
-  const key = [frame, colors.H, colors.S, colors.C, colors.P, look.eyes, flip].join("|");
+  const key = [hair, frame, colors.H, colors.S, colors.C, colors.P, look.eyes, flip].join("|");
   if (heroArtCache.has(key)) return heroArtCache.get(key);
   if (heroArtCache.size > 200) heroArtCache.clear();
-  const rows = HERO_ART.frames[frame];
+  const rows = set[frame];
   const w = Math.max(...rows.map((r) => r.length)), h = rows.length;
   const c = document.createElement("canvas");
   c.width = w;
@@ -2140,7 +2165,7 @@ function heroArtCanvas(name, lookIn, flip) {
   // 안경·선글라스: 눈 자리에 테와 렌즈 (눈 감은 그림은 뜬 그림의 눈 자리를 씀)
   const kind = EYEWEAR[look.eyes];
   if (kind) {
-    const eyeRows = frame === "blink" || frame === "sleep" ? HERO_ART.frames.idle : rows;
+    const eyeRows = frame === "blink" || frame === "sleep" ? set.idle : rows; // 잠자기는 눈 감은 그림의 윗부분
     const boxes = heroArtEyes(eyeRows);
     for (const b of boxes) {
       for (let y = b.y1 - 1; y <= b.y2 + 1; y++) {
@@ -2195,6 +2220,10 @@ function drawHero() {
   if (hero.mode === "walk" || hero.mode === "toBed" || hero.mode === "toWork") {
     const cycle = ["walk1", "walk0", "walk2", "walk0"]; // walk0: 걷는 중간 (ver.하찮은 가만히 그림)
     frame = cycle[Math.floor(hero.walkT * 8) % cycle.length];
+  } else if (hero.waveT > 0) {
+    frame = Math.floor(hero.waveT * 6) % 2 ? "wave1" : "wave2";
+  } else if (hero.mode === "work" || hero.mode === "read" || hero.mode === "snack") {
+    frame = hero.mode; // ver.세밀: 방석에 앉아 노트북·책·간식 (ver.하찮은 가만히 그림)
   } else if (hero.blinkT < 0) {
     frame = "blink";
   }
@@ -2204,6 +2233,20 @@ function drawHero() {
   ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
   ctx.fillRect(p.x - 4, p.y - 1, 8, 2); // 그림자
   drawHeroFrame(frame, p.x, p.y - jump, hero.dir < 0);
+  if (!useHeroArt() && (hero.mode === "read" || hero.mode === "snack")) drawActivityIcon(p);
+}
+
+// ver.하찮: 책 읽기·간식 먹기 중이면 머리 위에 작은 그림
+function drawActivityIcon(p) {
+  const y = p.y - heroSize().h - 6;
+  if (hero.mode === "read") {
+    ctx.fillStyle = colorOf("book2"); ctx.fillRect(p.x - 3, y, 3, 4);
+    ctx.fillStyle = colorOf("book1"); ctx.fillRect(p.x, y, 3, 4);
+    ctx.fillStyle = "#fbf8f1"; ctx.fillRect(p.x - 2, y + 1, 1, 2); ctx.fillRect(p.x + 1, y + 1, 1, 2);
+  } else {
+    ctx.fillStyle = "#c98a4b"; ctx.fillRect(p.x - 2, y, 4, 4);
+    ctx.fillStyle = "#6e4a2d"; ctx.fillRect(p.x - 1, y + 1, 1, 1); ctx.fillRect(p.x + 1, y + 2, 1, 1);
+  }
 }
 
 function drawSleeper() {
@@ -2655,6 +2698,8 @@ view.addEventListener("click", (e) => {
   if (hero.mode !== "sleep" && inside(p, heroBounds())) {
     hero.heartT = 1.2;
     hero.jumpT = 0.35;
+    hero.waveT = 1.4; // 손 흔들기
+    if (hero.mode === "read" || hero.mode === "snack") { hero.mode = "idle"; hero.timer = 2; }
     return;
   }
   const curtain = curtainAt(p);
@@ -2735,18 +2780,18 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 // 화면 좌표 → 바닥 좌표 (높이 z 기준)
 function unproject(sx, sy, z) {
-  const a = sx - viewOX, b = 2 * (sy - viewOY + z);
+  const a = (sx - viewOX) / WS, b = 2 * ((sy - viewOY) / WS + z);
   return { x: (a + b) / 2, y: (b - a) / 2 };
 }
 
 // 화면 좌표 → 벽 위 좌표 (오른쪽 벽: x·z, 왼쪽 벽: y·z)
 function unprojectWall(sx, sy, wall) {
   if (wall === "right") {
-    const x = sx - viewOX;
-    return { a: x, z: viewOY + x / 2 - sy };
+    const x = (sx - viewOX) / WS;
+    return { a: x, z: x / 2 - (sy - viewOY) / WS };
   }
-  const y = viewOX - sx;
-  return { a: y, z: viewOY + y / 2 - sy };
+  const y = (viewOX - sx) / WS;
+  return { a: y, z: y / 2 - (sy - viewOY) / WS };
 }
 
 // 벽 가구가 걸린 벽 (flip이면 왼쪽 벽)
@@ -3214,9 +3259,10 @@ function renderBag() {
 // 가구 크기에 맞춘 작은 캔버스에 그리고, 화면에서는 같은 칸 크기로 확대해 보여줍니다.
 function makePreview(id) {
   const item = makeItem({ id, x: 0, y: 0, z: 0 });
-  const prev = { ctx, viewOX, viewOY };
+  const prev = { ctx, viewOX, viewOY, WS };
   viewOX = OX;
   viewOY = OY;
+  WS = 1; // 미리보기는 원래 크기로
   const b = screenBounds(item);
   const size = Math.ceil(Math.max(b.w + 4, b.h + 4, 18)); // 작은 물건이 너무 커지지 않게 최소 크기
   const c = document.createElement("canvas");
@@ -3229,7 +3275,7 @@ function makePreview(id) {
   viewOX += Math.round(size / 2 - (b.x + b.w / 2));
   viewOY += Math.round(size / 2 - (b.y + b.h / 2));
   drawItem(item);
-  ({ ctx, viewOX, viewOY } = prev);
+  ({ ctx, viewOX, viewOY, WS } = prev);
   return c;
 }
 
@@ -3276,7 +3322,7 @@ function makeRoomPreview(r, style) {
   c.width = W;
   c.height = H;
   c.className = "room-preview";
-  const prev = { ctx, viewOX, viewOY, room, activeColors, shadeCache, previewStyle };
+  const prev = { ctx, viewOX, viewOY, WS, room, activeColors, shadeCache, previewStyle };
   ctx = c.getContext("2d");
   room = r;
   setOrigin(r);
@@ -3287,7 +3333,7 @@ function makeRoomPreview(r, style) {
   drawFloorPattern();
   drawWindow("day");
   drawFront();
-  ({ ctx, viewOX, viewOY, room, activeColors, shadeCache, previewStyle } = prev);
+  ({ ctx, viewOX, viewOY, WS, room, activeColors, shadeCache, previewStyle } = prev);
   return c;
 }
 
