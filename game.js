@@ -3862,10 +3862,11 @@ function makePetPreview(pd) {
 function makeHeroPreview(look = save.look) {
   if (useHeroArt()) {
     const art = heroArtCanvas("idle", look, false);
-    const size = 17;
+    // 머리·모자까지 다 들어가도록 그림 높이에 맞춘 정사각형 (최소 17칸)
+    const side = Math.max(17 * RES, art.height + RES * 2);
     const c = document.createElement("canvas");
-    c.width = size * RES;
-    c.height = size * RES;
+    c.width = side;
+    c.height = side;
     c.className = "preview";
     c.getContext("2d").drawImage(art, Math.floor((c.width - art.width) / 2), c.height - art.height - RES);
     return c;
