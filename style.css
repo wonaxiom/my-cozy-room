@@ -1197,3 +1197,15 @@ body.pip .visit-bar button {
 .gate-links a { color: var(--sub); }
 
 .page-links { margin-top: 10px; text-align: right; }
+
+.visit-title {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.visit-title .muted {
+  font-size: 11px;
+  text-align: left;
+  white-space: nowrap;
+}

@@ -27,6 +27,8 @@ const Friends = (() => {
   let view = "list";    // list / requests / guestbook / chat / gift / visitbook
   let target = null;    // 대화·선물 상대 { id, name }
   let found = null;     // 고유번호로 찾은 사람
+  let homeCh = null;    // 내 방 채널 (누가 놀러 왔는지)
+  let awayCh = null;    // 놀러 간 친구 방 채널
 
   const st = {
     rows: [],       // 친구 관계 (요청 포함)
@@ -89,6 +91,98 @@ const Friends = (() => {
     return `${ago(age)} 접속`;
   }
 
+  // ---- 실시간 접속 (누가 어느 방에 있는지) ----
+  // 방마다 채널(room-방주인id)이 있고, 방 주인과 그 친구만 들어올 수 있습니다. (데이터베이스 규칙)
+  const mySave = () => ownSave || save; // 구경 중이어도 내 정보
+  const myName = () => (mySave().profile && mySave().profile.name) || "친구";
+
+  function roomChannel(ownerId) {
+    return db.channel(`room-${ownerId}`, {
+      config: { private: true, broadcast: { self: false }, presence: { key: me.id } },
+    });
+  }
+
+  function peopleOf(ch) {
+    return Object.values(ch.presenceState()).map((list) => list[0]).filter(Boolean);
+  }
+
+  function send(ch, payload) {
+    if (ch) ch.send({ type: "broadcast", event: "move", payload });
+  }
+
+  // 내 방: 놀러 온 친구를 내 화면에 보여주고, 내 캐릭터 움직임을 알려줌
+  function joinHome() {
+    if (!db.channel) return;
+    const ch = roomChannel(me.id);
+    homeCh = ch;
+    ch.on("presence", { event: "sync" }, () => {
+      setWalkers(me.id, peopleOf(ch).filter((p) => p.role === "visitor" && p.id !== me.id));
+    });
+    ch.on("presence", { event: "join" }, ({ newPresences }) => {
+      for (const p of newPresences || []) {
+        if (p.role !== "visitor" || p.id === me.id) continue;
+        toast(`${p.name}님이 놀러 왔어요.`);
+        if (!visiting) send(ch, Object.assign({ kind: "hero" }, moveState(hero))); // 지금 내 캐릭터 위치
+      }
+    });
+    ch.on("presence", { event: "leave" }, ({ leftPresences }) => {
+      for (const p of leftPresences || []) if (p.role === "visitor" && p.id !== me.id) toast(`${p.name}님이 돌아갔어요.`);
+    });
+    ch.on("broadcast", { event: "move" }, ({ payload }) => {
+      if (payload && payload.kind === "guest" && payload.id !== me.id) moveWalker(payload.id, payload);
+    });
+    ch.subscribe((status) => {
+      if (status === "SUBSCRIBED") ch.track({ role: "owner", id: me.id, name: myName() });
+    });
+    Net.onHeroMove = (m) => send(homeCh, Object.assign({ kind: "hero" }, m));
+  }
+
+  // 친구 방: 방 주인이 접속해 있으면 주인 캐릭터의 실제 움직임을 따라가고, 다른 방문자도 보여줌
+  function joinAway(friend, roomId) {
+    leaveAway();
+    if (!db.channel) return;
+    const ch = roomChannel(friend.id);
+    awayCh = ch;
+    ch.on("presence", { event: "sync" }, () => {
+      const people = peopleOf(ch);
+      setOwnerOnline(people.some((p) => p.role === "owner" && p.id === friend.id));
+      setWalkers(friend.id, people.filter((p) => p.role === "visitor" && p.id !== me.id));
+    });
+    ch.on("presence", { event: "join" }, ({ newPresences }) => {
+      // 누가 새로 들어오면 내 캐릭터 위치를 알려서 화면을 맞춤
+      if ((newPresences || []).some((p) => p.id !== me.id)) send(ch, Object.assign({ kind: "guest", id: me.id }, moveState(guest)));
+    });
+    ch.on("broadcast", { event: "move" }, ({ payload }) => {
+      if (!payload) return;
+      if (payload.kind === "hero") applyMove(hero, payload);
+      else if (payload.kind === "guest" && payload.id !== me.id) moveWalker(payload.id, payload);
+    });
+    ch.subscribe((status) => {
+      if (status !== "SUBSCRIBED") return;
+      ch.track({ role: "visitor", id: me.id, name: myName(), look: mySave().look, roomId });
+      send(ch, Object.assign({ kind: "guest", id: me.id }, moveState(guest)));
+    });
+    Net.onGuestMove = (m) => send(awayCh, Object.assign({ kind: "guest", id: me.id }, m));
+    setOwnerOnline(false);
+  }
+
+  function setOwnerOnline(on) {
+    setHeroRemote(on);
+    if (!visiting) return;
+    $("visit-status").textContent = on ? `${visiting.name}님이 방에 있어요` : `${visiting.name}님은 지금 자리에 없어요`;
+  }
+
+  function leaveAway() {
+    if (awayCh && db) {
+      awayCh.untrack();
+      db.removeChannel(awayCh);
+    }
+    awayCh = null;
+    Net.onGuestMove = null;
+    setHeroRemote(false);
+    if (visiting) clearWalkers(visiting.id);
+  }
+
   // ---- 시작 / 종료 ----
   async function start(client, user) {
     db = client;
@@ -97,6 +191,7 @@ const Friends = (() => {
     await refresh();
     await claim();
     subscribe();
+    joinHome();
     clearInterval(pollTimer);
     pollTimer = setInterval(async () => {
       await refresh();
@@ -106,6 +201,14 @@ const Friends = (() => {
   }
 
   function stop() {
+    leaveAway();
+    if (homeCh && db) {
+      homeCh.untrack();
+      db.removeChannel(homeCh);
+    }
+    homeCh = null;
+    Net.onHeroMove = null;
+    clearWalkers(me && me.id);
     if (channel && db) db.removeChannel(channel);
     channel = null;
     clearInterval(pollTimer);
@@ -417,6 +520,7 @@ const Friends = (() => {
     if (!data) return toast("아직 친구 방 정보가 없어요. 친구가 한 번 접속하면 생겨요.");
     close();
     startVisit(f, data.data);
+    joinAway(f, save.roomId);
     // 오늘 이미 하트를 남겼는지
     const { data: given } = await db.from("hearts").select("day").eq("giver_id", me.id).eq("owner_id", f.id).eq("day", kstDay());
     setHeartButton(given && given.length);
@@ -443,6 +547,7 @@ const Friends = (() => {
 
   function leaveVisit() {
     close();
+    leaveAway();
     endVisit();
   }
 
@@ -650,5 +755,5 @@ const Friends = (() => {
   $("visit-guestbook").addEventListener("click", () => open("visitbook"));
   $("visit-back").addEventListener("click", leaveVisit);
 
-  return { start, stop, publish, refresh, claim, open, close };
+  return { start, stop, publish, refresh, claim, open, close, myId: () => (me ? me.id : null) };
 })();
