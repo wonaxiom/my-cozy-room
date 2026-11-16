@@ -1177,8 +1177,12 @@ function drawSky(win, phase, yMin, yMax, zMin, zMax) {
     const range = yMax - yMin + 12;
     const cloud = weather === "clear" ? "#ffffff" : weather === "rain" ? "#c3c8cf" : "#e2e5e9";
     const clouds = weather === "clear" ? [[0, 0.55], [range / 2, 0.2]] : [[0, 0.6], [range / 3, 0.25], [(range * 2) / 3, 0.75]];
-    clouds.forEach(([offset, cz]) => {
+    clouds.forEach(([offset, cz], i) => {
       const cy = yMax + 6 - ((time * speed + offset) % range);
+      if (artStyle === "detail") {
+        drawCloudDetail(win, cy - 3, fz(cz), cloud, i);
+        return;
+      }
       skyRect(win, cy - 6, cy, fz(cz), fz(cz) + 2, cloud);
       skyRect(win, cy - 4, cy - 1, fz(cz) + 2, fz(cz) + 3, cloud);
     });
@@ -1186,6 +1190,53 @@ function drawSky(win, phase, yMin, yMax, zMin, zMax) {
   }
   if (win.scenery) drawScenery(win, phase, yMin, yMax, zMin, zMax);
   drawPrecipitation(win, phase, yMin, yMax, zMin, zMax);
+}
+
+// ver.세밀 구름: 동그란 덩어리 여러 개를 1/3칸 단위로 칠하고,
+// 윗부분은 밝게, 아랫부분은 그늘지게 그립니다. (가운데 a, 바닥 높이 z)
+const CLOUD_SHAPES = [
+  [[-3.6, 0.9, 1.5], [-1.4, 1.5, 2.1], [1.2, 1.3, 1.9], [3.3, 0.8, 1.4]],
+  [[-2.8, 0.8, 1.4], [-0.5, 1.6, 2.2], [2.2, 1, 1.6]],
+  [[-3.2, 0.7, 1.3], [-1.2, 1.2, 1.8], [1, 1.7, 2], [3.2, 0.9, 1.4]],
+];
+
+function drawCloudDetail(win, ca, cz, color, index) {
+  const blobs = CLOUD_SHAPES[index % CLOUD_SHAPES.length].map(([a, z, r]) => [a * 1.2, z * 1.2, r * 1.2]);
+  const light = mixColor(color, "#ffffff", 0.7);          // 햇빛 받는 윗부분
+  const body = mixColor(color, "#c9d6e3", 0.35);          // 몸통
+  const shade = mixColor(color, "#8f9db0", 0.42);         // 아래 그늘
+  const u = 1 / 3;
+  const colorAt = (a, z) => {
+    if (z < 0) return null; // 구름 바닥은 평평하게
+    let inside = null;
+    for (const [ba, bz, r] of blobs) {
+      const d = Math.hypot(a - ba, z - bz);
+      if (d <= r) {
+        const edge = r - d < 0.6 && z > bz; // 덩어리 위쪽 가장자리
+        if (!inside || edge) inside = edge ? "light" : inside || "main";
+        if (edge) break;
+      }
+    }
+    if (!inside) return null;
+    if (z < 0.6) return shade;
+    return inside === "light" ? light : body;
+  };
+  for (let z = 0; z < 5; z += u) {
+    const span = windowSpan(win, cz + z + u / 2);
+    if (!span) continue;
+    let runStart = null, runColor = null;
+    for (let a = -6.5; a <= 6.5 + u; a += u) {
+      const c = a <= 6.5 ? colorAt(a + u / 2, z + u / 2) : null;
+      if (c !== runColor) {
+        if (runColor) {
+          const a1 = Math.max(ca + runStart, span[0]), a2 = Math.min(ca + a, span[1]);
+          if (a2 > a1) surfaceRect(win.wall, a1, a2, cz + z, cz + z + u, runColor);
+        }
+        runStart = a;
+        runColor = c;
+      }
+    }
+  }
 }
 
 // 비나 눈 (창문 안쪽에만)
@@ -2810,6 +2861,7 @@ document.getElementById("sel-cancel").addEventListener("click", () => select(nul
 
 // R 키로도 방향 돌리기
 function onKey(e) {
+  if (e.key === "Escape" && !confirmEl.hidden) { closeConfirm(); return; }
   if (!editing || e.target.tagName === "INPUT") return;
   if ((e.key === "r" || e.key === "R") && selected) rotateItem(selected);
 }
@@ -3071,7 +3123,7 @@ function renderStyles(kind) {
   for (const st of list) {
     let btn;
     if (!ownsStyle(st)) {
-      btn = makeButton("구매", () => buyStyle(kind, st));
+      btn = makeButton("구매", () => confirmBuy(st.name, st.price, makeRoomPreview(room, { [kind]: st.id }), () => buyStyle(kind, st)));
       btn.dataset.price = st.price;
     } else if (now.id === st.id) {
       btn = makeButton("사용 중", null, true);
@@ -3104,7 +3156,7 @@ function renderRooms() {
   for (const r of ROOMS) {
     let btn;
     if (!ownsRoom(r)) {
-      btn = makeButton("구매", () => { buyRoom(r); renderShop(); });
+      btn = makeButton("구매", () => confirmBuy(r.name, r.price, makeRoomPreview(r), () => { buyRoom(r); renderShop(); }, "열까요?"));
       btn.dataset.price = r.price;
     } else if (r.id === room.id) {
       btn = makeButton("지금 방", null, true);
@@ -3165,14 +3217,14 @@ function renderLook() {
       const on = save.look[key] === item.id;
       let btn;
       if (!owned) {
-        btn = makeButton("구매", () => {
+        btn = makeButton("구매", () => confirmBuy(item.name, item.price, makeHeroPreview(look), () => {
           if (save.coins < item.price) return;
           save.coins -= item.price;
           save.outfits.push(item.id);
           updateCoins();
           setLook({ [key]: item.id });
           toast(`${withObject(item.name)} 샀어요.`);
-        });
+        }));
         btn.dataset.price = item.price;
       } else {
         btn = makeButton(on ? "입는 중" : "입기", on ? null : () => setLook({ [key]: item.id }), on);
@@ -3190,7 +3242,7 @@ function renderPets() {
     const on = save.pet === pd.id;
     let btn;
     if (!owned) {
-      btn = makeButton("데려오기", () => {
+      btn = makeButton("데려오기", () => confirmBuy(pd.name, pd.price, makeSpritePreview(PET_FRAMES[pd.kind].idle, pd.colors), () => {
         if (save.coins < pd.price) return;
         save.coins -= pd.price;
         save.pets.push(pd.id);
@@ -3200,7 +3252,7 @@ function renderPets() {
         placePet();
         renderShop();
         toast(`${pd.name}${(pd.name.charCodeAt(pd.name.length - 1) - 0xac00) % 28 ? "이" : "가"} 함께하게 됐어요. 클릭하면 반가워해요.`);
-      });
+      }, "데려올까요?"));
       btn.dataset.price = pd.price;
     } else if (on) {
       btn = makeButton("쉬게 하기", () => { save.pet = null; Save.save(save); renderShop(); });
@@ -3253,7 +3305,7 @@ function renderShop() {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.dataset.price = f.price;
-    btn.addEventListener("click", () => buy(id));
+    btn.addEventListener("click", () => confirmBuy(f.name, f.price, makePreview(id), () => buy(id)));
     card.append(name, meta, btn);
     shopList.append(card);
   }
@@ -3269,6 +3321,37 @@ function updateShopButtons() {
   });
 }
 
+// ---- 구매 확인 창 ----
+// 실수로 사지 않게 "○○을 N코인에 살까요?"를 한 번 물어봅니다.
+const confirmEl = document.getElementById("confirm");
+let confirmYes = null;
+
+function confirmBuy(name, price, preview, onYes, ask = "살까요?") {
+  if (save.coins < price) return;
+  document.getElementById("confirm-text").textContent = `${withObject(name)} ${ask}`;
+  document.getElementById("confirm-coins").textContent =
+    `${price.toLocaleString()}코인 · 사고 나면 ${(save.coins - price).toLocaleString()}코인 남아요`;
+  const box = document.getElementById("confirm-preview");
+  box.innerHTML = "";
+  if (preview) box.append(preview);
+  confirmYes = onYes;
+  confirmEl.hidden = false;
+  document.getElementById("confirm-yes").focus();
+}
+
+function closeConfirm() {
+  confirmEl.hidden = true;
+  confirmYes = null;
+}
+
+document.getElementById("confirm-yes").addEventListener("click", () => {
+  const run = confirmYes;
+  closeConfirm();
+  if (run) run();
+});
+document.getElementById("confirm-no").addEventListener("click", closeConfirm);
+confirmEl.addEventListener("click", (e) => { if (e.target === confirmEl) closeConfirm(); }); // 바깥 누르면 취소
+
 function buy(id) {
   const f = FURNITURE[id];
   if (save.coins < f.price) return;
@@ -3280,7 +3363,10 @@ function buy(id) {
 }
 
 shopBtn.addEventListener("click", () => (shopEl.hidden ? openShop() : closeShop()));
-document.getElementById("lock-buy").addEventListener("click", () => buyRoom(room));
+document.getElementById("lock-buy").addEventListener("click", () => {
+  const r = room;
+  confirmBuy(r.name, r.price, makeRoomPreview(r), () => buyRoom(r), "열까요?");
+});
 document.getElementById("shop-close").addEventListener("click", closeShop);
 shopEl.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => {
   shopCategory = t.dataset.cat;

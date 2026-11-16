@@ -559,6 +559,61 @@ button:disabled {
 
 .locked-box button { margin-top: 4px; }
 
+/* ---- 구매 확인 ---- */
+.confirm {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  background: rgba(58, 54, 50, 0.35);
+  border-radius: 6px;
+}
+
+.confirm[hidden] { display: none; }
+
+.confirm-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 260px;
+  padding: 18px 16px 14px;
+  text-align: center;
+  background: var(--card);
+  border-radius: 12px;
+}
+
+.confirm-preview:empty { display: none; }
+
+.confirm-preview canvas {
+  width: 64px;
+  height: auto;
+  image-rendering: pixelated;
+}
+
+.confirm-text {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  word-break: keep-all;
+}
+
+.confirm-coins {
+  margin: 0;
+  color: var(--sub);
+  font-size: 12px;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
 /* ---- 알림 ---- */
 .toast {
   position: absolute;
