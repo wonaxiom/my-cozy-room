@@ -378,7 +378,7 @@ function drawDecor(item) {
   const wall = wallOf(item);
   const a0 = wall === "right" ? item.x : item.y, z0 = item.z;
   if (item.decor === "clock") {
-    drawClockAt(project(...surfacePoint(wall, a0 + 5, z0 + 5)));
+    drawClockAt(project(...surfacePoint(wall, a0 + 6, z0 + 6)));
     return;
   }
   const win = { wall, style: item.style, closed: item.closed };
@@ -1054,25 +1054,62 @@ function drawClock() {
   drawClockAt(project(...room.clock));
 }
 
+// 벽시계: 도트 한 칸의 1/3 크기 점으로 정교하게 그립니다.
+const CLOCK = {
+  rim: "#6b4630",      // 바깥 테
+  rimLight: "#a8774f", // 안쪽 밝은 테
+  face: "#fbf8f1",     // 시계판
+  tick: "#b8aea2",     // 작은 눈금
+  mark: "#3a3632",     // 큰 눈금 (12·3·6·9)
+  hand: "#2f2b28",     // 시침·분침
+  second: "#d0573f",   // 초침
+};
+
 function drawClockAt(c) {
-  const cx = Math.round(c.x), cy = Math.round(c.y), r = 5;
-  for (let dy = -r; dy <= r; dy++) {
-    for (let dx = -r; dx <= r; dx++) {
-      const d = dx * dx + dy * dy;
-      if (d > r * r) continue;
-      ctx.fillStyle = colorOf(d <= (r - 1) * (r - 1) ? "clockFace" : "woodDark");
-      ctx.fillRect(cx + dx, cy + dy, 1, 1);
+  const u = 1 / 3;
+  const R = 18; // 반지름 (1/3칸 단위, 도트 6칸)
+  const cx = Math.round(c.x * 3) / 3, cy = Math.round(c.y * 3) / 3;
+  const dot = (x, y, color, w = 1, h = 1) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(cx + x * u, cy + y * u, w * u, h * u);
+  };
+
+  // 테두리와 시계판
+  for (let y = -R; y <= R; y++) {
+    for (let x = -R; x <= R; x++) {
+      const d = Math.hypot(x + 0.5, y + 0.5);
+      if (d > R) continue;
+      dot(x, y, d > R - 1.6 ? CLOCK.rim : d > R - 2.6 ? CLOCK.rimLight : CLOCK.face);
     }
   }
+
+  // 눈금 12개 (12·3·6·9는 굵게)
+  for (let h = 0; h < 12; h++) {
+    const a = (h / 12) * Math.PI * 2;
+    const major = h % 3 === 0;
+    const len = major ? 3 : 1.5;
+    for (let t = 0; t < len; t += 0.5) {
+      const r = R - 3.5 - t;
+      const x = Math.round(Math.sin(a) * r - 0.5), y = Math.round(-Math.cos(a) * r - 0.5);
+      dot(x, y, major ? CLOCK.mark : CLOCK.tick);
+    }
+  }
+
+  // 바늘
   const d = now();
-  const hand = (angle, len) => {
-    ctx.fillStyle = colorOf("eye");
-    for (let i = 0; i <= len; i++) {
-      ctx.fillRect(Math.round(cx + Math.sin(angle) * i), Math.round(cy - Math.cos(angle) * i), 1, 1);
+  const sec = d.getSeconds();
+  const min = d.getMinutes() + sec / 60;
+  const hour = (d.getHours() % 12) + min / 60;
+  const hand = (angle, len, color, thick) => {
+    for (let t = 0; t <= len; t += 0.5) {
+      const x = Math.round(Math.sin(angle) * t - 0.5), y = Math.round(-Math.cos(angle) * t - 0.5);
+      dot(x, y, color, thick, thick);
     }
   };
-  hand(((d.getHours() % 12) + d.getMinutes() / 60) / 12 * Math.PI * 2, 2);
-  hand(d.getMinutes() / 60 * Math.PI * 2, 3);
+  hand((hour / 12) * Math.PI * 2, 8, CLOCK.hand, 2);     // 시침: 짧고 굵게
+  hand((min / 60) * Math.PI * 2, 12.5, CLOCK.hand, 1);   // 분침: 길고 가늘게
+  hand((sec / 60) * Math.PI * 2, 13.5, CLOCK.second, 1); // 초침: 빨간색
+  dot(-1, -1, CLOCK.second, 2, 2);                        // 가운데 축
 }
 
 // 시간대에 따라 방을 어둡게 하고, 조명 빛을 비춥니다.
@@ -2489,10 +2526,12 @@ function makePreview(id) {
   const b = screenBounds(item);
   const size = Math.ceil(Math.max(b.w + 4, b.h + 4, 18)); // 작은 물건이 너무 커지지 않게 최소 크기
   const c = document.createElement("canvas");
-  c.width = size;
-  c.height = size;
+  c.width = size * RES;
+  c.height = size * RES;
   c.className = "preview";
   ctx = c.getContext("2d");
+  ctx.setTransform(RES, 0, 0, RES, 0, 0); // 게임 화면과 같은 정교함
+  ctx.imageSmoothingEnabled = false;
   viewOX += Math.round(size / 2 - (b.x + b.w / 2));
   viewOY += Math.round(size / 2 - (b.y + b.h / 2));
   drawItem(item);

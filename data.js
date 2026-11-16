@@ -767,7 +767,7 @@ const FURNITURE = {
   wallClock: {
     name: "벽시계", type: "wall", decor: "clock",
     category: "prop", price: 50,
-    parts: [[0, 0, 0, 10, 1, 10, "woodDark"]],
+    parts: [[0, 0, 0, 12, 1, 12, "woodDark"]],
   },
 
   // ---- 원형 탑방 ----
