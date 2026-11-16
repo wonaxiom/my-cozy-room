@@ -10,10 +10,12 @@
 // colors   : 이 방의 틀 색 (벽 윗면, 모서리, 걸레받이, 창틀 등)
 // wallpaper: 기본 벽지 (아래 WALLPAPERS의 id)
 // floor    : 기본 바닥 (아래 FLOORS의 id)
-// windows  : 창문 목록. style은 "curtain"(커튼) / "shoji"(미닫이 창) / "round"(둥근 창) / "train"(기차 창)
+// decor    : 처음부터 벽에 걸려 있는 창문·시계 (꾸미기에서 옮기거나 보관함에 넣을 수 있음)
+//            flip: true면 왼쪽 벽, 아니면 오른쪽 벽
+// windows  : 옮길 수 없는 창문 (원형 탑방처럼 둥근 벽에 붙은 것). style은 "curtain"(커튼) / "shoji"(미닫이 창) / "round"(둥근 창) / "train"(기차 창)
 //            wall은 "left"(왼쪽 벽) / "right"(오른쪽 벽) / "round"(둥근 벽)
 //            네모 창은 벽을 따라 y1~y2, 높이 z1~z2 범위 / 둥근 창은 중심(cy, cz)과 반지름(r)
-// clock    : 벽시계 위치 [x, y, z] (없애려면 null)
+// clock    : 옮길 수 없는 벽시계 위치 [x, y, z] (둥근 벽용, 없으면 null)
 // layout   : 처음 시작할 때 놓여 있는 가구. id는 data.js의 FURNITURE 이름, x·y·z는 위치
 //            (처음 한 번만 쓰이고, 이후에는 직접 꾸민 배치가 저장됩니다)
 
@@ -27,8 +29,12 @@ const ROOMS = [
     colors: {},
     wallpaper: "creamDots",
     floor: "oak",
-    windows: [{ style: "curtain", wall: "left", y1: 14, y2: 38, z1: 16, z2: 36 }],
-    clock: [8, 0, 33],
+    windows: [],
+    clock: null,
+    decor: [
+      { id: "windowCurtain", x: 0, y: 9, z: 13, flip: true },
+      { id: "wallClock", x: 3, y: 0, z: 28 },
+    ],
     layout: [
       { id: "mattress", x: 38, y: 1, z: 0 },
       { id: "lamp", x: 32, y: 2, z: 0 },
@@ -49,8 +55,9 @@ const ROOMS = [
     },
     wallpaper: "plasterBeams",
     floor: "tatami",
-    windows: [{ style: "shoji", wall: "left", y1: 12, y2: 44, z1: 6, z2: 30 }],
+    windows: [],
     clock: null,
+    decor: [{ id: "windowShoji", x: 0, y: 11, z: 4, flip: true }],
     layout: [],
   },
   {
@@ -69,8 +76,12 @@ const ROOMS = [
     },
     wallpaper: "woodPlanks",
     floor: "darkWood",
-    windows: [{ style: "round", wall: "left", cy: 32, cz: 31, r: 9 }],
-    clock: [0, 52, 17],
+    windows: [],
+    clock: null,
+    decor: [
+      { id: "windowRound", x: 0, y: 21, z: 17, flip: true },
+      { id: "wallClock", x: 0, y: 47, z: 9, flip: true },
+    ],
     layout: [],
   },
   {
@@ -110,12 +121,13 @@ const ROOMS = [
     },
     wallpaper: "trainPanel",
     floor: "redCarpet",
-    windows: [
-      { style: "train", wall: "right", y1: 6, y2: 18, z1: 12, z2: 26 },
-      { style: "train", wall: "right", y1: 26, y2: 38, z1: 12, z2: 26 },
-      { style: "train", wall: "right", y1: 46, y2: 58, z1: 12, z2: 26 },
-    ],
+    windows: [],
     clock: null,
+    decor: [
+      { id: "windowTrain", x: 5, y: 0, z: 10 },
+      { id: "windowTrain", x: 25, y: 0, z: 10 },
+      { id: "windowTrain", x: 45, y: 0, z: 10 },
+    ],
     layout: [],
   },
 ];

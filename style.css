@@ -1209,3 +1209,27 @@ body.pip .visit-bar button {
   text-align: left;
   white-space: nowrap;
 }
+
+/* ---- 작은 창(PiP): 버튼 줄은 마우스를 올렸을 때만 방 위에 겹쳐서 ---- */
+body.pip #app { position: relative; }
+
+body.pip .toolbar,
+body.pip .visit-bar {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 5;
+  padding: 18px 8px 6px;
+  background: linear-gradient(rgba(30, 27, 24, 0), rgba(30, 27, 24, 0.8));
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+body.pip #app:hover .toolbar,
+body.pip #app:hover .visit-bar,
+body.pip .toolbar:focus-within,
+body.pip .visit-bar:focus-within { opacity: 1; }
+
+body.pip #room-name,
+body.pip .visit-title strong { color: #f4efe8; }

@@ -372,7 +372,37 @@ function drawMirrored(item, img, r) {
   ctx.restore();
 }
 
+// 창문·시계 장식: 걸린 벽과 위치에 맞춰 그립니다.
+let currentPhase = "day";
+function drawDecor(item) {
+  const wall = wallOf(item);
+  const a0 = wall === "right" ? item.x : item.y, z0 = item.z;
+  if (item.decor === "clock") {
+    drawClockAt(project(...surfacePoint(wall, a0 + 5, z0 + 5)));
+    return;
+  }
+  const win = { wall, style: item.style, closed: item.closed };
+  if (item.style === "curtain") Object.assign(win, { y1: a0 + 5, y2: a0 + 29, z1: z0 + 3, z2: z0 + 23 });
+  else if (item.style === "shoji") Object.assign(win, { y1: a0 + 1, y2: a0 + 33, z1: z0 + 2, z2: z0 + 26 });
+  else if (item.style === "round") Object.assign(win, { cy: a0 + 11, cz: z0 + 11, r: 9 });
+  else Object.assign(win, { y1: a0 + 1, y2: a0 + 13, z1: z0 + 2, z2: z0 + 16 });
+  if (item.style === "round") drawRoundWindow(win, currentPhase);
+  else if (item.style === "shoji") drawShojiWindow(win, currentPhase);
+  else if (item.style === "train") drawTrainWindow(win, currentPhase);
+  else drawCurtainWindow(win, currentPhase);
+}
+
+// 커튼 창문이 하나 이상 있고 모두 닫혀 있는지
+function curtainsAllClosed() {
+  const curtains = items.filter((f) => f.decor === "window" && f.style === "curtain");
+  return curtains.length > 0 && curtains.every((f) => f.closed);
+}
+
 function drawItem(item) {
+  if (item.decor) {
+    drawDecor(item);
+    return;
+  }
   const img = itemImage(item);
   if (img) {
     drawMirrored(item, img, imageRect(item, img));
@@ -391,9 +421,17 @@ function setRoom(id) {
   setOrigin(room);
   applyStyle();
   // 직접 꾸민 배치가 있으면 그것을, 없으면 처음 배치를 씁니다.
-  const placed = (save.layouts && save.layouts[room.id]) || room.layout;
+  let placed = (save.layouts && save.layouts[room.id]) || room.layout;
+  // 처음 한 번: 방에 원래 있던 창문·시계를 벽 장식으로 걸어 둠 (예전 저장 데이터도)
+  save.decorDone = save.decorDone || {};
+  const addDecor = !save.decorDone[room.id] && room.decor && room.decor.length;
+  if (addDecor) placed = placed.concat(room.decor);
   items = placed.filter((p) => FURNITURE[p.id]).map(makeItem);
   refreshItems();
+  if (addDecor && !visiting && ownsRoom()) {
+    save.decorDone[room.id] = true;
+    saveLayout();
+  }
   if (typeof setEditing === "function") setEditing(editing);
   roomName.textContent = room.name;
   save.roomId = room.id;
@@ -464,7 +502,7 @@ function buyRoom(r) {
 }
 
 function makeItem(p) {
-  return Object.assign({}, FURNITURE[p.id], { id: p.id, x: p.x, y: p.y, z: p.z, flip: !!p.flip });
+  return Object.assign({}, FURNITURE[p.id], { id: p.id, x: p.x, y: p.y, z: p.z, flip: !!p.flip, closed: !!p.closed });
 }
 
 function refreshItems() {
@@ -476,7 +514,9 @@ function refreshItems() {
 
 function saveLayout() {
   save.layouts = save.layouts || {};
-  save.layouts[room.id] = items.map((f) => ({ id: f.id, x: f.x, y: f.y, z: f.z, flip: f.flip || undefined }));
+  save.layouts[room.id] = items.map((f) => ({
+    id: f.id, x: f.x, y: f.y, z: f.z, flip: f.flip || undefined, closed: f.closed || undefined,
+  }));
   Save.save(save);
 }
 
@@ -933,6 +973,16 @@ function drawCurtainWindow(win, phase) {
   const { y1, y2, z1, z2, wall } = win;
   const mid = (y1 + y2) / 2, midZ = (z1 + z2) / 2;
 
+  // 커튼을 닫았으면 창 전체를 커튼이 가림
+  if (win.closed) {
+    surfaceRect(wall, y1 - 1, y2 + 1, z1 - 2, z1, "windowFrame"); // 창턱 자리
+    surfaceRect(wall, y1 - 4, y2 + 4, z1 - 3, z2 + 3, "curtain");
+    for (let a = y1 - 2; a < y2 + 3; a += 3) surfaceRect(wall, a, a + 1, z1 - 3, z2 + 3, "curtainShade");
+    surfaceRect(wall, mid - 0.5, mid + 0.5, z1 - 3, z2 + 3, "curtainShade");
+    surfaceRect(wall, y1 - 5, y2 + 5, z2 + 3, z2 + 4, "woodDark");
+    return;
+  }
+
   // 커튼과 커튼봉
   surfaceRect(wall, y1 - 5, y2 + 5, z2 + 3, z2 + 4, "woodDark");
   surfaceRect(wall, y1 - 4, y1, z1 - 3, z2 + 3, "curtain");
@@ -1001,7 +1051,10 @@ function drawRoundWindow(win, phase) {
 // 실제 시간을 가리키는 벽시계
 function drawClock() {
   if (!room.clock) return;
-  const c = project(...room.clock);
+  drawClockAt(project(...room.clock));
+}
+
+function drawClockAt(c) {
   const cx = Math.round(c.x), cy = Math.round(c.y), r = 5;
   for (let dy = -r; dy <= r; dy++) {
     for (let dx = -r; dx <= r; dx++) {
@@ -1024,7 +1077,8 @@ function drawClock() {
 
 // 시간대에 따라 방을 어둡게 하고, 조명 빛을 비춥니다.
 function drawLighting(phase) {
-  const dark = darknessOf(phase);
+  // 낮에 커튼을 모두 닫으면 조금 어두워짐
+  const dark = Math.min(0.6, darknessOf(phase) + (phase !== "night" && curtainsAllClosed() ? 0.15 : 0));
   const lights = save.lampOn ? items.filter((f) => f.light) : [];
   const lightPos = (f) => {
     const [lx, ly, lz] = turned(f, [f.light.x, f.light.y, f.light.z]);
@@ -1886,6 +1940,11 @@ function heroBounds() {
   return { x: p.x - s.w / 2, y: p.y - s.h - 1, w: s.w, h: s.h + 1 };
 }
 
+// 클릭한 곳의 커튼 창문
+function curtainAt(p) {
+  return wallItems.find((f) => f.decor === "window" && f.style === "curtain" && hitItem(f, p)) || null;
+}
+
 function lampItem(p) {
   return items.find((f) => f.light && inside(p, screenBounds(f)));
 }
@@ -1916,6 +1975,12 @@ view.addEventListener("click", (e) => {
     hero.jumpT = 0.35;
     return;
   }
+  const curtain = curtainAt(p);
+  if (curtain && !visiting) {
+    curtain.closed = !curtain.closed;
+    saveLayout();
+    return;
+  }
   if (lampItem(p) && !visiting) {
     save.lampOn = !save.lampOn;
     Save.save(save);
@@ -1935,7 +2000,7 @@ view.addEventListener("pointermove", (e) => {
     return;
   }
   const hit = (hero.mode !== "sleep" && inside(p, heroBounds())) || (petVisible() && inside(p, petBounds()))
-    || (guestVisible() && inside(p, guestBounds())) || (!visiting && lampItem(p));
+    || (guestVisible() && inside(p, guestBounds())) || (!visiting && (lampItem(p) || curtainAt(p)));
   view.style.cursor = hit ? "pointer" : "default";
 });
 
@@ -2816,6 +2881,7 @@ function visitSave(snap) {
     profile: { name: snap.name || "", city: snap.city || null },
     timer: snap.timer || { length: 25, mode: null, endAt: 0, remain: 0 },
     profileDone: true,
+    decorDone: { [roomId]: true }, // 친구 방은 친구가 꾸민 그대로
   });
 }
 
@@ -2870,7 +2936,7 @@ async function togglePip() {
   }
 
   try {
-    pipWin = await documentPictureInPicture.requestWindow({ width: 380, height: 380 });
+    pipWin = await documentPictureInPicture.requestWindow({ width: 380, height: Math.round(380 * H / W) });
   } catch (err) {
     pipNote.textContent = "작은 창을 열지 못했어요. 브라우저 설정을 확인해 주세요.";
     return;
@@ -2927,6 +2993,7 @@ function tick(dt) {
   updateGuest(dt);
   updateWalkers(dt);
 
+  currentPhase = phase;
   ctx.setTransform(RES, 0, 0, RES, 0, 0);
   ctx.imageSmoothingEnabled = false;
   ctx.clearRect(0, 0, W, H);
@@ -2949,7 +3016,10 @@ function tick(dt) {
   drawEffects();
 
   // 배경색도 시간에 따라 조금씩 바뀝니다.
-  vctx.fillStyle = mixColor(PALETTE.bgDay, PALETTE.bgNight, DARKNESS[phase] * 2);
+  const bg = mixColor(PALETTE.bgDay, PALETTE.bgNight, DARKNESS[phase] * 2);
+  vctx.fillStyle = bg;
+  // 작은 창에서 남는 공간도 방 배경색으로 (빈 띠가 보이지 않게)
+  if (pipWin && pipWin.document.body.style.background !== bg) pipWin.document.body.style.background = bg;
   vctx.fillRect(0, 0, view.width, view.height);
   vctx.imageSmoothingEnabled = false;
   vctx.drawImage(buf, 0, 0, view.width, view.height);
