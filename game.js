@@ -198,12 +198,14 @@ function project(x, y, z) {
 }
 
 // 다각형을 도트 경계가 또렷하게 칠합니다.
+// ver.세밀에서는 1/3칸 단위로 칠해서 경계가 더 매끄럽습니다.
 function fillPoly(c, pts, color) {
+  const u = typeof artStyle !== "undefined" && artStyle === "detail" ? 1 / RES : 1;
   let minY = Infinity, maxY = -Infinity;
   for (const p of pts) { minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y); }
   c.fillStyle = color;
-  for (let row = Math.floor(minY); row < Math.ceil(maxY); row++) {
-    const yc = row + 0.5;
+  for (let row = Math.floor(minY / u); row < Math.ceil(maxY / u); row++) {
+    const yc = (row + 0.5) * u;
     const xs = [];
     for (let i = 0; i < pts.length; i++) {
       const a = pts[i], b = pts[(i + 1) % pts.length];
@@ -213,8 +215,8 @@ function fillPoly(c, pts, color) {
     }
     xs.sort((p, q) => p - q);
     for (let i = 0; i + 1 < xs.length; i += 2) {
-      const x1 = Math.ceil(xs[i] - 0.5), x2 = Math.ceil(xs[i + 1] - 0.5);
-      if (x2 > x1) c.fillRect(x1, row, x2 - x1, 1);
+      const x1 = Math.ceil(xs[i] / u - 0.5), x2 = Math.ceil(xs[i + 1] / u - 0.5);
+      if (x2 > x1) c.fillRect(x1 * u, row * u, (x2 - x1) * u, u);
     }
   }
 }
@@ -296,7 +298,7 @@ function drawSpriteDetail(rows, x, y, colors, flip) {
     canvas = renderSpriteDetail(rows, colors, flip);
     spriteCache.set(key, canvas);
   }
-  ctx.drawImage(canvas, x, y, canvas.width / 3, canvas.height / 3);
+  ctx.drawImage(canvas, x - 1 / 3, y - 1 / 3, canvas.width / 3, canvas.height / 3);
 }
 
 // Scale3x: 글자 그림 한 칸을 3×3칸으로 (모서리를 대각선으로 이어 줌)
@@ -396,14 +398,21 @@ function renderSpriteDetail(rows, colors, flip) {
     : scale3x(grid);
   const H = h * 3, W = w * 3;
   const c = document.createElement("canvas");
-  c.width = W;
-  c.height = H;
+  c.width = W + 2; // 외곽선 자리 (위아래 좌우 1칸씩)
+  c.height = H + 2;
   const g = c.getContext("2d");
   const empty = (r, cc) => r < 0 || cc < 0 || r >= H || cc >= W || !colors[big[r][cc]];
   const px = (r, cc, color) => {
     g.fillStyle = color;
-    g.fillRect(flip ? W - 1 - cc : cc, r, 1, 1);
+    g.fillRect((flip ? W - 1 - cc : cc) + 1, r + 1, 1, 1);
   };
+  // 외곽선: 그림 바로 바깥 칸을 진하게
+  for (let r = -1; r <= H; r++) {
+    for (let cc = -1; cc <= W; cc++) {
+      if (!empty(r, cc)) continue;
+      if (!empty(r - 1, cc) || !empty(r + 1, cc) || !empty(r, cc - 1) || !empty(r, cc + 1)) px(r, cc, OUTLINE);
+    }
+  }
   const SHINY = "HK"; // 윗부분에 윤기가 도는 부분 (머리카락, 반려동물 털)
   for (let r = 0; r < H; r++) {
     for (let cc = 0; cc < W; cc++) {
@@ -720,10 +729,30 @@ function drawItem(item) {
     drawMirrored(item, img, imageRect(item, img));
     return;
   }
+  if (artStyle === "detail") drawItemOutline(item);
   for (const [dx, dy, dz, w, d, h, color] of partsOf(item)) {
     let key = color;
     if (item.light && !save.lampOn && PALETTE[key + "Off"]) key += "Off";
     box(item.x + dx, item.y + dy, item.z + dz, w, d, h, key);
+  }
+}
+
+// ver.세밀 외곽선: 가구 모양 전체를 1/3칸씩 상하좌우로 밀어 진한 색으로 먼저 칠하고,
+// 그 위에 가구를 그리면 테두리만 남습니다.
+const OUTLINE = "#3a2a24";
+function drawItemOutline(item) {
+  const u = 1 / RES;
+  const shapes = [];
+  for (const [dx, dy, dz, w, d, h] of partsOf(item)) {
+    if (w < 0.05 || d < 0.05) continue; // 면에 붙인 얇은 무늬는 빼기
+    const x = item.x + dx, y = item.y + dy, z = item.z + dz;
+    shapes.push([
+      [x, y, z + h], [x + w, y, z + h], [x + w, y, z],
+      [x + w, y + d, z], [x, y + d, z], [x, y + d, z + h],
+    ].map((q) => project(...q)));
+  }
+  for (const [ox, oy] of [[u, 0], [-u, 0], [0, u], [0, -u]]) {
+    for (const pts of shapes) fillPoly(ctx, pts.map((p) => ({ x: p.x + ox, y: p.y + oy })), OUTLINE);
   }
 }
 
@@ -2919,6 +2948,23 @@ function onKey(e) {
 }
 document.addEventListener("keydown", onKey);
 
+// ver.세밀: 방 전체(벽·바닥과 밖으로 튀어나온 것) 바깥에 굵은 외곽선
+const silhouette = document.createElement("canvas");
+function drawSceneOutline() {
+  silhouette.width = buf.width;
+  silhouette.height = buf.height;
+  const g = silhouette.getContext("2d");
+  g.drawImage(buf, 0, 0);
+  g.globalCompositeOperation = "source-in";
+  g.fillStyle = OUTLINE;
+  g.fillRect(0, 0, silhouette.width, silhouette.height);
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalCompositeOperation = "destination-over"; // 이미 그린 것 뒤에만
+  for (const [x, y] of [[2, 0], [-2, 0], [0, 2], [0, -2], [1, 1], [-1, 1], [1, -1], [-1, -1]]) ctx.drawImage(silhouette, x, y);
+  ctx.restore();
+}
+
 // 배치가 바뀐 뒤: 정보 다시 계산하고 캐릭터가 갇히지 않게
 function afterLayoutChange() {
   refreshItems();
@@ -3633,6 +3679,7 @@ function tick(dt) {
   drawEditMarker("over");
   drawFront();
   drawLighting(phase);
+  if (artStyle === "detail") drawSceneOutline();
   drawEffects();
 
   // 배경색도 시간에 따라 조금씩 바뀝니다.
