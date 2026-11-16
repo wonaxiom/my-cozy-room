@@ -265,7 +265,12 @@ function line(a, b, color) {
   }
 }
 
-function drawSprite(rows, x, y, colors, flip) {
+// plain: 하트·Zzz 같은 효과는 ver.세밀에서도 원래 도트 그대로
+function drawSprite(rows, x, y, colors, flip, plain = false) {
+  if (artStyle === "detail" && !plain) {
+    drawSpriteDetail(rows, x, y, colors, flip);
+    return;
+  }
   for (let r = 0; r < rows.length; r++) {
     const row = rows[r];
     for (let c = 0; c < row.length; c++) {
@@ -275,6 +280,140 @@ function drawSprite(rows, x, y, colors, flip) {
       ctx.fillRect(x + (flip ? row.length - 1 - c : c), y + r, 1, 1);
     }
   }
+}
+
+// ---- ver.세밀 글자 그림 (캐릭터, 반려동물, 효과) --------------------
+// 글자 그림을 3배로 키우면서(Scale3x) 비스듬한 모서리를 둥글게 다듬고,
+// 테두리 음영·윗부분 윤기·눈 반짝임·얇은 입을 더합니다.
+// 한 번 만든 그림은 기억해 두고 다시 씁니다.
+const spriteCache = new Map();
+
+function drawSpriteDetail(rows, x, y, colors, flip) {
+  const key = rows.join("/") + "|" + Object.entries(colors).map(([k, v]) => k + colorOf(v)).join(",") + (flip ? "|f" : "");
+  let canvas = spriteCache.get(key);
+  if (!canvas) {
+    if (spriteCache.size > 300) spriteCache.clear();
+    canvas = renderSpriteDetail(rows, colors, flip);
+    spriteCache.set(key, canvas);
+  }
+  ctx.drawImage(canvas, x, y, canvas.width / 3, canvas.height / 3);
+}
+
+// Scale3x: 글자 그림 한 칸을 3×3칸으로 (모서리를 대각선으로 이어 줌)
+// 둥글게 다듬는 건 머리카락(H)·피부(S)·털(K)·코(N)만. 옷과 신발은 각진 모양 그대로.
+const SMOOTH = "HSKN";
+function scale3x(grid) {
+  const h = grid.length, w = grid[0].length;
+  const at = (r, c) => (r < 0 || c < 0 || r >= h || c >= w ? "." : grid[r][c]);
+  const out = Array.from({ length: h * 3 }, () => new Array(w * 3).fill("."));
+  for (let r = 0; r < h; r++) {
+    for (let c = 0; c < w; c++) {
+      const A = at(r - 1, c - 1), B = at(r - 1, c), C = at(r - 1, c + 1);
+      const D = at(r, c - 1), E = at(r, c), F = at(r, c + 1);
+      const G = at(r + 1, c - 1), H = at(r + 1, c), I = at(r + 1, c + 1);
+      let e = [E, E, E, E, E, E, E, E, E];
+      if (B !== H && D !== F && (E === "." || SMOOTH.includes(E))) {
+        e = [
+          D === B ? D : E,
+          (D === B && E !== C) || (B === F && E !== A) ? B : E,
+          B === F ? F : E,
+          (D === B && E !== G) || (D === H && E !== A) ? D : E,
+          E,
+          (B === F && E !== I) || (H === F && E !== C) ? F : E,
+          D === H ? D : E,
+          (D === H && E !== I) || (H === F && E !== G) ? H : E,
+          H === F ? F : E,
+        ];
+      }
+      for (let i = 0; i < 9; i++) {
+        const v = e[i] === "." || SMOOTH.includes(e[i]) ? e[i] : E; // 옷 색이 번져 나오지 않게
+        out[r * 3 + Math.floor(i / 3)][c * 3 + (i % 3)] = v;
+      }
+    }
+  }
+  return out;
+}
+
+// 얼굴 부분(눈·입·볼)은 키우기 전 칸 단위로 따로 그림
+const FACE_KEYS = "EBMO";
+
+function renderSpriteDetail(rows, colors, flip) {
+  const h = rows.length, w = rows[0].length;
+  // 얼굴 칸은 주변 피부(S)로 바꿔서 키운 뒤 따로 그림
+  const skin = colors.S ? "S" : colors.K ? "K" : null; // 얼굴 바탕 (사람은 피부, 반려동물은 털)
+  const grid = rows.map((r) => r.split("").map((ch) => (FACE_KEYS.includes(ch) && colors[ch] && skin ? skin : ch)));
+  const big = scale3x(grid);
+  const H = h * 3, W = w * 3;
+  const c = document.createElement("canvas");
+  c.width = W;
+  c.height = H;
+  const g = c.getContext("2d");
+  const empty = (r, cc) => r < 0 || cc < 0 || r >= H || cc >= W || !colors[big[r][cc]];
+  const px = (r, cc, color) => {
+    g.fillStyle = color;
+    g.fillRect(flip ? W - 1 - cc : cc, r, 1, 1);
+  };
+  const SHINY = "HK"; // 윗부분에 윤기가 도는 부분 (머리카락, 반려동물 털)
+  for (let r = 0; r < H; r++) {
+    for (let cc = 0; cc < W; cc++) {
+      const k = big[r][cc];
+      if (!colors[k]) continue;
+      let color = colorOf(colors[k]);
+      if (!color.startsWith("#")) { px(r, cc, color); continue; }
+      const below = empty(r + 1, cc) || big[r + 1][cc] !== k;
+      const above = empty(r - 1, cc) || big[r - 1][cc] !== k;
+      const side = empty(r, cc - 1) || empty(r, cc + 1);
+      if (empty(r + 1, cc) || (side && !empty(r + 1, cc))) color = mixColor(color, "#000000", side ? 0.22 : 0.18);
+      else if (below) color = mixColor(color, "#000000", 0.12);
+      else if (above && SHINY.includes(k)) color = mixColor(color, "#ffffff", 0.22);
+      px(r, cc, color);
+    }
+  }
+  // 머리카락 결: 윤기 아래쪽에 짧은 밝은 줄
+  for (let r = 1; r < H - 1; r++) {
+    for (let cc = 1; cc < W - 1; cc++) {
+      if (big[r][cc] === "H" && big[r - 1][cc] === "H" && big[r - 2] && big[r - 2][cc] !== "H" && cc % 4 === 1 && colors.H) {
+        px(r, cc, mixColor(colorOf(colors.H), "#ffffff", 0.3));
+      }
+    }
+  }
+  // 얼굴 (눈, 볼, 입)
+  const cell = (r, cc) => (r >= 0 && r < h && cc >= 0 && cc < w ? rows[r][cc] : ".");
+  for (let r = 0; r < h; r++) {
+    for (let cc = 0; cc < w; cc++) {
+      const k = rows[r][cc];
+      if (!FACE_KEYS.includes(k) || !colors[k]) continue;
+      const color = colorOf(colors[k]);
+      const x0 = cc * 3, y0 = r * 3;
+      if (k === "E") {
+        const wide = cell(r, cc - 1) === "E" || cell(r, cc + 1) === "E";
+        if (wide) {
+          for (let i = 0; i < 3; i++) px(y0 + 1, x0 + i, color); // 가늘게 뜬 눈
+        } else {
+          const tall = cell(r + 1, cc) === "E", top = cell(r - 1, cc) !== "E";
+          for (let j = 0; j < 3; j++) for (let i = 0; i < 2; i++) px(y0 + j, x0 + (cc < w / 2 ? 1 : 0) + i, color);
+          if (top) px(y0, x0 + (cc < w / 2 ? 1 : 0), "#ffffff"); // 반짝임
+          if (tall) continue;
+        }
+      } else if (k === "B") {
+        px(y0 + 1, x0, color); px(y0 + 1, x0 + 1, color); px(y0 + 1, x0 + 2, color);
+      } else if (k === "M") {
+        const left = cell(r, cc - 1) !== "M", right = cell(r, cc + 1) !== "M";
+        for (let i = 0; i < 3; i++) px(y0 + 1, x0 + i, color);
+        if (left) px(y0, x0, color);
+        if (right) px(y0, x0 + 2, color);
+      } else if (k === "O") {
+        const L = cell(r, cc - 1) !== "O", R = cell(r, cc + 1) !== "O", T = cell(r - 1, cc) !== "O", Bt = cell(r + 1, cc) !== "O";
+        for (let j = 0; j < 3; j++) {
+          for (let i = 0; i < 3; i++) {
+            const corner = ((T && j === 0) || (Bt && j === 2)) && ((L && i === 0) || (R && i === 2));
+            if (!corner) px(y0 + j, x0 + i, color);
+          }
+        }
+      }
+    }
+  }
+  return c;
 }
 
 // ---- 그림 파일 불러오기 -------------------------------------------
@@ -2178,7 +2317,7 @@ function drawEffects() {
     for (let i = 0; i < 2; i++) {
       const p = (time * 0.4 + i * 0.5) % 1;
       ctx.globalAlpha = 1 - p;
-      drawSprite(EFFECTS.zzz, Math.round(base.x + 5 + p * 6), Math.round(base.y - 12 - p * 12), { Z: "zzz" }, false);
+      drawSprite(EFFECTS.zzz, Math.round(base.x + 5 + p * 6), Math.round(base.y - 12 - p * 12), { Z: "zzz" }, false, true);
     }
     ctx.globalAlpha = 1;
   }
@@ -2195,7 +2334,7 @@ function drawEffects() {
     if (!walkerVisible(w) || w.heartT <= 0) continue;
     const b = personBounds(w, w.look);
     ctx.globalAlpha = Math.min(1, w.heartT * 2);
-    drawSprite(EFFECTS.heart, b.x + 3, Math.round(b.y - 6 - (1.2 - w.heartT) * 6), { H: "heart" }, false);
+    drawSprite(EFFECTS.heart, b.x + 3, Math.round(b.y - 6 - (1.2 - w.heartT) * 6), { H: "heart" }, false, true);
     ctx.globalAlpha = 1;
   }
   if (guestVisible()) {
@@ -2207,21 +2346,21 @@ function drawEffects() {
     ctx.fillRect(p.x, top + 1, 1, 1);
     if (guest.heartT > 0) {
       ctx.globalAlpha = Math.min(1, guest.heartT * 2);
-      drawSprite(EFFECTS.heart, p.x - 2, Math.round(top - 7 - (1.2 - guest.heartT) * 6), { H: "heart" }, false);
+      drawSprite(EFFECTS.heart, p.x - 2, Math.round(top - 7 - (1.2 - guest.heartT) * 6), { H: "heart" }, false, true);
       ctx.globalAlpha = 1;
     }
   }
   if (petVisible() && pet.heartT > 0) {
     const p = petScreen();
     ctx.globalAlpha = Math.min(1, pet.heartT * 2);
-    drawSprite(EFFECTS.heart, p.x - 2, Math.round(p.y - 14 - (1.2 - pet.heartT) * 6), { H: "heart" }, false);
+    drawSprite(EFFECTS.heart, p.x - 2, Math.round(p.y - 14 - (1.2 - pet.heartT) * 6), { H: "heart" }, false, true);
     ctx.globalAlpha = 1;
   }
   if (hero.heartT > 0) {
     const p = heroScreen();
     const rise = (1.2 - hero.heartT) * 6;
     ctx.globalAlpha = Math.min(1, hero.heartT * 2);
-    drawSprite(EFFECTS.heart, p.x - 2, Math.round(p.y - heroSize().h - 8 - rise), { H: "heart" }, false);
+    drawSprite(EFFECTS.heart, p.x - 2, Math.round(p.y - heroSize().h - 8 - rise), { H: "heart" }, false, true);
     ctx.globalAlpha = 1;
   }
 }
