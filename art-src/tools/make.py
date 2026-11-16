@@ -58,8 +58,9 @@ def build(pre):
     for si,st in enumerate(STYLES):
         r=si//2; i=r*4+(si%2)*2
         hf=load(f'hair_{i:02d}.png'); hb=load(f'hair_{i+1:02d}.png')
-        _,fdx,fdy=fit(idle,hf,ii,int(round((cs[i][0]-CROWN[r])/P))-2)
-        _,bdx,bdy=fit(back,hb,bi,int(round((cs[i+1][0]-CROWN[r])/P))-2)
+        _,fdx,fdy=fit3(idle,hf,ii,int(round((cs[i][0]-CROWN[r])/P))-2)
+        _,bdx,bdy=fit3(back,hb,bi,int(round((cs[i+1][0]-CROWN[r])/P))-2)
+        hf=trim_face_side(hf,fdx,fdy,ii,0 if st=='spiky' else 5)
         res[st]={}
         for k,a in enumerate(frames):
             f=FR[k]; ox,oy=offs[k]
