@@ -108,6 +108,7 @@ const Focus = (() => {
 
   // 화면을 그릴 때마다 불러서 시간이 다 됐는지 확인합니다.
   function update() {
+    if (visiting) return; // 친구 방 구경 중에는 타이머를 건드리지 않음
     const t = save.timer;
     if (t.mode && t.endAt && Date.now() >= t.endAt) finish();
     renderTime();
@@ -252,6 +253,7 @@ const Focus = (() => {
   function open() {
     if (editing) setEditing(false);
     closeShop();
+    if (typeof Friends !== "undefined") Friends.close();
     panel.hidden = false;
     openBtn.classList.add("active");
     render();

@@ -5,7 +5,8 @@
 // =============================================================
 
 const Save = {
-  KEY: "cozyroom-save-v2",
+  // 테스트용: 주소에 ?slot=a 를 붙이면 따로 저장합니다. (한 브라우저에서 두 사람을 시험할 때)
+  KEY: "cozyroom-save-v2" + (new URLSearchParams(location.search).get("slot") ? "-" + new URLSearchParams(location.search).get("slot") : ""),
 
   // 처음 시작할 때의 기본값
   defaults() {

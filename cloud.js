@@ -72,6 +72,7 @@ const Cloud = (() => {
     Start.ready();
     await upload();
     await loadProfile();
+    if (typeof Friends !== "undefined") Friends.start(client, user);
   }
 
   // 고유번호 받아오기 (처음이면 서버가 겹치지 않는 번호를 만들어 줌). 이름도 함께 맞춥니다.
@@ -91,6 +92,7 @@ const Cloud = (() => {
     clearTimeout(timer);
     timer = null;
     if (!user || !ready) return;
+    if (visiting) { queue(); return; } // 친구 방 구경 중에는 돌아온 뒤에 저장
     setStatus("저장 중…");
     const { error } = await client.from("game_saves").upsert({
       user_id: user.id,
@@ -102,6 +104,7 @@ const Cloud = (() => {
       queue();
     } else {
       setStatus("저장됨");
+      if (typeof Friends !== "undefined") Friends.publish(); // 친구에게 보이는 방 정보도 함께
     }
   }
 
@@ -117,6 +120,8 @@ const Cloud = (() => {
   }
 
   async function logout() {
+    if (visiting) endVisit();
+    if (typeof Friends !== "undefined") Friends.stop();
     await upload();
     await client.auth.signOut();
     setUser(null);

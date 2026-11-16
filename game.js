@@ -53,7 +53,9 @@ shade.width = W;
 shade.height = H;
 const sctx = shade.getContext("2d");
 
-const save = Save.load();
+let save = Save.load(); // 친구 방을 구경하는 동안에는 잠시 친구의 공개 정보로 바뀝니다.
+let visiting = null;    // 친구 방 구경 중이면 { id, name }
+let ownSave = null;     // 구경하는 동안 맡겨 둔 내 저장 데이터
 let time = 0; // 게임 시작 후 흐른 시간(초)
 
 // ---- 시간 --------------------------------------------------------
@@ -1624,7 +1626,7 @@ view.addEventListener("click", (e) => {
     hero.jumpT = 0.35;
     return;
   }
-  if (lampItem(p)) {
+  if (lampItem(p) && !visiting) {
     save.lampOn = !save.lampOn;
     Save.save(save);
   }
@@ -1683,6 +1685,7 @@ function setEditing(on) {
   if (on) {
     closeShop();
     if (typeof Focus !== "undefined") Focus.close();
+    if (typeof Friends !== "undefined") Friends.close();
     renderBag();
   }
 }
@@ -2166,6 +2169,7 @@ function ownedCount(id) {
 
 function openShop() {
   if (editing) setEditing(false);
+  if (typeof Friends !== "undefined") Friends.close();
   if (typeof Focus !== "undefined") Focus.close();
   shopEl.hidden = false;
   shopBtn.classList.add("active");
@@ -2456,6 +2460,7 @@ function updateCoins(gained) {
 // 지난번 계산 이후 흐른 시간만큼 코인을 줍니다.
 // 2분 넘게 소식이 없었으면 꺼져 있던 것으로 보고 최대 180분까지만 쳐 줍니다.
 function earn() {
+  if (visiting) return; // 친구 방 구경 중에는 멈춤 (돌아오면 그동안의 코인이 한꺼번에 들어옴)
   if (typeof Focus !== "undefined") Focus.update();
   const nowMs = Date.now();
   const gap = Math.max(0, nowMs - save.lastSeen);
@@ -2494,6 +2499,57 @@ earn();
 setInterval(earn, 5000);
 document.addEventListener("visibilitychange", earn);
 window.addEventListener("pagehide", earn);
+
+// ---- 친구 방 구경 ------------------------------------------------
+// 친구의 공개 정보(방 배치, 캐릭터, 반려동물, 사는 곳)로 잠시 방을 바꿔 그립니다.
+// 구경하는 동안에는 저장·코인·타이머가 멈추고, 돌아오면 내 데이터로 되돌아갑니다.
+function visitSave(snap) {
+  const roomId = ROOMS.some((r) => r.id === snap.roomId) ? snap.roomId : "studio";
+  return Object.assign(Save.defaults(), {
+    roomId,
+    ownedRooms: [roomId],
+    layouts: { [roomId]: Array.isArray(snap.layout) ? snap.layout : [] },
+    roomStyles: { [roomId]: snap.styles || {} },
+    lampOn: snap.lampOn !== false,
+    look: snap.look || {},
+    pet: snap.pet || null,
+    pets: snap.pet ? [snap.pet] : [],
+    profile: { name: snap.name || "", city: snap.city || null },
+    timer: snap.timer || { length: 25, mode: null, endAt: 0, remain: 0 },
+    profileDone: true,
+  });
+}
+
+function startVisit(friend, snap) {
+  if (!visiting) ownSave = save;
+  setEditing(false);
+  closeShop();
+  if (typeof Focus !== "undefined") Focus.close();
+  Save.locked = true; // 구경하는 동안 내 저장 데이터를 건드리지 않게
+  visiting = { id: friend.id, name: friend.name };
+  save = visitSave(snap || {});
+  save.look = normLook(save.look);
+  document.body.classList.add("visiting");
+  document.getElementById("visit-name").textContent = `${friend.name || "친구"}의 방`;
+  document.getElementById("title").textContent = `${friend.name || "친구"}의 방 · 구경 중`;
+  setRoom(save.roomId);
+  refreshWeather(true);
+}
+
+function endVisit() {
+  if (!visiting) return;
+  save = ownSave;
+  ownSave = null;
+  visiting = null;
+  Save.locked = false;
+  document.body.classList.remove("visiting");
+  const myName = save.profile && save.profile.name;
+  document.getElementById("title").textContent = myName ? `${myName}의 방` : "My Cozy Room";
+  setRoom(save.roomId);
+  refreshWeather(true);
+  updateCoins();
+  earn();
+}
 
 // ---- 항상 위에 띄우기 (Document Picture-in-Picture) ---------------
 let pipWin = null;

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>My Cozy Room</title>
   <!-- 파일 뒤의 ?v= 번호는 업데이트할 때마다 바꿉니다. (브라우저가 옛 파일을 쓰지 않도록) -->
-  <link rel="stylesheet" href="style.css?v=20261115-4">
+  <link rel="stylesheet" href="style.css?v=20261116-2">
   <!-- 화면 전환에 꼭 필요한 규칙 (디자인 파일을 늦게 받아도 화면이 섞이지 않게) -->
   <style>
     .screen { display: none; }
@@ -171,7 +171,10 @@
 
           <!-- 코인과 시계 -->
           <div class="hud">
-            <span class="pill"><i class="coin"></i><span id="coins">0</span><span id="coin-pop" class="coin-pop"></span></span>
+            <div class="hud-left">
+              <span class="pill coin-pill"><i class="coin"></i><span id="coins">0</span><span id="coin-pop" class="coin-pop"></span></span>
+              <button type="button" class="pill friends-pill" id="friends-pill" hidden>친구<span id="friends-badge" class="badge" hidden></span></button>
+            </div>
             <button type="button" class="pill timer-pill" id="timer-pill" hidden></button>
             <span class="pill" id="clock">--:--</span>
           </div>
@@ -228,6 +231,19 @@
             </div>
           </div>
 
+          <!-- 친구 -->
+          <div id="friends" class="panel" hidden>
+            <div class="panel-head">
+              <div class="tabs" id="friends-tabs">
+                <button type="button" class="tab" data-view="list">친구</button>
+                <button type="button" class="tab" data-view="requests">요청 <span class="count" id="req-count"></span></button>
+                <button type="button" class="tab" data-view="guestbook">방명록 <span class="count" id="gb-count"></span></button>
+              </div>
+              <button id="friends-close" type="button">닫기</button>
+            </div>
+            <div id="friends-body" class="panel-body"></div>
+          </div>
+
           <!-- 아직 열지 않은 방 -->
           <div id="locked" class="locked" hidden>
             <div class="locked-box">
@@ -254,6 +270,16 @@
           </div>
         </div>
 
+        <!-- 친구 방 구경 중 -->
+        <div id="visit-bar" class="visit-bar">
+          <strong id="visit-name"></strong>
+          <div class="actions">
+            <button id="visit-heart" type="button">하트 남기기</button>
+            <button id="visit-guestbook" type="button">방명록</button>
+            <button id="visit-back" class="primary" type="button">내 방으로</button>
+          </div>
+        </div>
+
         <!-- 꾸미기 중에만 보이는 보관함 -->
         <div id="edit-bar" class="edit-bar" hidden>
           <p class="edit-hint">보관함의 물건을 누르면 방에 놓여요. 방의 물건을 누르면 방향을 돌리거나 보관함에 넣을 수 있어요.</p>
@@ -274,14 +300,15 @@
   </main>
 
   <!-- 순서 중요: 데이터 → 방 → 저장 → 게임 → 집중 → 첫 화면 → 로그인 -->
-  <script src="data.js?v=20261115-4"></script>
-  <script src="rooms.js?v=20261115-4"></script>
-  <script src="save.js?v=20261115-4"></script>
-  <script src="game.js?v=20261115-4"></script>
-  <script src="focus.js?v=20261115-4"></script>
-  <script src="start.js?v=20261115-4"></script>
+  <script src="data.js?v=20261116-2"></script>
+  <script src="rooms.js?v=20261116-2"></script>
+  <script src="save.js?v=20261116-2"></script>
+  <script src="game.js?v=20261116-2"></script>
+  <script src="focus.js?v=20261116-2"></script>
+  <script src="start.js?v=20261116-2"></script>
+  <script src="friends.js?v=20261116-2"></script>
   <!-- 구글 로그인 (Supabase) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-  <script src="cloud.js?v=20261115-4"></script>
+  <script src="cloud.js?v=20261116-2"></script>
 </body>
 </html>
