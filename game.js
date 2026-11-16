@@ -337,12 +337,63 @@ function scale3x(grid) {
 // 얼굴 부분(눈·입·볼)은 키우기 전 칸 단위로 따로 그림
 const FACE_KEYS = "EBMO";
 
+// ver.세밀 캐릭터 몸 (목 아래 7줄): 글자 그림 대신 1/3칸 단위로 직접 그립니다.
+// 글자 그림에서 옷 모양(줄무늬·후드·카라), 하의(바지·반바지·치마), 동작(가만히·걷기1·걷기2)을 읽어 옵니다.
+function heroBodyDetail(body) {
+  const W = 30, H = 21;
+  const g = Array.from({ length: H }, () => new Array(W).fill("."));
+  const fill = (x1, y1, x2, y2, ch) => {
+    for (let y = y1; y < y2; y++) for (let x = x1; x < x2; x++) g[y][x] = ch;
+  };
+  const hood = body[0][2] === "C";
+  const collar = body[0].includes("W");
+  const stripe = body[1].includes("D") || body[3].includes("D");
+  const skirt = body[5] === ".PPPPPPPP.";
+  const shorts = body[5].includes("S");
+  const pose = body[6] === ".FF....FF." ? "apart" : body[6] === "...FFFF..." ? "together" : "stand";
+
+  // 하의
+  if (skirt) {
+    fill(9, 12, 21, 13, "P");
+    fill(8, 13, 22, 15, "P");
+    fill(7, 15, 23, 17, "P");
+  } else {
+    fill(9, 12, 21, 14, "P");
+  }
+  const legs = pose === "apart" ? [[7, 13], [17, 23]] : pose === "together" ? [[10, 14], [16, 20]] : [[9, 14], [16, 21]];
+  for (const [x1, x2] of legs) {
+    if (skirt) fill(x1 + 1, 17, x2 - 1, 18, "S");
+    else if (shorts) { fill(x1, 14, x2, 16, "P"); fill(x1 + 1, 16, x2 - 1, 18, "S"); }
+    else fill(x1, 14, x2, 18, "P");
+    fill(x1 - 1, 18, x2, 21, "F"); // 신발 (앞코가 조금 더 넓게)
+  }
+
+  // 상의
+  fill(12, 0, 18, 2, "S");                 // 목
+  fill(9, 1, 21, 2, "C");
+  fill(8, 2, 22, 12, "C");                 // 몸통
+  fill(5, 3, 8, 6, "C"); fill(22, 3, 25, 6, "C");   // 소매
+  fill(6, 2, 8, 3, "C"); fill(22, 2, 24, 3, "C");
+  fill(5, 6, 7, 11, "S"); fill(23, 6, 25, 11, "S"); // 팔과 손
+  if (stripe) {
+    for (const y of [4, 7, 10]) fill(8, y, 22, y + 1, "D");
+    fill(5, 4, 8, 5, "D"); fill(22, 4, 25, 5, "D");
+  }
+  if (hood) { fill(9, 0, 12, 2, "C"); fill(18, 0, 21, 2, "C"); }
+  if (collar) { fill(11, 1, 13, 3, "W"); fill(17, 1, 19, 3, "W"); }
+  return g;
+}
+
 function renderSpriteDetail(rows, colors, flip) {
   const h = rows.length, w = rows[0].length;
   // 얼굴 칸은 주변 피부(S)로 바꿔서 키운 뒤 따로 그림
   const skin = colors.S ? "S" : colors.K ? "K" : null; // 얼굴 바탕 (사람은 피부, 반려동물은 털)
   const grid = rows.map((r) => r.split("").map((ch) => (FACE_KEYS.includes(ch) && colors[ch] && skin ? skin : ch)));
-  const big = scale3x(grid);
+  // 캐릭터(사람)는 머리만 키우고 몸은 따로 그림
+  const person = colors.S && colors.C && w === 10 && h >= 14;
+  const big = person
+    ? scale3x(grid.slice(0, h - 7)).concat(heroBodyDetail(rows.slice(h - 7)))
+    : scale3x(grid);
   const H = h * 3, W = w * 3;
   const c = document.createElement("canvas");
   c.width = W;
@@ -362,7 +413,8 @@ function renderSpriteDetail(rows, colors, flip) {
       if (!color.startsWith("#")) { px(r, cc, color); continue; }
       const below = empty(r + 1, cc) || big[r + 1][cc] !== k;
       const above = empty(r - 1, cc) || big[r - 1][cc] !== k;
-      const side = empty(r, cc - 1) || empty(r, cc + 1);
+      const limb = person && k === "S" && r >= (h - 7) * 3; // 가는 팔다리는 옆 음영을 빼서 칙칙하지 않게
+      const side = !limb && (empty(r, cc - 1) || empty(r, cc + 1));
       if (empty(r + 1, cc) || (side && !empty(r + 1, cc))) color = mixColor(color, "#000000", side ? 0.22 : 0.18);
       else if (below) color = mixColor(color, "#000000", 0.12);
       else if (above && SHINY.includes(k)) color = mixColor(color, "#ffffff", 0.22);

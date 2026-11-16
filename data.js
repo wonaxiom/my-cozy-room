@@ -290,7 +290,7 @@ const HAIR_STYLES = [
     ".H......H.",
     ".H......H.",
   ] },
-  { id: "spiky", name: "삐죽머리", extra: ["..H..H..H."], rows: [
+  { id: "spiky", name: "삐죽머리", extra: ["..H.HH.H.."], rows: [
     "..HHHHHH..",
     ".HHHHHHHH.",
     ".HHHHHHHH.",
@@ -342,13 +342,13 @@ const HAIR_STYLES = [
     ".H......H.",
     ".H......H.",
   ] },
-  { id: "curly", name: "곱슬", rows: [
+  { id: "curly", name: "곱슬", extra: ["..H.HH.H.."], rows: [
     "..HHHHHH..",
     ".HHHHHHHH.",
-    "HHHHHHHHHH",
-    "HH......HH",
-    "H........H",
-    "H........H",
+    ".HHHHHHHH.",
+    ".HH....HH.",
+    ".HH....HH.",
+    ".H......H.",
   ] },
 ];
 
