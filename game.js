@@ -506,7 +506,7 @@ if (CHARACTER_SHEET) loadImage(CHARACTER_SHEET.image);
 
 // 가구에 쓸 그림 (없거나 아직 못 불러왔으면 null → 상자로 그림)
 function itemImage(item) {
-  if (item.light && !save.lampOn && item.imageOff) {
+  if (item.light && !isLit(item) && item.imageOff) {
     return readyImage(item.imageOff) || readyImage(item.image);
   }
   return readyImage(item.image);
@@ -740,7 +740,7 @@ function drawItem(item) {
   if (artStyle === "detail") drawItemOutline(item);
   for (const [dx, dy, dz, w, d, h, color] of partsOf(item)) {
     let key = color;
-    if (item.light && !save.lampOn && PALETTE[key + "Off"]) key += "Off";
+    if (item.light && !isLit(item) && PALETTE[key + "Off"]) key += "Off";
     if (item.twinkle && key.startsWith("bulb")) key = twinkleColor(key);
     box(item.x + dx, item.y + dy, item.z + dz, w, d, h, key);
   }
@@ -880,11 +880,22 @@ function settleItems() {
   return changed;
 }
 
+// 조명은 하나씩 따로 켜고 끕니다. (off가 정해지지 않은 예전 조명은 예전 전체 스위치를 따름)
+function isLit(item) {
+  if (!item.light) return false;
+  return typeof item.off === "boolean" ? !item.off : save.lampOn !== false;
+}
+
+function toggleLight(item) {
+  item.off = isLit(item);
+  saveLayout();
+}
+
 function makeItem(p) {
   const f = FURNITURE[p.id];
   const wall = f.type === "wall";
   const rot = wall ? 0 : p.rot != null ? p.rot : p.flip ? 1 : 0; // 예전 저장은 flip
-  return Object.assign({}, f, { id: p.id, x: p.x, y: p.y, z: p.z, flip: wall && !!p.flip, rot, closed: !!p.closed });
+  return Object.assign({}, f, { id: p.id, x: p.x, y: p.y, z: p.z, flip: wall && !!p.flip, rot, closed: !!p.closed, off: p.off });
 }
 
 function refreshItems() {
@@ -901,6 +912,7 @@ function saveLayout() {
     flip: (f.type === "wall" && f.flip) || undefined,
     rot: rotOf(f) || undefined,
     closed: f.closed || undefined,
+    off: typeof f.off === "boolean" ? f.off : undefined, // 조명 켜짐·꺼짐
   }));
   Save.save(save);
 }
@@ -1682,7 +1694,7 @@ function drawClockAt(c) {
 function drawLighting(phase) {
   // 낮에 커튼을 모두 닫으면 조금 어두워짐
   const dark = Math.min(0.6, darknessOf(phase) + (phase !== "night" && curtainsAllClosed() ? 0.15 : 0));
-  const lights = save.lampOn ? items.filter((f) => f.light) : [];
+  const lights = items.filter((f) => f.light && isLit(f));
   const lightPos = (f) => {
     const [lx, ly, lz] = turnedPoint(f, [f.light.x, f.light.y, f.light.z]);
     return project(f.x + lx, f.y + ly, f.z + lz);
@@ -1918,7 +1930,7 @@ function pickInteraction(h) {
   for (const item of items) {
     const act = INTERACT[item.id];
     if (!act) continue;
-    if (act === "lamp" && night === save.lampOn) continue; // 어두우면 켜러, 밝으면 끄러
+    if (act === "lamp" && night === isLit(item)) continue; // 어두우면 켜러, 밝으면 끄러
     if (act === "snack" && item.z > 0) continue;
     const spot = useSpot(item, act);
     if (spot) plans.push({ item, act, spot });
@@ -1945,10 +1957,7 @@ function startUse() {
   const f = footprint(plan.item);
   const sdx = c ? 0 : (f.x + f.w / 2 - hero.x) - (f.y + f.d / 2 - hero.y);
   if (Math.abs(sdx) > 0.5) hero.dir = Math.sign(sdx);
-  if (mode === "lamp") {
-    save.lampOn = !save.lampOn;
-    Save.save(save);
-  }
+  if (mode === "lamp") toggleLight(plan.item);
 }
 
 function endUse() {
@@ -3031,10 +3040,8 @@ view.addEventListener("click", (e) => {
     saveLayout();
     return;
   }
-  if (lampItem(p) && !visiting) {
-    save.lampOn = !save.lampOn;
-    Save.save(save);
-  }
+  const lit = lampItem(p);
+  if (lit && !visiting) toggleLight(lit); // 누른 조명만 켜고 끔
 });
 
 view.addEventListener("pointermove", (e) => {
