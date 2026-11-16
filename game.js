@@ -1344,7 +1344,7 @@ function heroSize() {
 
 // 동작 이름(idle, blink, walk1, walk2, sleep)에 맞는 그림을 그립니다.
 // centerX: 가운데 위치, bottomY: 발(맨 아래) 위치
-function drawHeroFrame(name, centerX, bottomY, flip) {
+function drawHeroFrame(name, centerX, bottomY, flip, look) {
   const img = readyImage(CHARACTER_SHEET && CHARACTER_SHEET.image);
   if (img) {
     const fw = CHARACTER_SHEET.frameWidth, fh = CHARACTER_SHEET.frameHeight;
@@ -1359,8 +1359,8 @@ function drawHeroFrame(name, centerX, bottomY, flip) {
     ctx.restore();
     return;
   }
-  const rows = heroRows(name);
-  drawSprite(rows, centerX - Math.floor(rows[0].length / 2), bottomY - rows.length, heroColors(), flip);
+  const rows = heroRows(name, look);
+  drawSprite(rows, centerX - Math.floor(rows[0].length / 2), bottomY - rows.length, heroColors(look), flip);
 }
 
 function drawHero() {
@@ -1484,6 +1484,89 @@ function drawPet() {
   drawSprite(rows, p.x - 4, p.y - rows.length - jump, petDef().colors, pet.dir < 0);
 }
 
+// ---- 놀러 간 내 캐릭터 (친구 방 구경 중) ---------------------------
+const guest = { x: 30, y: 40, dir: 1, mode: "idle", timer: 1, target: null, walkT: 0, blinkT: 2, heartT: 0, jumpT: 0 };
+
+function guestVisible() {
+  return !!visiting && !!ownSave;
+}
+
+function placeGuest() {
+  for (let i = 0; i < 200; i++) {
+    const x = 6 + Math.random() * (RW() - 12);
+    const y = 6 + Math.random() * (RD() - 12);
+    if (isFree(x, y) && Math.hypot(x - hero.x, y - hero.y) > 8) { guest.x = x; guest.y = y; break; }
+  }
+  Object.assign(guest, { mode: "idle", timer: 1, heartT: 0, jumpT: 0 });
+}
+
+// 갈 곳: 절반쯤은 친구 캐릭터 옆, 나머지는 아무 데나
+function guestTarget() {
+  for (let i = 0; i < 20; i++) {
+    let x, y;
+    if (Math.random() < 0.5 && hero.mode !== "sleep") {
+      const a = Math.random() * Math.PI * 2;
+      x = hero.x + Math.cos(a) * 7;
+      y = hero.y + Math.sin(a) * 7;
+    } else {
+      x = 4 + Math.random() * (RW() - 8);
+      y = 4 + Math.random() * (RD() - 8);
+    }
+    if (pathIsFree(guest.x, guest.y, x, y)) return { x, y };
+  }
+  return null;
+}
+
+function updateGuest(dt) {
+  if (!guestVisible()) return;
+  guest.heartT = Math.max(0, guest.heartT - dt);
+  guest.jumpT = Math.max(0, guest.jumpT - dt);
+  guest.blinkT -= dt;
+  if (guest.blinkT < -0.15) guest.blinkT = 2 + Math.random() * 3;
+  if (guest.mode === "idle") {
+    guest.timer -= dt;
+    if (guest.timer <= 0) {
+      const t = Math.random() < 0.75 ? guestTarget() : null;
+      if (t) { guest.target = t; guest.mode = "walk"; } else guest.timer = 2 + Math.random() * 2;
+    }
+  } else if (guest.mode === "walk") {
+    const dx = guest.target.x - guest.x, dy = guest.target.y - guest.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 0.3) {
+      guest.mode = "idle";
+      guest.timer = 2 + Math.random() * 4;
+    } else {
+      const step = Math.min(dist, WALK_SPEED * dt);
+      guest.x += (dx / dist) * step;
+      guest.y += (dy / dist) * step;
+      if (Math.abs(dx - dy) > 0.01) guest.dir = Math.sign(dx - dy);
+      guest.walkT += dt;
+    }
+  }
+}
+
+function guestScreen() {
+  const p = project(guest.x, guest.y, 0);
+  return { x: Math.round(p.x), y: Math.round(p.y) };
+}
+
+function drawGuest() {
+  let frame = "idle";
+  if (guest.mode === "walk") frame = ["walk1", "idle", "walk2", "idle"][Math.floor(guest.walkT * 8) % 4];
+  else if (guest.blinkT < 0) frame = "blink";
+  const p = guestScreen();
+  const jump = guest.jumpT > 0 ? Math.round(Math.sin((1 - guest.jumpT / 0.35) * Math.PI) * 4) : 0;
+  ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
+  ctx.fillRect(p.x - 4, p.y - 1, 8, 2);
+  drawHeroFrame(frame, p.x, p.y - jump, guest.dir < 0, ownSave.look);
+}
+
+function guestBounds() {
+  const p = guestScreen();
+  const h = heroRows("idle", ownSave.look).length;
+  return { x: p.x - 5, y: p.y - h - 1, w: 10, h: h + 1 };
+}
+
 function petBounds() {
   const p = petScreen();
   return { x: p.x - 5, y: p.y - 8, w: 10, h: 9 };
@@ -1502,6 +1585,9 @@ function drawObjects() {
   } }));
   if (hero.mode !== "sleep" && ownsRoom()) {
     list.push({ fp: { x: hero.x - 1.5, y: hero.y - 1.5, w: 3, d: 3 }, draw: drawHero });
+  }
+  if (guestVisible()) {
+    list.push({ fp: { x: guest.x - 1.5, y: guest.y - 1.5, w: 3, d: 3 }, draw: drawGuest });
   }
   if (petVisible()) {
     list.push({ fp: { x: pet.x - 1, y: pet.y - 1, w: 2, d: 2 }, draw: drawPet });
@@ -1570,6 +1656,19 @@ function drawEffects() {
       ctx.fillRect(p.x - 3 + i * 3, p.y - heroSize().h - 4, 1, 1);
     }
   }
+  if (guestVisible()) {
+    // 내 캐릭터 머리 위에 작은 표시 (친구 방에서 나를 찾기 쉽게)
+    const p = guestScreen();
+    const top = p.y - heroRows("idle", ownSave.look).length - 4;
+    ctx.fillStyle = "#e8b84a";
+    ctx.fillRect(p.x - 1, top, 3, 1);
+    ctx.fillRect(p.x, top + 1, 1, 1);
+    if (guest.heartT > 0) {
+      ctx.globalAlpha = Math.min(1, guest.heartT * 2);
+      drawSprite(EFFECTS.heart, p.x - 2, Math.round(top - 7 - (1.2 - guest.heartT) * 6), { H: "heart" }, false);
+      ctx.globalAlpha = 1;
+    }
+  }
   if (petVisible() && pet.heartT > 0) {
     const p = petScreen();
     ctx.globalAlpha = Math.min(1, pet.heartT * 2);
@@ -1615,6 +1714,11 @@ function lampItem(p) {
 view.addEventListener("click", (e) => {
   if (editing) return;
   const p = toGamePos(e);
+  if (guestVisible() && inside(p, guestBounds())) {
+    guest.heartT = 1.2;
+    guest.jumpT = 0.35;
+    return;
+  }
   if (petVisible() && inside(p, petBounds())) {
     pet.heartT = 1.2;
     pet.jumpT = 0.3;
@@ -1644,7 +1748,8 @@ view.addEventListener("pointermove", (e) => {
     view.style.cursor = drag ? "grabbing" : hoverItem ? "grab" : "default";
     return;
   }
-  const hit = (hero.mode !== "sleep" && inside(p, heroBounds())) || (petVisible() && inside(p, petBounds())) || lampItem(p);
+  const hit = (hero.mode !== "sleep" && inside(p, heroBounds())) || (petVisible() && inside(p, petBounds()))
+    || (guestVisible() && inside(p, guestBounds())) || (!visiting && lampItem(p));
   view.style.cursor = hit ? "pointer" : "default";
 });
 
@@ -2533,7 +2638,9 @@ function startVisit(friend, snap) {
   document.getElementById("visit-name").textContent = `${friend.name || "친구"}의 방`;
   document.getElementById("title").textContent = `${friend.name || "친구"}의 방 · 구경 중`;
   setRoom(save.roomId);
+  placeGuest();
   refreshWeather(true);
+  toast(`${friend.name || "친구"}님 방에 놀러 왔어요. 노란 표시가 있는 캐릭터가 나예요.`);
 }
 
 function endVisit() {
@@ -2623,6 +2730,7 @@ function tick(dt) {
 
   updateHero(dt, h);
   updatePet(dt, h);
+  updateGuest(dt);
 
   ctx.clearRect(0, 0, W, H);
   drawShell();

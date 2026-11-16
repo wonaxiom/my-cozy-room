@@ -195,7 +195,12 @@ const Friends = (() => {
         toast(`${nameOf(g.from_id)}님이 ${FURNITURE[g.item_id].name}을(를) 선물했어요. 보관함을 확인해 보세요.`);
       }
     }
-    if (gifts && gifts.length) Save.save(save);
+    if (gifts && gifts.length) {
+      Save.save(save);
+      // 열려 있는 보관함과 선물 화면을 바로 새로 그리기
+      if (editing) renderBag();
+      if (!panel.hidden && view === "gift") render();
+    }
   }
 
   // ---- 실시간 알림 ----
