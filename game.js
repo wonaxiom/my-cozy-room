@@ -1869,6 +1869,89 @@ function updateHero(dt, h) {
   if (!visiting && Net.onHeroMove && JSON.stringify([hero.mode, hero.target]) !== before) Net.onHeroMove(moveState(hero));
 }
 
+// ---- 가구 쓰기 (상호작용) ------------------------------------------
+// 가구 이름 → 하는 일. read: 책 읽기, snack: 간식, sit: 방석에 앉기, look: 구경(뒷모습),
+// water: 화분에 물 주기, lamp: 조명 켜고 끄기
+const INTERACT = {
+  bookcase: "read", shelf: "read",
+  lowTable: "snack", windowTable: "snack", chest: "snack",
+  cushion: "sit",
+  windowCurtain: "look", windowShoji: "look", windowRound: "look", windowTrain: "look", telescope: "look", globe: "look",
+  plant: "water",
+  lamp: "lamp", andon: "lamp",
+};
+const USE_MODES = ["read", "snack", "look", "water", "lamp"];
+const USE_TIME = { read: [10, 18], snack: [8, 12], look: [6, 10], water: [3, 4], lamp: [1.2, 1.2] };
+
+// 가구 앞에 설 자리 (벽 장식은 벽에서 조금 떨어진 곳, 방석은 그 위)
+function useSpot(item, act) {
+  if (item.type === "wall") {
+    const wall = wallOf(item);
+    if (wall === "round") return null;
+    const e = wallExtent(item), a = (wall === "right" ? item.x : item.y) + (e.a1 + e.a2) / 2;
+    const spot = wall === "right" ? { x: a, y: 7 } : { x: 7, y: a };
+    return isFree(spot.x, spot.y) ? spot : null;
+  }
+  const f = footprint(item);
+  if (act === "sit") return { x: f.x + f.w / 2, y: f.y + f.d / 2 };
+  const sides = [
+    { x: f.x + f.w / 2, y: f.y + f.d + 3.5 }, { x: f.x + f.w + 3.5, y: f.y + f.d / 2 },
+    { x: f.x + f.w / 2, y: f.y - 3.5 }, { x: f.x - 3.5, y: f.y + f.d / 2 },
+  ];
+  return sides.find((p) => isFree(p.x, p.y)) || null;
+}
+
+function pickInteraction(h) {
+  const night = phaseOf(h) === "night" || phaseOf(h) === "evening";
+  const plans = [];
+  for (const item of items) {
+    const act = INTERACT[item.id];
+    if (!act) continue;
+    if (act === "lamp" && night === save.lampOn) continue; // 어두우면 켜러, 밝으면 끄러
+    if (act === "snack" && item.z > 0) continue;
+    const spot = useSpot(item, act);
+    if (spot) plans.push({ item, act, spot });
+  }
+  // 조명은 먼저 (어두워졌는데 꺼져 있으면 바로 켜러 감)
+  const lamp = plans.find((p) => p.act === "lamp");
+  if (lamp) return lamp;
+  return plans.length ? plans[Math.floor(Math.random() * plans.length)] : null;
+}
+
+function startUse() {
+  const plan = hero.use;
+  if (!plan || !items.includes(plan.item)) { endUse(); return; }
+  let mode = plan.act;
+  if (mode === "sit") {
+    hero.seat = plan.item; // 방석 위에 앉음 (방석을 그린 다음 캐릭터를 그림)
+    mode = Math.random() < 0.6 ? "read" : "snack";
+  }
+  hero.mode = mode;
+  const [a, b] = USE_TIME[mode];
+  hero.actT = a + Math.random() * (b - a);
+  // 가구 쪽을 바라보기
+  const c = plan.item.type === "wall" ? useSpot(plan.item, mode) : null;
+  const f = footprint(plan.item);
+  const sdx = c ? 0 : (f.x + f.w / 2 - hero.x) - (f.y + f.d / 2 - hero.y);
+  if (Math.abs(sdx) > 0.5) hero.dir = Math.sign(sdx);
+  if (mode === "lamp") {
+    save.lampOn = !save.lampOn;
+    Save.save(save);
+  }
+}
+
+function endUse() {
+  stopUse();
+  hero.mode = "idle";
+  hero.timer = 2 + Math.random() * 3;
+}
+
+// 다른 일(잠, 집중, 클릭)로 가구 쓰기를 멈출 때
+function stopUse() {
+  hero.use = null;
+  hero.seat = null;
+}
+
 function updateHeroLocal(dt, h) {
   hero.heartT = Math.max(0, hero.heartT - dt);
   hero.jumpT = Math.max(0, hero.jumpT - dt);
@@ -1879,6 +1962,7 @@ function updateHeroLocal(dt, h) {
   const desk = isFocusing() ? workItem() : null;
   if (desk && hero.mode !== "work" && hero.mode !== "toWork") {
     if (hero.mode === "sleep") Object.assign(hero, bedSide());
+    stopUse();
     hero.mode = "toWork";
     hero.target = spotNear(desk, turnedPoint(desk, desk.work));
   }
@@ -1890,6 +1974,7 @@ function updateHeroLocal(dt, h) {
   // 밤에는 잠자리로, 아침에는 일어나기
   const sleepy = isSleepTime(h) && !desk;
   if (sleepy && bedItem() && hero.mode !== "sleep" && hero.mode !== "toBed") {
+    stopUse();
     hero.mode = "toBed";
     hero.target = bedSide();
   }
@@ -1900,17 +1985,21 @@ function updateHeroLocal(dt, h) {
   }
 
   hero.waveT = Math.max(0, (hero.waveT || 0) - dt);
-  if (hero.mode === "read" || hero.mode === "snack") {
-    // 책 읽기·간식 먹기: 정해 둔 시간이 지나면 다시 돌아다님
+  if (USE_MODES.includes(hero.mode)) {
+    // 가구 쓰기: 정해 둔 시간이 지나면 다시 돌아다님
     hero.actT -= dt;
-    if (hero.actT <= 0) { hero.mode = "idle"; hero.timer = 2 + Math.random() * 3; }
+    if (hero.actT <= 0) endUse();
   } else if (hero.mode === "idle") {
     hero.timer -= dt;
-    if (hero.timer <= 0 && Math.random() < 0.3) {
-      // 가끔 그 자리에서 책을 읽거나 간식을 먹음
-      hero.mode = Math.random() < 0.6 ? "read" : "snack";
-      hero.actT = 8 + Math.random() * 8;
-      return;
+    if (hero.timer <= 0 && Math.random() < 0.4) {
+      // 가끔 방에 놓인 가구로 가서 씀 (책장에서 책 읽기, 창밖 보기 등)
+      const plan = pickInteraction(h);
+      if (plan) {
+        hero.use = plan;
+        hero.target = plan.spot;
+        hero.mode = "toUse";
+        return;
+      }
     }
     if (hero.timer <= 0) {
       const t = Math.random() < 0.7 ? pickTarget() : null;
@@ -1921,13 +2010,15 @@ function updateHeroLocal(dt, h) {
         hero.timer = 2 + Math.random() * 3;
       }
     }
-  } else if (hero.mode === "walk" || hero.mode === "toBed" || hero.mode === "toWork") {
+  } else if (hero.mode === "walk" || hero.mode === "toBed" || hero.mode === "toWork" || hero.mode === "toUse") {
     const dx = hero.target.x - hero.x, dy = hero.target.y - hero.y;
     const dist = Math.hypot(dx, dy);
     if (dist < 0.3) {
       hero.x = hero.target.x;
       hero.y = hero.target.y;
-      if (hero.mode === "toBed") {
+      if (hero.mode === "toUse") {
+        startUse();
+      } else if (hero.mode === "toBed") {
         hero.mode = "sleep";
       } else if (hero.mode === "toWork") {
         // 책상 쪽을 바라보고 일하기
@@ -2317,12 +2408,18 @@ function drawHero() {
   if (hero.mode === "sleep") return; // 잘 때는 잠자리 위에 따로 그림
 
   let frame = "idle";
-  if (hero.mode === "walk" || hero.mode === "toBed" || hero.mode === "toWork") {
+  if (hero.mode === "walk" || hero.mode === "toBed" || hero.mode === "toWork" || hero.mode === "toUse") {
     frame = walkFrame(hero.walkT);
   } else if (hero.waveT > 0) {
     frame = Math.floor(hero.waveT * 6) % 2 ? "wave1" : "wave2";
   } else if (hero.mode === "work" || hero.mode === "read" || hero.mode === "snack") {
     frame = hero.mode; // ver.세밀: 방석에 앉아 노트북·책·간식 (ver.하찮은 가만히 그림)
+  } else if (hero.mode === "look") {
+    frame = "back"; // 창밖·망원경·지구본을 바라보는 뒷모습
+  } else if (hero.mode === "lamp") {
+    frame = "wave1"; // 손을 뻗어 조명 켜기
+  } else if (hero.mode === "water") {
+    frame = "idle";
   } else if (hero.blinkT < 0) {
     frame = "blink";
   }
@@ -2629,8 +2726,9 @@ function drawObjects() {
     drawItem(item);
     drawOrder.push(item);
     if (item.sleep) drawSleeper();
+    if (hero.seat === item && ownsRoom()) drawHero(); // 방석 위에 앉은 캐릭터
   } }));
-  if (hero.mode !== "sleep" && ownsRoom()) {
+  if (hero.mode !== "sleep" && !(hero.seat && items.includes(hero.seat)) && ownsRoom()) {
     list.push({ fp: { x: hero.x - 1.5, y: hero.y - 1.5, w: 3, d: 3 }, draw: drawHero });
   }
   if (guestVisible()) {
@@ -2688,6 +2786,16 @@ function tintItem(item, color) {
 
 // 하트, Zzz 같은 효과 (조명 위에 그려서 잘 보이게)
 function drawEffects() {
+  // 화분에 물 주기: 잎 위로 물방울이 떨어짐
+  if (hero.mode === "water" && hero.use && items.includes(hero.use.item)) {
+    const f = footprint(hero.use.item);
+    const top = project(f.x + f.w / 2, f.y + f.d / 2, hero.use.item.z + itemHeight(hero.use.item));
+    ctx.fillStyle = "#8fc8f0";
+    for (let i = 0; i < 3; i++) {
+      const t = (time * 1.6 + i / 3) % 1;
+      ctx.fillRect(Math.round(top.x - 2 + i * 2), Math.round(top.y - 6 + t * 7), 1 / 3 * 2, 1);
+    }
+  }
   if (hero.mode === "sleep") {
     const base = project(...pillowPos());
     for (let i = 0; i < 2; i++) {
@@ -2798,7 +2906,7 @@ view.addEventListener("click", (e) => {
     hero.heartT = 1.2;
     hero.jumpT = 0.35;
     hero.waveT = 1.4; // 손 흔들기
-    if (hero.mode === "read" || hero.mode === "snack") { hero.mode = "idle"; hero.timer = 2; }
+    if (USE_MODES.includes(hero.mode) || hero.mode === "toUse") endUse();
     return;
   }
   const curtain = curtainAt(p);
@@ -3213,6 +3321,7 @@ function drawSceneOutline() {
 // 배치가 바뀐 뒤: 정보 다시 계산하고 캐릭터가 갇히지 않게
 function afterLayoutChange() {
   refreshItems();
+  if (hero.use || hero.seat) endUse(); // 쓰던 가구가 옮겨졌을 수 있음
   if (hero.mode === "work" || hero.mode === "toWork") hero.mode = "idle"; // 책상이 옮겨졌을 수 있음
   if (hero.mode !== "sleep" && !isFree(hero.x, hero.y)) placeHeroInRoom();
   if (hero.mode === "walk") { hero.mode = "idle"; hero.timer = 1; }
