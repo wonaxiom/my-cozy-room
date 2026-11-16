@@ -886,8 +886,17 @@ function isLit(item) {
   return typeof item.off === "boolean" ? !item.off : save.lampOn !== false;
 }
 
+// 조명을 켜고 끈 시간대 표시 (예: "2026-11-16 밤"). 같은 시간대에는 캐릭터가 다시 건드리지 않음
+function lightPeriod() {
+  const d = now(), h = hourNow();
+  const night = phaseOf(h) === "night" || phaseOf(h) === "evening";
+  if (night && h < 12) d.setDate(d.getDate() - 1); // 새벽은 전날 밤으로
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()} ${night ? "밤" : "낮"}`;
+}
+
 function toggleLight(item) {
   item.off = isLit(item);
+  item.lightAt = lightPeriod(); // 사람이든 캐릭터든 이 시간대에 이미 만졌음
   saveLayout();
 }
 
@@ -895,7 +904,7 @@ function makeItem(p) {
   const f = FURNITURE[p.id];
   const wall = f.type === "wall";
   const rot = wall ? 0 : p.rot != null ? p.rot : p.flip ? 1 : 0; // 예전 저장은 flip
-  return Object.assign({}, f, { id: p.id, x: p.x, y: p.y, z: p.z, flip: wall && !!p.flip, rot, closed: !!p.closed, off: p.off });
+  return Object.assign({}, f, { id: p.id, x: p.x, y: p.y, z: p.z, flip: wall && !!p.flip, rot, closed: !!p.closed, off: p.off, lightAt: p.lightAt });
 }
 
 function refreshItems() {
@@ -913,6 +922,7 @@ function saveLayout() {
     rot: rotOf(f) || undefined,
     closed: f.closed || undefined,
     off: typeof f.off === "boolean" ? f.off : undefined, // 조명 켜짐·꺼짐
+    lightAt: f.lightAt || undefined,                      // 조명을 마지막으로 만진 시간대
   }));
   Save.save(save);
 }
@@ -1941,7 +1951,8 @@ function pickInteraction(h) {
   for (const item of items) {
     const act = INTERACT[item.id];
     if (!act) continue;
-    if (act === "lamp" && night === isLit(item)) continue; // 어두우면 켜러, 밝으면 끄러
+    // 조명: 저녁에 한 번 켜러, 아침에 한 번 끄러 감. 이 시간대에 이미 켜고 끈 조명(직접 만진 것 포함)은 그대로 둠
+    if (act === "lamp" && (night === isLit(item) || item.lightAt === lightPeriod())) continue;
     if (act === "snack" && item.z > 0) continue;
     const spot = useSpot(item, act);
     if (spot) plans.push({ item, act, spot });
