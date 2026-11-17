@@ -1748,6 +1748,25 @@ Object.assign(FURNITURE, {
   noren: { name: "노렌", type: "wall", category: "prop", price: 80, size: [14, 1, 13], image: "img/furn/noren.png", imageSimple: "img/furn/s/noren.png", hires: true },
 });
 
+// ---- 엔티크 가구 (GPT 그림) ----
+Object.assign(FURNITURE, {
+  canopyBed: { name: "캐노피 침대", category: "furniture", price: 360, style: "antique", size: [24, 16, 30], image: "img/furn/canopyBed.png", imageSimple: "img/furn/s/canopyBed.png", hires: true, sleep: { side: [12, 20], pillow: [19, 8, 8] } },
+  chesterfield: { name: "체스터필드 소파", category: "furniture", price: 280, style: "antique", size: [10, 22, 12], image: "img/furn/chesterfield.png", imageSimple: "img/furn/s/chesterfield.png", hires: true, seat: { z: 6, back: "+x" }, use: "chair" },
+  rockingChair: { name: "흔들의자", category: "furniture", price: 170, style: "antique", size: [9, 9, 16], image: "img/furn/rockingChair.png", imageSimple: "img/furn/s/rockingChair.png", hires: true, seat: { z: 6, back: "+x" }, use: "chair" },
+  teaTable: { name: "티테이블", category: "furniture", price: 150, style: "antique", size: [10, 10, 12], image: "img/furn/teaTable.png", imageSimple: "img/furn/s/teaTable.png", hires: true, use: "snack" },
+  vanity: { name: "화장대", category: "furniture", price: 220, style: "antique", size: [9, 16, 20], image: "img/furn/vanity.png", imageSimple: "img/furn/s/vanity.png", hires: true },
+  rolltopDesk: { name: "롤톱 책상", category: "furniture", price: 240, style: "antique", size: [8, 16, 15], image: "img/furn/rolltopDesk.png", imageSimple: "img/furn/s/rolltopDesk.png", hires: true, use: "read" },
+  grandfatherClock: { name: "괘종시계", category: "furniture", price: 200, style: "antique", size: [6, 6, 26], image: "img/furn/grandfatherClock.png", imageSimple: "img/furn/s/grandfatherClock.png", hires: true },
+  wardrobe: { name: "엔티크 옷장", category: "furniture", price: 260, style: "antique", size: [8, 16, 25], image: "img/furn/wardrobe.png", imageSimple: "img/furn/s/wardrobe.png", hires: true },
+  piano: { name: "피아노", category: "furniture", price: 400, style: "antique", size: [9, 18, 17], image: "img/furn/piano.png", imageSimple: "img/furn/s/piano.png", hires: true },
+  gramophone: { name: "축음기", category: "prop", price: 160, kind: "goods", size: [7, 7, 15], image: "img/furn/gramophone.png", imageSimple: "img/furn/s/gramophone.png", hires: true },
+  candelabra: { name: "촛대", category: "prop", price: 90, kind: "light", size: [5, 5, 16], image: "img/furn/candelabra.png", imageOff: "img/furn/candelabra-off.png", imageSimple: "img/furn/s/candelabra.png", imageSimpleOff: "img/furn/s/candelabra-off.png", hires: true, light: { x: 2.5, y: 2.5, z: 14, radius: 40 }, use: "lamp" },
+  persianRug: { name: "페르시안 러그", type: "floor", category: "prop", price: 120, kind: "rug", size: [20, 24, 0.5], image: "img/furn/persianRug.png", imageSimple: "img/furn/s/persianRug.png", hires: true },
+  goldMirror: { name: "금테 벽거울", type: "wall", category: "prop", price: 100, kind: "wall", size: [9, 1, 14], image: "img/furn/goldMirror.png", imageSimple: "img/furn/s/goldMirror.png", hires: true },
+  birdcage: { name: "새장", category: "prop", price: 110, kind: "goods", size: [6, 6, 16], image: "img/furn/birdcage.png", imageSimple: "img/furn/s/birdcage.png", hires: true },
+  trunk: { name: "가죽 트렁크", category: "prop", price: 90, kind: "goods", size: [9, 12, 8], image: "img/furn/trunk.png", imageSimple: "img/furn/s/trunk.png", hires: true },
+});
+
 // ---- 상점 세부 분류 ----------------------------------------------------
 // 가구는 스타일(style), 소품은 종류(kind)로 나눕니다. 상점 탭 아래 버튼으로 골라 볼 수 있어요.
 // 새 가구를 추가할 때는 가구에 style: "antique"처럼 직접 적거나, 아래 표에 이름(id)을 넣으면 됩니다.
