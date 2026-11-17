@@ -2692,6 +2692,8 @@ function heroArtSet(gender, hair) {
   heroArtSets.set(key, set);
   return set;
 }
+const SWITCH_BOX_X = 46; // ver.세밀 "switch" 그림에서 스위치 상자가 시작하는 칸
+
 function heroArtCanvas(name, lookIn, flip) {
   const look = normLook(lookIn);
   const gender = look.gender === "female" ? "female" : "male";
@@ -2717,6 +2719,8 @@ function heroArtCanvas(name, lookIn, flip) {
     const p = HERO_ART.palette[ch];
     if (!p) return;
     const [orig, part] = p;
+    // 손 뻗는 그림(불 켜고 끄기·축음기)은 손에 든 스위치 상자를 빼고 그림 (손끝보다 바깥 칸)
+    if (frame === "switch" && x >= SWITCH_BOX_X && part !== "skin") return;
     px(x, y, target[part] ? recolor(orig, HERO_ART.genders[gender].base[part] || orig, target[part]) : orig);
   }));
   if (!(frame === "lie" && findBy(BOTTOMS, look.bottom).type === "skirt")) drawBottomArt(look, rows, w, h, px, colors, HERO_ART.genders[gender].base); // 누우면 치마는 이불 속
