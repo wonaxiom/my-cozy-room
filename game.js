@@ -558,6 +558,7 @@ artBtn.addEventListener("click", () => {
   afterLayoutChange();
   renderBag();
   if (!shopEl.hidden) renderShop();
+  if (typeof Friends !== "undefined") Friends.redraw(); // 친구 창 캐릭터 그림도 바로 바꿈
   toast(artStyle === "detail" ? "ver.세밀로 볼게요." : "ver.하찮으로 볼게요.");
 });
 

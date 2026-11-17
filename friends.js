@@ -756,5 +756,11 @@ const Friends = (() => {
   $("visit-guestbook").addEventListener("click", () => open("visitbook"));
   $("visit-back").addEventListener("click", leaveVisit);
 
-  return { start, stop, publish, refresh, claim, open, close, myId: () => (me ? me.id : null) };
+  // 그림 버전(ver.세밀/ver.하찮)을 바꾸면 열려 있는 친구 창의 캐릭터 그림도 바로 다시 그림
+  // (대화 화면은 캐릭터 그림이 없고, 쓰던 글이 지워지지 않게 그대로 둠)
+  function redraw() {
+    if (!panel.hidden && view !== "chat") render();
+  }
+
+  return { start, stop, publish, refresh, claim, open, close, redraw, myId: () => (me ? me.id : null) };
 })();
