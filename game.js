@@ -501,15 +501,24 @@ function readyImage(src) {
   return img && img.ready ? img : null;
 }
 
-Object.values(FURNITURE).forEach((f) => { loadImage(f.image); loadImage(f.imageOff); });
+Object.values(FURNITURE).forEach((f) => { loadImage(f.image); loadImage(f.imageOff); loadImage(f.imageSimple); loadImage(f.imageSimpleOff); });
 if (CHARACTER_SHEET) loadImage(CHARACTER_SHEET.image);
 
 // 가구에 쓸 그림 (없거나 아직 못 불러왔으면 null → 상자로 그림)
 function itemImage(item) {
+  if (simpleArtOf(item)) {
+    if (item.light && !isLit(item) && item.imageSimpleOff) return readyImage(item.imageSimpleOff) || simpleArtOf(item);
+    return simpleArtOf(item);
+  }
   if (item.light && !isLit(item) && item.imageOff) {
     return readyImage(item.imageOff) || readyImage(item.image);
   }
   return readyImage(item.image);
+}
+
+// ver.하찮용 그림 (있고 불러왔으면)
+function simpleArtOf(item) {
+  return artStyle === "simple" && item.imageSimple ? readyImage(item.imageSimple) : null;
 }
 
 // 그림을 놓을 위치: 그림 맨 아래 = 가구 바닥의 가장 앞 모서리
@@ -519,8 +528,9 @@ function imageRect(item, img) {
   const bottom = project(item.x + w, item.y + d, item.z).y;
   const [ox, oy] = item.offset || [0, 0];
   // hires 그림은 그림 1픽셀이 화면 1픽셀(1/3칸), 예전 그림은 1픽셀이 1칸
-  const iw = item.hires ? img.width / RES : img.width, ih = item.hires ? img.height / RES : img.height;
-  const x = item.hires ? left + ox : Math.round(left + ox), y = item.hires ? bottom - ih + oy : Math.round(bottom - ih + oy);
+  const hi = item.hires && !simpleArtOf(item); // ver.하찮 그림은 1픽셀이 1칸
+  const iw = hi ? img.width / RES : img.width, ih = hi ? img.height / RES : img.height;
+  const x = hi ? left + ox : Math.round(left + ox), y = hi ? bottom - ih + oy : Math.round(bottom - ih + oy);
   return { x, y, w: iw, h: ih };
 }
 
