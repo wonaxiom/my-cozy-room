@@ -32,6 +32,8 @@ const Side = (() => {
     }
   }
 
+  // 구글 캘린더 일정 (gcal.js, 내 계정에서만)
+  const eventsOn = (key) => (typeof GCal !== "undefined" ? GCal.eventsOn(key) : []);
   const keyOf = (y, m, d) => `${y}-${pad(m + 1)}-${pad(d)}`;
   const selKey = () => sel || Focus.dayKey();
 
@@ -58,8 +60,9 @@ const Side = (() => {
       const c = document.createElement("button");
       c.type = "button";
       const has = Focus.todosFor(key).some((t) => !t.done);
+      const ev = eventsOn(key).length > 0; // 구글 캘린더 일정이 있는 날
       c.className = "cal-day" + (key === today ? " today" : "") + (key === selKey() && key !== today ? " sel" : "")
-        + ((first + d - 1) % 7 === 0 ? " sun" : "") + (has ? " has" : "");
+        + ((first + d - 1) % 7 === 0 ? " sun" : "") + (has ? " has" : "") + (ev ? " ev" : "");
       c.textContent = d;
       c.addEventListener("click", () => { sel = key === today ? "" : key; renderCalendar(); renderTodos(); });
       cal.append(c);
@@ -115,6 +118,17 @@ const Side = (() => {
     const list = $("side-todo-list");
     list.innerHTML = "";
     const todos = Focus.todosFor(key);
+    // 그날 구글 캘린더 일정 (할 일 위에, 체크 없이)
+    for (const ev of eventsOn(key)) {
+      const li = document.createElement("li");
+      li.className = "side-event";
+      const time = document.createElement("small");
+      time.textContent = ev.time || "종일";
+      const text = document.createElement("span");
+      text.textContent = ev.title;
+      li.append(time, text);
+      list.append(li);
+    }
     if (!todos.length) {
       const li = document.createElement("li");
       li.className = "side-empty";
@@ -159,6 +173,8 @@ const Side = (() => {
     input.value = "";
   });
   Focus.setTodoRender(() => { if (on) { renderTodos(); renderCalendar(); } });
+  // 구글 캘린더를 새로 불러오면 달력도 다시 그림 (gcal.js는 이 파일 뒤에 불러옴)
+  setTimeout(() => { if (typeof GCal !== "undefined") GCal.setRender(() => { if (on) { renderTodos(); renderCalendar(); } }); }, 0);
 
   // 세로 보기 켜고 끄기: 작은 창 크기도 함께 바꿈
   function set(next, win) {

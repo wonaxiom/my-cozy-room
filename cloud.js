@@ -207,5 +207,6 @@ const Cloud = (() => {
     sync,
     loadProfile,
     isSignedIn: () => !!user,
+    userId: () => (user ? user.id : null),
   };
 })();
