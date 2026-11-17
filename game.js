@@ -4468,10 +4468,12 @@ async function togglePip() {
   placeholder.hidden = false;
   pipNote.textContent = "";
   updatePipButton();
+  if (typeof Side !== "undefined") Side.pip(true); // 세로 보기 버튼 보이기
   startLoop();
 
   // 작은 창이 닫히면 원래 자리로 돌아오기
   pipWin.addEventListener("pagehide", () => {
+    if (typeof Side !== "undefined") Side.pip(false);
     appHome.prepend(app);
     placeholder.hidden = true;
     pipWin = null;

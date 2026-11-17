@@ -1721,7 +1721,7 @@ Object.assign(FURNITURE, {
   bookChest: { name: "책장 수납장", category: "furniture", price: 150, size: [6, 12, 18], image: "img/furn/bookChest.png", imageSimple: "img/furn/s/bookChest.png", hires: true, use: "read" },
   glassCabinet: { name: "유리 장식장", category: "furniture", price: 170, size: [6, 12, 22], image: "img/furn/glassCabinet.png", imageSimple: "img/furn/s/glassCabinet.png", hires: true },
   sideboard: { name: "낮은 수납장", category: "furniture", price: 140, size: [7, 22, 9], image: "img/furn/sideboard.png", imageSimple: "img/furn/s/sideboard.png", hires: true },
-  fireplace: { name: "벽난로", category: "furniture", price: 380, size: [8, 16, 20], image: "img/furn/fireplace.png", imageSimple: "img/furn/s/fireplace.png", hires: true, light: { x: 4, y: 8, z: 4, radius: 46 } },
+  fireplace: { name: "벽난로", category: "furniture", price: 380, size: [8, 16, 20], image: "img/furn/fireplace.png", imageOff: "img/furn/fireplace-off.png", imageSimple: "img/furn/s/fireplace.png", imageSimpleOff: "img/furn/s/fireplace-off.png", hires: true, light: { x: 4, y: 8, z: 4, radius: 46 } },
   checkRug: { name: "체크 러그", type: "floor", category: "prop", price: 70, size: [20, 20, 0.5], image: "img/furn/checkRug.png", imageSimple: "img/furn/s/checkRug.png", hires: true },
   greenRug: { name: "초록 체크 러그", type: "floor", category: "prop", price: 70, size: [20, 20, 0.5], image: "img/furn/greenRug.png", imageSimple: "img/furn/s/greenRug.png", hires: true },
   roundRug: { name: "둥근 러그", type: "floor", category: "prop", price: 80, size: [18, 18, 0.5], image: "img/furn/roundRug.png", imageSimple: "img/furn/s/roundRug.png", hires: true },

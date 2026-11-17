@@ -216,7 +216,9 @@ const Focus = (() => {
     renderTodos();
   }
 
+  let onTodos = null; // 할 일이 바뀌면 세로 보기도 새로 그림
   function renderTodos() {
+    if (onTodos) onTodos();
     list.innerHTML = "";
     if (!save.todos.length) {
       const li = document.createElement("li");
@@ -290,5 +292,7 @@ const Focus = (() => {
   });
 
   render();
-  return { isFocusing, update, open, close };
+  // 세로 보기(side.js)에서도 같은 할 일을 쓰도록 내보냄
+  function setTodoRender(fn) { onTodos = fn; }
+  return { isFocusing, update, open, close, addTodo, toggleTodo, setTodoRender, start, pause };
 })();

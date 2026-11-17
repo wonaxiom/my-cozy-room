@@ -1325,3 +1325,102 @@ body.pip .visit-bar:focus-within { opacity: 1; }
 
 body.pip #room-name,
 body.pip .visit-title strong { color: #f4efe8; }
+
+/* ---- 세로 보기 (항상 위 작은 창, 화면 오른쪽에 길게) ---- */
+.side { display: none; }
+
+body.pip.side-mode .stage { flex: 0 0 auto; height: 200px; }
+
+body.pip.side-mode .side {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  padding: 8px;
+  overflow-y: auto;
+  color: #e9e3da;
+}
+
+/* 세로 보기에서는 방 바꾸기·꾸미기 버튼을 숨겨 자리를 아낌 */
+body.pip.side-mode .room-picker,
+body.pip.side-mode #edit-btn,
+body.pip.side-mode #shop-btn { display: none; }
+
+.side-clock { padding: 4px 4px 0; }
+
+.side-time {
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 1px;
+}
+
+.side-date { color: #cfc7bd; font-size: 12px; }
+
+.side-card {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #3a3530;
+}
+
+.side-title {
+  margin-bottom: 6px;
+  color: #cfc7bd;
+  font-size: 12px;
+}
+
+.side-cal {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  text-align: center;
+  font-size: 11px;
+}
+
+.side-cal .cal-head { color: #9a9087; }
+.side-cal .cal-day { padding: 3px 0; border-radius: 6px; }
+.side-cal .sun { color: #e59a8a; }
+.side-cal .today { color: #2a2622; background: #f2d27e; font-weight: 700; }
+
+.side-timer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.side-timer-time { font-size: 22px; font-weight: 700; }
+.side-timer-label { flex: 1; color: #cfc7bd; font-size: 12px; }
+
+.side-timer button {
+  padding: 4px 10px;
+  border: 1px solid #4a443e;
+  border-radius: 8px;
+  color: #e9e3da;
+  background: #2a2622;
+  font-size: 12px;
+}
+
+.side-todos { flex: 1 0 auto; }
+
+.side-todo-list {
+  margin: 0 0 6px;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.side-todo-list li { padding: 3px 0; }
+.side-todo-list label { display: flex; gap: 6px; align-items: center; }
+.side-todo-list .done span { color: #9a9087; text-decoration: line-through; }
+.side-empty { color: #9a9087; font-size: 12px; }
+
+.side-todo-form input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #4a443e;
+  border-radius: 8px;
+  color: #e9e3da;
+  background: #2a2622;
+  font-size: 12px;
+}
