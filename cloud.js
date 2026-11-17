@@ -23,7 +23,9 @@ const Cloud = (() => {
   let timer = null;
   // 여러 기기 맞추기: 실제로 바꾼 시각(editedAt)이 더 최근인 쪽을 씁니다.
   // (코인이 쌓이는 자동 저장은 바꾼 것으로 치지 않아서, 켜 두기만 한 기기가 덮어쓰지 않음)
-  const editedOf = (d) => (d && (d.editedAt || d.savedAt)) || 0;
+  // editedAt이 없는 예전 데이터는 0으로 봅니다. (자동 저장 시각을 쓰면 켜 두기만 한 기기가 계속 이겨서
+  // 기기끼리 서로 덮어쓰게 됨)
+  const editedOf = (d) => (d && d.editedAt) || 0;
 
   function setStatus(text) {
     statusEl.textContent = text ? "· " + text : "";
