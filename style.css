@@ -508,6 +508,13 @@ button:disabled {
   text-decoration: line-through;
 }
 
+/* 지난 날짜에서 넘어온 할 일의 날짜 */
+.todo-date {
+  flex: none;
+  color: #c07060;
+  font-size: 11px;
+}
+
 .todo-del {
   flex-shrink: 0;
   width: 24px;
@@ -1378,10 +1385,54 @@ body.pip.side-mode #shop-btn { display: none; }
   font-size: 11px;
 }
 
+.side-cal-head {
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.side-cal-head .side-title { flex: 1; margin: 0; text-align: center; }
+
+.side-cal-head button {
+  padding: 0 8px;
+  border: 0;
+  color: #cfc7bd;
+  background: none;
+  font-size: 16px;
+  line-height: 1;
+}
+
 .side-cal .cal-head { color: #9a9087; }
-.side-cal .cal-day { padding: 3px 0; border-radius: 6px; }
+
+.side-cal .cal-day {
+  position: relative;
+  padding: 3px 0 5px;
+  border: 0;
+  border-radius: 6px;
+  color: inherit;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.side-cal .cal-day:hover { background: #4a443e; }
 .side-cal .sun { color: #e59a8a; }
 .side-cal .today { color: #2a2622; background: #f2d27e; font-weight: 700; }
+.side-cal .today:hover { background: #f2d27e; }
+.side-cal .sel { box-shadow: inset 0 0 0 1px #f2d27e; }
+
+/* 할 일이 남은 날: 날짜 아래 작은 점 */
+.side-cal .has::after {
+  position: absolute;
+  bottom: 1px;
+  left: 50%;
+  width: 3px;
+  height: 3px;
+  margin-left: -1.5px;
+  border-radius: 50%;
+  background: #e59a8a;
+  content: "";
+}
 
 .side-timer-row {
   display: flex;
@@ -1428,8 +1479,18 @@ body.pip.side-mode #shop-btn { display: none; }
   font-size: 13px;
 }
 
-.side-todo-list li { padding: 3px 0; }
-.side-todo-list label { display: flex; gap: 6px; align-items: center; }
+.side-todo-list li { display: flex; align-items: center; padding: 3px 0; }
+.side-todo-list label { display: flex; flex: 1; gap: 6px; align-items: center; min-width: 0; }
+.side-late { color: #e59a8a; font-size: 10px; }
+
+.side-del {
+  padding: 0 4px;
+  border: 0;
+  color: #9a9087;
+  background: none;
+  font-size: 14px;
+  line-height: 1;
+}
 .side-todo-list .done span { color: #9a9087; text-decoration: line-through; }
 .side-empty { color: #9a9087; font-size: 12px; }
 

@@ -13,6 +13,8 @@ const Side = (() => {
   const SIDE_SIZE = { width: 300 }; // 세로 보기 창 너비 (높이는 화면 높이에 꽉 맞춤)
   let on = false;
   let lastDay = "";
+  let sel = "";      // 고른 날짜 ("2026-11-20"). 비어 있으면 오늘
+  let view = null;   // 달력에 보이는 달 { y, m }
 
   const pad = (n) => String(n).padStart(2, "0");
 
@@ -23,12 +25,21 @@ const Side = (() => {
     $("side-time").textContent = /\d+:\d+/.test(clock) ? clock : `${pad(d.getHours())}:${pad(d.getMinutes())}`;
     $("side-date").textContent = `${d.getMonth() + 1}월 ${d.getDate()}일 ${WEEK[d.getDay()]}요일` + (weather ? ` · ${weather}` : "");
     const day = d.toDateString();
-    if (day !== lastDay) { lastDay = day; renderCalendar(d); }
+    if (day !== lastDay) {
+      // 날이 바뀌면 오늘로 돌아감
+      lastDay = day; sel = ""; view = { y: d.getFullYear(), m: d.getMonth() };
+      renderCalendar(); renderTodos();
+    }
   }
 
-  // 이번 달 달력 (오늘 표시)
-  function renderCalendar(now) {
-    const y = now.getFullYear(), m = now.getMonth();
+  const keyOf = (y, m, d) => `${y}-${pad(m + 1)}-${pad(d)}`;
+  const selKey = () => sel || Focus.dayKey();
+
+  // 달력: 오늘·고른 날 표시, 할 일이 남은 날에는 점. 날짜를 누르면 그날 할 일을 봄
+  function renderCalendar() {
+    const now = new Date();
+    if (!view) view = { y: now.getFullYear(), m: now.getMonth() };
+    const { y, m } = view;
     $("side-month").textContent = `${y}년 ${m + 1}월`;
     const cal = $("side-cal");
     cal.innerHTML = "";
@@ -40,14 +51,29 @@ const Side = (() => {
     }
     const first = new Date(y, m, 1).getDay();
     const days = new Date(y, m + 1, 0).getDate();
+    const today = Focus.dayKey();
     for (let i = 0; i < first; i++) cal.append(document.createElement("span"));
     for (let d = 1; d <= days; d++) {
-      const c = document.createElement("span");
-      c.className = "cal-day" + (d === now.getDate() ? " today" : "") + ((first + d - 1) % 7 === 0 ? " sun" : "");
+      const key = keyOf(y, m, d);
+      const c = document.createElement("button");
+      c.type = "button";
+      const has = Focus.todosFor(key).some((t) => !t.done);
+      c.className = "cal-day" + (key === today ? " today" : "") + (key === selKey() && key !== today ? " sel" : "")
+        + ((first + d - 1) % 7 === 0 ? " sun" : "") + (has ? " has" : "");
       c.textContent = d;
+      c.addEventListener("click", () => { sel = key === today ? "" : key; renderCalendar(); renderTodos(); });
       cal.append(c);
     }
   }
+
+  // 지난달·다음 달 보기
+  function moveMonth(step) {
+    const d = new Date(view.y, view.m + step, 1);
+    view = { y: d.getFullYear(), m: d.getMonth() };
+    renderCalendar();
+  }
+  $("side-prev").addEventListener("click", () => moveMonth(-1));
+  $("side-next").addEventListener("click", () => moveMonth(1));
 
   // 집중 타이머: 남은 시간, 시작/멈춤/그만, 집중 시간 고르기
   function renderTimer() {
@@ -81,17 +107,21 @@ const Side = (() => {
     box.querySelectorAll("[data-set]").forEach((b) => b.classList.toggle("active", Number(b.dataset.set) === t.length));
   }
 
-  // 오늘 할 일 (집중 창의 할 일과 같은 목록)
+  // 고른 날의 할 일 (오늘이면 집중 창의 오늘 할 일과 같은 목록)
   function renderTodos() {
+    const key = selKey();
+    const [, mm, dd] = key.split("-").map(Number);
+    $("side-todo-title").textContent = sel ? `${mm}월 ${dd}일 할 일` : "오늘 할 일";
     const list = $("side-todo-list");
     list.innerHTML = "";
-    if (!save.todos.length) {
+    const todos = Focus.todosFor(key);
+    if (!todos.length) {
       const li = document.createElement("li");
       li.className = "side-empty";
-      li.textContent = "아직 할 일이 없어요.";
+      li.textContent = sel ? "이날 할 일이 없어요." : "아직 할 일이 없어요.";
       list.append(li);
     }
-    for (const todo of save.todos) {
+    for (const todo of todos) {
       const li = document.createElement("li");
       li.className = todo.done ? "done" : "";
       const label = document.createElement("label");
@@ -102,7 +132,20 @@ const Side = (() => {
       const text = document.createElement("span");
       text.textContent = todo.text;
       label.append(box, text);
-      li.append(label);
+      const late = Focus.lateTag(todo);
+      if (late) {
+        const tag = document.createElement("small");
+        tag.className = "side-late";
+        tag.textContent = late;
+        label.append(tag);
+      }
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "side-del";
+      del.setAttribute("aria-label", "삭제");
+      del.textContent = "×";
+      del.addEventListener("click", () => Focus.removeTodo(todo));
+      li.append(label, del);
       list.append(li);
     }
   }
@@ -112,10 +155,10 @@ const Side = (() => {
     const input = $("side-todo-input");
     const text = input.value.trim();
     if (!text) return;
-    Focus.addTodo(text);
+    Focus.addTodo(text, selKey());
     input.value = "";
   });
-  Focus.setTodoRender(() => { if (on) renderTodos(); });
+  Focus.setTodoRender(() => { if (on) { renderTodos(); renderCalendar(); } });
 
   // 세로 보기 켜고 끄기: 작은 창 크기도 함께 바꿈
   function set(next, win) {

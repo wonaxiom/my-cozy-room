@@ -180,14 +180,30 @@ const Focus = (() => {
     });
   }
 
-  // ---- 오늘 할 일 ----
-  function addTodo(text) {
-    save.todos.push({
+  // ---- 할 일 ----
+  // 날짜("2026-11-20")를 정한 할 일은 그날 달력에 표시. 날짜가 없거나 지난 날짜면 오늘 할 일에 보임
+  const dayKey = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const isToday = (t) => !t.date || t.date <= dayKey();
+  // 그날 할 일 목록 (오늘이면 날짜 없는 일과 아직 남은 지난 일도 같이)
+  function todosFor(key) {
+    return key === dayKey() ? save.todos.filter((t) => isToday(t) && (!t.date || t.date === key || !t.done)) : save.todos.filter((t) => t.date === key);
+  }
+  // 지난 날짜에서 넘어온 할 일에 붙이는 짧은 날짜 (예: "11/15")
+  function lateTag(t) {
+    if (!t.date || t.date >= dayKey()) return "";
+    const [, m, d] = t.date.split("-").map(Number);
+    return `${m}/${d}`;
+  }
+
+  function addTodo(text, date) {
+    const todo = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
       text,
       done: false,
       rewarded: false,
-    });
+    };
+    if (date && date !== dayKey()) todo.date = date;
+    save.todos.push(todo);
     Save.save(save);
     renderTodos();
   }
@@ -221,13 +237,14 @@ const Focus = (() => {
   function renderTodos() {
     if (onTodos) onTodos();
     list.innerHTML = "";
-    if (!save.todos.length) {
+    const today = todosFor(dayKey());
+    if (!today.length) {
       const li = document.createElement("li");
       li.className = "todo-empty";
       li.textContent = "아직 할 일이 없어요.";
       list.append(li);
     }
-    for (const todo of save.todos) {
+    for (const todo of today) {
       const li = document.createElement("li");
       li.className = "todo" + (todo.done ? " done" : "");
       const label = document.createElement("label");
@@ -238,6 +255,12 @@ const Focus = (() => {
       const text = document.createElement("span");
       text.textContent = todo.text;
       label.append(box, text);
+      if (lateTag(todo)) {
+        const tag = document.createElement("small");
+        tag.className = "todo-date";
+        tag.textContent = lateTag(todo);
+        label.append(tag);
+      }
       const del = document.createElement("button");
       del.type = "button";
       del.className = "todo-del";
@@ -249,7 +272,7 @@ const Focus = (() => {
     }
     const d = daily();
     todoInfo.textContent = `끝낸 일마다 ${TODO_REWARD}코인 (오늘 ${d.todoRewards}/${TODO_DAILY_MAX})`;
-    $("todo-clear").hidden = !save.todos.some((t) => t.done);
+    $("todo-clear").hidden = !today.some((t) => t.done);
   }
 
   // ---- 패널 열기/닫기 ----
@@ -302,5 +325,5 @@ const Focus = (() => {
     Save.save(save);
     render();
   }
-  return { isFocusing, update, open, close, addTodo, toggleTodo, setTodoRender, start, pause, stop, setLength };
+  return { isFocusing, update, open, close, addTodo, toggleTodo, removeTodo, todosFor, lateTag, dayKey, setTodoRender, start, pause, stop, setLength };
 })();
