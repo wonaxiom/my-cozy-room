@@ -712,6 +712,18 @@ function slantLeg(x0, y0, x1, y1, z1, color, n = 6) {
   return out;
 }
 
+// 선물 상자: 리본이 지나가는 띠(x 방향 rx~rx+1, y 방향 ry~ry+1)로 상자를 나눠 겹치지 않게 쌓음
+// (겹치는 상자는 돌렸을 때 그리는 순서가 꼬여서 리본이 깨져 보임). bow: 위에 올리는 리본 매듭
+function giftBox(w, d, h, rx, ry, body, ribbon, bow, lift = 0) {
+  const out = [];
+  const xs = [[0, rx], [rx, rx + 1], [rx + 1, w]], ys = [[0, ry], [ry, ry + 1], [ry + 1, d]];
+  xs.forEach(([x1, x2], i) => ys.forEach(([y1, y2], j) => {
+    const band = i === 1 || j === 1; // 리본 띠 (lift만큼 살짝 높여서 잘 보이게)
+    if (x2 - x1 > 0 && y2 - y1 > 0) out.push([x1, y1, 0, x2 - x1, y2 - y1, band ? h + lift : h, band ? ribbon : body]);
+  }));
+  return out.concat(bow);
+}
+
 const FURNITURE = {
   // ---- 공용 ----
   rug: {
@@ -1279,40 +1291,23 @@ const FURNITURE = {
     name: "선물 상자 (빨강)",
     category: "xmas", price: 60,
     small: true,
-    parts: [
-      [0, 0, 0, 5, 5, 4, "giftRed"],
-      [2, 0, 0, 1, 5, 4.2, "ribbonGold"],
-      [0, 2, 0, 5, 1, 4.2, "ribbonGold"],
-      [1.5, 1.5, 4, 2, 2, 1, "ribbonGold"],
-    ],
-    detail: [
-      [0, 0, 0, 5, 5, 11 / 3, "giftRed"],
-      [-1 / 6, -1 / 6, 11 / 3, 16 / 3, 16 / 3, 2 / 3, "giftRed"],
-      [2, 0, 0, 1, 5, 13 / 3 + 0.01, "ribbonGold"],
-      [0, 2, 0, 5, 1, 13 / 3 + 0.01, "ribbonGold"],
-      [1, 1.5, 13 / 3, 4 / 3, 2, 1, "ribbonGold"],
-      [8 / 3, 1.5, 13 / 3, 4 / 3, 2, 1, "ribbonGold"],
+    parts: giftBox(5, 5, 4, 2, 2, "giftRed", "ribbonGold", [[1, 1, 4, 3, 3, 1, "ribbonGold"]], 0.3),
+    detail: giftBox(5, 5, 13 / 3, 2, 2, "giftRed", "ribbonGold", [
+      [1, 1.5, 13 / 3, 1, 2, 1, "ribbonGold"],
+      [3, 1.5, 13 / 3, 1, 2, 1, "ribbonGold"],
       [2, 2, 13 / 3, 1, 1, 4 / 3, "gold"],
-    ],
+    ]),
   },
   giftGreen: {
     name: "선물 상자 (초록)",
     category: "xmas", price: 60,
     small: true,
-    parts: [
-      [0, 0, 0, 6, 4, 3, "giftGreen"],
-      [2.5, 0, 0, 1, 4, 3.2, "giftRed"],
-      [2, 1, 3, 2, 2, 1, "giftRed"],
-    ],
-    detail: [
-      [0, 0, 0, 6, 4, 8 / 3, "giftGreen"],
-      [-1 / 6, -1 / 6, 8 / 3, 19 / 3, 13 / 3, 2 / 3, "giftGreen"],
-      [2.5, 0, 0, 1, 4, 10 / 3 + 0.01, "giftRed"],
-      [0, 1.5, 0, 6, 1, 10 / 3 + 0.01, "giftRed"],
-      [1.5, 1, 10 / 3, 4 / 3, 2, 1, "giftRed"],
-      [10 / 3, 1, 10 / 3, 4 / 3, 2, 1, "giftRed"],
-      [8 / 3, 5 / 3, 10 / 3, 2 / 3, 2 / 3, 4 / 3, "candy"],
-    ],
+    parts: giftBox(6, 4, 3, 2, 1, "giftGreen", "giftRed", [[1, 0, 3, 3, 3, 1, "giftRed"]], 0.3),
+    detail: giftBox(6, 4, 10 / 3, 2.5, 1.5, "giftGreen", "giftRed", [
+      [1.5, 1, 10 / 3, 1, 2, 1, "giftRed"],
+      [3.5, 1, 10 / 3, 1, 2, 1, "giftRed"],
+      [2.5, 1.5, 10 / 3, 1, 1, 4 / 3, "candy"],
+    ]),
   },
   snowman: {
     name: "눈사람 인형",
