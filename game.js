@@ -518,7 +518,10 @@ function imageRect(item, img) {
   const left = project(item.x, item.y + d, item.z).x;
   const bottom = project(item.x + w, item.y + d, item.z).y;
   const [ox, oy] = item.offset || [0, 0];
-  return { x: Math.round(left + ox), y: Math.round(bottom - img.height + oy), w: img.width, h: img.height };
+  // hires 그림은 그림 1픽셀이 화면 1픽셀(1/3칸), 예전 그림은 1픽셀이 1칸
+  const iw = item.hires ? img.width / RES : img.width, ih = item.hires ? img.height / RES : img.height;
+  const x = item.hires ? left + ox : Math.round(left + ox), y = item.hires ? bottom - ih + oy : Math.round(bottom - ih + oy);
+  return { x, y, w: iw, h: ih };
 }
 
 // ---- 그림 스타일 ---------------------------------------------------
@@ -651,7 +654,7 @@ function turned(item, v) {
 
 // 가구 안의 자리 (베개, 서는 곳 등)를 돌린 방향에 맞게
 function turnedPoint(item, v) {
-  if (item.type === "wall") return turned(item, v);
+  if (item.type === "wall" || (item.image && !item.parts)) return turned(item, v); // 그림 가구는 돌리면 좌우로 뒤집기만 함
   return [...rotPoint(item, v[0], v[1]), ...v.slice(2)];
 }
 
@@ -687,13 +690,13 @@ function screenBounds(item) {
 // 그림 가구: 방향을 돌렸으면 좌우를 뒤집어 그립니다.
 function drawMirrored(item, img, r) {
   if (!swapped(item)) {
-    ctx.drawImage(img, r.x, r.y);
+    ctx.drawImage(img, r.x, r.y, r.w, r.h);
     return;
   }
   ctx.save();
   ctx.translate(r.x * 2 + r.w, 0);
   ctx.scale(-1, 1);
-  ctx.drawImage(img, r.x, r.y);
+  ctx.drawImage(img, r.x, r.y, r.w, r.h);
   ctx.restore();
 }
 
@@ -1923,7 +1926,8 @@ function seatFacing(item) {
   const back = item.seat && item.seat.back;
   if (!back) return 0;
   let [vx, vy] = back === "+x" ? [-1, 0] : [1, 0]; // 등받이 반대 방향
-  for (let r = rotOf(item); r > 0; r--) [vx, vy] = [-vy, vx];
+  if (item.image && !item.parts) { if (swapped(item)) [vx, vy] = [vy, vx]; } // 그림 가구: 좌우로 뒤집기만
+  else for (let r = rotOf(item); r > 0; r--) [vx, vy] = [-vy, vx];
   const sdx = vx - vy;
   return Math.abs(sdx) > 0.01 ? Math.sign(sdx) : 0;
 }
@@ -1950,7 +1954,7 @@ function pickInteraction(h) {
   const night = phaseOf(h) === "night" || phaseOf(h) === "evening";
   const plans = [];
   for (const item of items) {
-    const act = INTERACT[item.id];
+    const act = INTERACT[item.id] || item.use;
     if (!act) continue;
     // 조명: 저녁에 한 번 켜러, 아침에 한 번 끄러 감. 이 시간대에 이미 켜고 끈 조명(직접 만진 것 포함)은 그대로 둠
     if (act === "lamp" && (night === isLit(item) || item.lightAt === lightPeriod())) continue;
@@ -2767,6 +2771,7 @@ function drawLying(b, p) {
 
 // 베개보다 확실히 앞에 있는 잠자리 상자들
 function drawBedFront(b) {
+  if (!b.parts) return; // 그림 가구는 상자로 다시 그릴 수 없음
   const [px, py] = turnedPoint(b, b.sleep.pillow);
   const [, , pz] = b.sleep.pillow;
   // 얼굴을 다 가리지 않게, 베개 높이 근처까지 오는 낮은 부분만 (머리판처럼 높은 판, 판에 붙인 얇은 무늬는 빼기)

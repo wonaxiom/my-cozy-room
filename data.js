@@ -1689,10 +1689,61 @@ const FURNITURE = {
 // 잠자리 가구는 처음 방향에서 베개(머리)가 벽 쪽(화면 뒤)에 오도록 앞뒤를 뒤집어 둡니다.
 // (모양은 베개가 앞쪽인 기준으로 적혀 있어서, 불러올 때 x 방향만 거울처럼 바꿈)
 for (const f of Object.values(FURNITURE)) {
-  if (!f.sleep) continue;
+  if (!f.sleep || !f.parts) continue;
   const W = Math.min(...f.parts.map((q) => q[0])) + Math.max(...f.parts.map((q) => q[0] + q[3]));
   const flip = (q) => [W - q[0] - q[3], ...q.slice(1)];
   f.parts = f.parts.map(flip);
   if (f.detail) f.detail = f.detail.map(flip);
   f.sleep = { side: [W - f.sleep.side[0], f.sleep.side[1]], pillow: [W - f.sleep.pillow[0], ...f.sleep.pillow.slice(1)] };
 }
+// ---- GPT로 그린 가구 (그림 파일) ----------------------------------------
+// hires: 그림 1픽셀 = 화면 1픽셀(1/3칸). 그림은 앞면이 왼쪽 아래를 보는 모습이고, 돌리면 좌우로 뒤집어 씀
+// size: [오른쪽 아래 방향 길이, 왼쪽 아래 방향 길이, 높이] (칸). 벽 장식은 [벽 따라 길이, 두께, 높이]
+// use: 캐릭터가 하는 일 (chair 앉기, snack 간식, read 책 읽기, water 물주기, lamp 조명 켜고 끄기)
+Object.assign(FURNITURE, {
+  bunkBed: { name: "2층 침대", category: "furniture", price: 320, size: [16, 24, 30], image: "img/furn/bunkBed.png", hires: true, sleep: { side: [20, 18], pillow: [9, 6, 4] } },
+  pinkBed: { name: "분홍 침대", category: "furniture", price: 220, size: [16, 24, 12], image: "img/furn/pinkBed.png", hires: true, sleep: { side: [20, 18], pillow: [8, 4.5, 8] } },
+  bunkBedWhite: { name: "하얀 2층 침대", category: "furniture", price: 340, size: [16, 24, 30], image: "img/furn/bunkBedWhite.png", hires: true, sleep: { side: [20, 18], pillow: [9, 6, 4] } },
+  fabricChair: { name: "패브릭 의자", category: "furniture", price: 150, size: [10, 10, 13], image: "img/furn/fabricChair.png", hires: true, seat: { z: 6, back: "+x" }, use: "chair" },
+  sofa: { name: "3인 소파", category: "furniture", price: 260, size: [10, 24, 13], image: "img/furn/sofa.png", hires: true, seat: { z: 6, back: "+x" }, use: "chair" },
+  officeChair: { name: "사무용 의자", category: "furniture", price: 110, size: [7, 7, 15], image: "img/furn/officeChair.png", hires: true, seat: { z: 7, back: "+x" }, use: "chair" },
+  woodTable: { name: "원목 테이블", category: "furniture", price: 140, size: [14, 16, 11], image: "img/furn/woodTable.png", hires: true, use: "snack" },
+  laptop: { name: "노트북", category: "prop", price: 90, size: [5, 5, 3], image: "img/furn/laptop.png", hires: true, small: true },
+  fridge: { name: "냉장고", category: "furniture", price: 240, size: [9, 9, 24], image: "img/furn/fridge.png", hires: true, use: "snack" },
+  tallBookcase: { name: "큰 책장", category: "furniture", price: 160, size: [6, 12, 22], image: "img/furn/tallBookcase.png", hires: true, use: "read" },
+  bookChest: { name: "책장 수납장", category: "furniture", price: 150, size: [6, 12, 18], image: "img/furn/bookChest.png", hires: true, use: "read" },
+  glassCabinet: { name: "유리 장식장", category: "furniture", price: 170, size: [6, 12, 22], image: "img/furn/glassCabinet.png", hires: true },
+  sideboard: { name: "낮은 수납장", category: "furniture", price: 140, size: [7, 22, 9], image: "img/furn/sideboard.png", hires: true },
+  fireplace: { name: "벽난로", category: "furniture", price: 380, size: [8, 16, 20], image: "img/furn/fireplace.png", hires: true, light: { x: 4, y: 8, z: 4, radius: 46 } },
+  checkRug: { name: "체크 러그", type: "floor", category: "prop", price: 70, size: [20, 20, 0.5], image: "img/furn/checkRug.png", hires: true },
+  greenRug: { name: "초록 체크 러그", type: "floor", category: "prop", price: 70, size: [20, 20, 0.5], image: "img/furn/greenRug.png", hires: true },
+  roundRug: { name: "둥근 러그", type: "floor", category: "prop", price: 80, size: [18, 18, 0.5], image: "img/furn/roundRug.png", hires: true },
+  deskClock: { name: "탁상 시계", category: "prop", price: 40, size: [5, 3, 4], image: "img/furn/deskClock.png", hires: true, small: true },
+  deskClockWhite: { name: "하얀 탁상 시계", category: "prop", price: 40, size: [5, 3, 4], image: "img/furn/deskClockWhite.png", hires: true, small: true },
+  landscape: { name: "풍경 액자", type: "wall", category: "prop", price: 60, size: [12, 1, 11], image: "img/furn/landscape.png", hires: true },
+  catFrame: { name: "고양이 액자", type: "wall", category: "prop", price: 50, size: [8, 1, 9], image: "img/furn/catFrame.png", hires: true },
+  photo1: { name: "사진", type: "wall", category: "prop", price: 20, size: [5, 1, 7], image: "img/furn/photo1.png", hires: true },
+  photo2: { name: "사진 (분홍)", type: "wall", category: "prop", price: 20, size: [5, 1, 7], image: "img/furn/photo2.png", hires: true },
+  squarePot: { name: "네모 화분", category: "prop", price: 40, size: [6, 6, 11], image: "img/furn/squarePot.png", hires: true, small: true, use: "water" },
+  bigPlant: { name: "큰 화분", category: "prop", price: 60, size: [7, 7, 15], image: "img/furn/bigPlant.png", hires: true, small: true, use: "water" },
+  yellowFlower: { name: "노란 꽃병", category: "prop", price: 35, size: [4, 4, 8], image: "img/furn/yellowFlower.png", hires: true, small: true, use: "water" },
+  pinkFlower: { name: "분홍 꽃병", category: "prop", price: 35, size: [4, 4, 8], image: "img/furn/pinkFlower.png", hires: true, small: true, use: "water" },
+  diffuser: { name: "디퓨저", category: "prop", price: 30, size: [3, 3, 6], image: "img/furn/diffuser.png", hires: true, small: true },
+  tableLamp: { name: "테이블 램프", category: "prop", price: 60, size: [5, 5, 10], image: "img/furn/tableLamp.png", imageOff: "img/furn/tableLamp-off.png", hires: true, small: true, light: { x: 2.5, y: 2.5, z: 8, radius: 40 }, use: "lamp" },
+  floorLamp: { name: "플로어 램프", category: "prop", price: 80, size: [5, 5, 18], image: "img/furn/floorLamp.png", imageOff: "img/furn/floorLamp-off.png", hires: true, light: { x: 2.5, y: 2.5, z: 15, radius: 46 }, use: "lamp" },
+  moonLamp: { name: "달 무드등", category: "prop", price: 70, size: [5, 5, 8], image: "img/furn/moonLamp.png", imageOff: "img/furn/moonLamp-off.png", hires: true, small: true, light: { x: 2.5, y: 2.5, z: 5, radius: 36 }, use: "lamp" },
+  snowGlobe: { name: "스노볼", category: "xmas", price: 60, size: [5, 5, 7], image: "img/furn/snowGlobe.png", hires: true, small: true },
+  reindeer: { name: "순록 인형", category: "xmas", price: 90, size: [7, 5, 12], image: "img/furn/reindeer.png", hires: true },
+  lowBed: { name: "낮은 침대", category: "furniture", price: 200, size: [16, 24, 7], image: "img/furn/lowBed.png", hires: true, sleep: { side: [20, 18], pillow: [8, 19, 5] } },
+  kotatsu: { name: "코타츠", category: "furniture", price: 220, size: [16, 16, 9], image: "img/furn/kotatsu.png", hires: true, use: "snack" },
+  shojiScreen: { name: "장지 칸막이", category: "furniture", price: 90, size: [2, 10, 22], image: "img/furn/shojiScreen.png", hires: true },
+  paperLantern: { name: "종이 초롱", category: "prop", price: 60, size: [5, 5, 12], image: "img/furn/paperLantern.png", hires: true, small: true, light: { x: 2.5, y: 2.5, z: 7, radius: 36 } },
+  squareLamp: { name: "사각 등", category: "prop", price: 70, size: [6, 6, 15], image: "img/furn/squareLamp.png", hires: true, light: { x: 3, y: 3, z: 9, radius: 40 }, use: "lamp" },
+  bonsai: { name: "분재", category: "prop", price: 90, size: [8, 8, 12], image: "img/furn/bonsai.png", hires: true, use: "water" },
+  stoneLantern: { name: "석등", category: "prop", price: 120, size: [7, 7, 17], image: "img/furn/stoneLantern.png", hires: true, light: { x: 3.5, y: 3.5, z: 11, radius: 36 } },
+  tsukubai: { name: "돌 물그릇", category: "prop", price: 150, size: [16, 16, 8], image: "img/furn/tsukubai.png", hires: true },
+  sakuraVase: { name: "벚꽃 꽃병", category: "prop", price: 50, size: [5, 5, 12], image: "img/furn/sakuraVase.png", hires: true, small: true, use: "water" },
+  fusuma: { name: "미닫이문", type: "wall", category: "prop", price: 120, size: [18, 1, 22], image: "img/furn/fusuma.png", hires: true },
+  noren: { name: "노렌", type: "wall", category: "prop", price: 80, size: [14, 1, 13], image: "img/furn/noren.png", hires: true },
+});
+
