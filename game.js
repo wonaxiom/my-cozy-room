@@ -2585,6 +2585,35 @@ function heroArtCanvas(name, lookIn, flip) {
   return out;
 }
 
+// ver.하찮 캐릭터 그림을 캔버스로 (화면 픽셀 단위). 대두면 머리 줄만 4/3배로 키워서
+// 도트 한 칸이 화면 픽셀 3개 → 4개가 되게 함 (칸 크기가 고르게 유지됨)
+function simpleHeroCanvas(name, lookIn) {
+  const look = normLook(lookIn || save.look);
+  const rows = heroRows(name, look);
+  const w = rows[0].length, h = rows.length;
+  const extra = rows.length - (CHARACTER[name] || CHARACTER.idle).length; // 머리 위로 더 올라간 줄
+  const base = document.createElement("canvas");
+  base.width = w * RES;
+  base.height = h * RES;
+  const prev = ctx;
+  ctx = base.getContext("2d");
+  ctx.setTransform(RES, 0, 0, RES, 0, 0);
+  drawSprite(rows, 0, 0, heroColors(look), false, true);
+  drawEyewear(look, 0, extra);
+  ctx = prev;
+  if (look.head !== "big") return { c: base, headRows: 0 };
+  const headN = Math.min(h, extra + 7); // 머리: 기본 그림의 위 7줄 (+머리 위로 올라간 줄)
+  const out = document.createElement("canvas");
+  out.width = w * (RES + 1);
+  out.height = h * RES + headN;
+  const g = out.getContext("2d");
+  g.imageSmoothingEnabled = false;
+  const side = Math.round(w / 2); // 몸은 가운데 그대로
+  g.drawImage(base, 0, headN * RES, w * RES, (h - headN) * RES, side, headN * (RES + 1), w * RES, (h - headN) * RES);
+  g.drawImage(base, 0, 0, w * RES, headN * RES, 0, 0, w * (RES + 1), headN * (RES + 1));
+  return { c: out, headRows: headN };
+}
+
 // 동작 이름(idle, blink, walk1, walk2, sleep)에 맞는 그림을 그립니다.
 // centerX: 가운데 위치, bottomY: 발(맨 아래) 위치
 function drawHeroFrame(name, centerX, bottomY, flip, look) {
@@ -2604,6 +2633,16 @@ function drawHeroFrame(name, centerX, bottomY, flip, look) {
       ctx.scale(-1, 1);
     }
     ctx.drawImage(img, index * fw, 0, fw, fh, x, y, fw, fh);
+    ctx.restore();
+    return;
+  }
+  if (normLook(look || save.look).head === "big") {
+    const { c } = simpleHeroCanvas(name, look);
+    const cw = c.width / RES, ch = c.height / RES;
+    ctx.save();
+    ctx.translate(centerX, bottomY - ch);
+    if (flip) ctx.scale(-1, 1);
+    ctx.drawImage(c, -cw / 2, 0, cw, ch);
     ctx.restore();
     return;
   }
@@ -2697,17 +2736,11 @@ function drawLyingSimple(b, p) {
   if (flip === null || readyImage(CHARACTER_SHEET && CHARACTER_SHEET.image)) return false;
   const look = Object.assign({}, normLook(save.look));
   if (["cap", "beanie", "strawHat"].includes(look.acc)) look.acc = null; // 잘 때는 모자를 벗음
-  const rows = heroRows("blink", look);
-  const w = rows[0].length, h = rows.length;
-  const c = document.createElement("canvas");
-  c.width = w * RES;
-  c.height = h * RES;
-  const prev = ctx;
-  ctx = c.getContext("2d");
-  ctx.setTransform(RES, 0, 0, RES, 0, 0);
-  drawSprite(rows, 0, 0, heroColors(look), false);
-  ctx = prev;
-  const headY = h - CHARACTER.idle.length + 3.5; // 머리 가운데 (머리 위로 더 올라간 줄 포함)
+  const { c, headRows } = simpleHeroCanvas("blink", look);
+  const w = c.width / RES, h = c.height / RES;
+  const extra = heroRows("blink", look).length - CHARACTER.blink.length;
+  // 머리 가운데 (머리 위로 더 올라간 줄 포함, 대두면 머리 줄이 4/3배)
+  const headY = headRows ? (extra + 3.5) * (RES + 1) / RES : extra + 3.5;
   ctx.save();
   ctx.translate(p.x, p.y - 2);
   if (flip) ctx.scale(-1, 1);
@@ -3997,6 +4030,16 @@ function makeHeroPreview(look = save.look) {
     c.height = side;
     c.className = "preview";
     c.getContext("2d").drawImage(art, Math.floor((c.width - art.width) / 2), c.height - art.height - RES);
+    return c;
+  }
+  if (normLook(look).head === "big") {
+    const { c: art } = simpleHeroCanvas("idle", look);
+    const side = Math.max(art.width, art.height) + RES * 3;
+    const c = document.createElement("canvas");
+    c.width = side;
+    c.height = side;
+    c.className = "preview";
+    c.getContext("2d").drawImage(art, Math.floor((side - art.width) / 2), side - art.height - RES);
     return c;
   }
   return makeSpritePreview(heroRows("idle", look), heroColors(look), false, look);

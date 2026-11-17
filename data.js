@@ -408,7 +408,7 @@ const EYES = [
   { id: "sunglasses", name: "선글라스" },
 ];
 
-// 얼굴 크기 (ver.세밀): 대두는 머리를 1.25배로 키워 그림
+// 얼굴 크기: 대두는 머리를 키워 그림 (ver.세밀 1.25배, ver.하찮 4/3배)
 const HEAD_SIZES = [
   { id: "normal", name: "보통" },
   { id: "big", name: "대두" },
