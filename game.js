@@ -3800,6 +3800,32 @@ function drawEditMarker(layer) {
   fillPoly(ctx, pts.map((q) => project(...q)), color);
 }
 
+// 예전 책상에는 노트북·머그잔·공책이 붙어 있었음: 책상과 소품을 나누면서, 이미 놓인 책상 위에는
+// 같은 소품을 따로 올려 두고, 보관함의 책상에는 소품도 함께 넣어 줌 (한 번만)
+function splitOldDesks() {
+  if (save.deskSplit) return;
+  const def = FURNITURE.desk;
+  for (const list of Object.values(save.layouts || {})) {
+    for (const entry of list.slice()) {
+      if (entry.id !== "desk") continue;
+      const desk = makeItem(entry);
+      for (const [pid, lx, ly] of def.oldProps) {
+        const p0 = makeItem({ id: pid, x: 0, y: 0, z: 0, rot: 0 });
+        const f0 = footprint(p0);
+        const pr = makeItem({ id: pid, x: 0, y: 0, z: 0, rot: desk.rot });
+        const f = footprint(pr);
+        const [cx, cy] = rotPoint(desk, lx + f0.w / 2, ly + f0.d / 2);
+        list.push({ id: pid, x: desk.x + cx - f.w / 2, y: desk.y + cy - f.d / 2, z: desk.z + def.surface, rot: desk.rot });
+      }
+    }
+  }
+  const n = (save.inventory || {}).desk || 0;
+  if (n) for (const [pid] of def.oldProps) save.inventory[pid] = (save.inventory[pid] || 0) + n;
+  save.deskSplit = true;
+  Save.save(save, { auto: true });
+}
+splitOldDesks();
+
 // 처음 시작할 방 (주소에 ?room=이 있으면 그 방)
 setRoom(params.get("room") || save.roomId);
 

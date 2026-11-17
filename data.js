@@ -753,6 +753,8 @@ const FURNITURE = {
     name: "책상",
     category: "furniture", price: 150,
     surface: 10,
+    // 예전 책상에 붙어 있던 소품의 자리 [id, x, y] (예전 저장을 옮길 때 씀)
+    oldProps: [["laptopBasic", 2, 5], ["mug", 7, 2], ["notebook", 8, 15]],
     work: [15, 10],
     parts: [
       [0, 0, 0, 2, 2, 8.5, "woodDark"],
@@ -760,9 +762,6 @@ const FURNITURE = {
       [0, 18, 0, 2, 2, 8.5, "woodDark"],
       [10, 18, 0, 2, 2, 8.5, "woodDark"],
       [0, 0, 8.5, 12, 20, 1.5, "wood"],
-      [3, 5, 10, 6, 9, 1, "laptop"],
-      [2, 5, 11, 1, 9, 6, "screen"],
-      [7, 2, 10, 2, 2, 3, "mug"],
     ],
     detail: [
       [0, 0, 0, 4 / 3, 4 / 3, 8.5, "woodDark"],
@@ -775,21 +774,50 @@ const FURNITURE = {
       [0, 0, 8.5, 12, 20, 1.5, "wood"],
       [1 / 3, 1 / 3, 10, 34 / 3, 58 / 3, 0.01, "woodLight"],
       [2 / 3, 2 / 3, 10, 32 / 3, 56 / 3, 0.01, "wood"],
-      // 노트북
-      [3, 5, 10, 6, 9, 1 / 3, "laptop"],
-      [11 / 3, 17 / 3, 31 / 3, 13 / 3, 23 / 3, 0.01, "laptopKey"],
-      [19 / 3, 26 / 3, 31 / 3, 2, 5 / 3, 0.01, "laptop"],
-      [2, 5, 31 / 3, 2 / 3, 9, 6, "laptopBack"],
-      [8 / 3, 16 / 3, 32 / 3, 0.01, 25 / 3, 16 / 3, "screen"],
-      [8 / 3, 19 / 3, 13, 0.01, 4 / 3, 2, "laptopBack"],
-      // 머그잔
-      [7, 2, 10, 2, 2, 7 / 3, "mug"],
-      [22 / 3, 7 / 3, 37 / 3, 4 / 3, 4 / 3, 0.01, "coffee"],
-      [9, 8 / 3, 32 / 3, 2 / 3, 2 / 3, 1, "mug"],
-      // 공책과 펜
-      [8, 15, 10, 3, 10 / 3, 1 / 3, "book2"],
-      [25 / 3, 46 / 3, 31 / 3, 7 / 3, 3, 0.01, "bookPage"],
-      [26 / 3, 16, 32 / 3, 2, 1 / 3, 1 / 3, "book1"],
+    ],
+  },
+  // 책상 위 소품 (예전에는 책상에 붙어 있던 것). 책상처럼 위에 놓을 수 있는 가구에 올려 둠
+  laptopBasic: {
+    name: "노트북 (기본)",
+    category: "prop", kind: "goods", price: 80,
+    small: true,
+    parts: [
+      [1, 0, 0, 6, 9, 1, "laptop"],
+      [0, 0, 1, 1, 9, 6, "screen"],
+    ],
+    detail: [
+      [1, 0, 0, 6, 9, 1 / 3, "laptop"],
+      [5 / 3, 2 / 3, 1 / 3, 13 / 3, 23 / 3, 0.01, "laptopKey"],
+      [13 / 3, 11 / 3, 1 / 3, 2, 5 / 3, 0.01, "laptop"],
+      [0, 0, 1 / 3, 2 / 3, 9, 6, "laptopBack"],
+      [2 / 3, 1 / 3, 2 / 3, 0.01, 25 / 3, 16 / 3, "screen"],
+      [2 / 3, 4 / 3, 3, 0.01, 4 / 3, 2, "laptopBack"],
+    ],
+  },
+  mug: {
+    name: "머그잔",
+    category: "prop", kind: "goods", price: 20,
+    small: true,
+    parts: [
+      [0, 0, 0, 2, 2, 3, "mug"],
+    ],
+    detail: [
+      [0, 0, 0, 2, 2, 7 / 3, "mug"],
+      [1 / 3, 1 / 3, 7 / 3, 4 / 3, 4 / 3, 0.01, "coffee"],
+      [2, 2 / 3, 2 / 3, 2 / 3, 2 / 3, 1, "mug"],
+    ],
+  },
+  notebook: {
+    name: "공책과 펜",
+    category: "prop", kind: "goods", price: 15,
+    small: true,
+    parts: [
+      [0, 0, 0, 3, 3, 1 / 3, "book2"],
+    ],
+    detail: [
+      [0, 0, 0, 3, 10 / 3, 1 / 3, "book2"],
+      [1 / 3, 1 / 3, 1 / 3, 7 / 3, 3, 0.01, "bookPage"],
+      [2 / 3, 1, 2 / 3, 2, 1 / 3, 1 / 3, "book1"],
     ],
   },
   lamp: {
@@ -1813,7 +1841,7 @@ const SHOP_TAGS = {
     rug: ["rug", "checkRug", "greenRug", "roundRug", "cushion"],
     wall: ["frame", "shelf", "scroll", "wallClock", "digitalClock", "landscape", "catFrame", "photo1", "photo2", "fusuma", "noren", "luggageRack"],
     window: ["windowCurtain", "windowShoji", "windowRound", "windowTrain"],
-    goods: ["laptop", "deskClock", "deskClockWhite", "diffuser", "globe", "telescope"],
+    goods: ["laptopBasic", "mug", "notebook", "laptop", "deskClock", "deskClockWhite", "diffuser", "globe", "telescope"],
   },
 };
 for (const [field, groups] of Object.entries(SHOP_TAGS)) {
