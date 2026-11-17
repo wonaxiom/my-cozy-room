@@ -844,6 +844,10 @@ let previewStyle = null; // 상점 미리보기용으로 잠시 바꾸는 벽지
 function currentStyle(r = room) {
   const chosen = (save.roomStyles && save.roomStyles[r.id]) || {};
   const pick = Object.assign({}, chosen, previewStyle || {});
+  // 다른 방의 기본 벽지·바닥을 골라 두었던 예전 저장은 이 방 기본으로
+  const ids = new Set(ROOMS.flatMap((o) => [o.wallpaper, o.floor]));
+  if (ids.has(pick.wall) && pick.wall !== r.wallpaper) delete pick.wall;
+  if (ids.has(pick.floor) && pick.floor !== r.floor) delete pick.floor;
   return {
     wall: WALLPAPERS.find((w) => w.id === pick.wall) || WALLPAPERS.find((w) => w.id === r.wallpaper),
     floor: FLOORS.find((f) => f.id === pick.floor) || FLOORS.find((f) => f.id === r.floor),
@@ -4004,8 +4008,11 @@ function makeButton(label, onClick, disabled) {
 const priceHtml = (n) => (n ? `<span class="price"><i class="coin"></i>${n.toLocaleString()}</span>` : "<span>기본</span>");
 
 // 벽지·바닥 상품
+// 방마다 정해진 기본 벽지·바닥(다다미 등)은 그 방의 개성이라 다른 방에서는 고를 수 없음
+const ROOM_STYLE_IDS = new Set(ROOMS.flatMap((r) => [r.wallpaper, r.floor]));
 function renderStyles(kind) {
-  const list = kind === "wall" ? WALLPAPERS : FLOORS;
+  const own = kind === "wall" ? room.wallpaper : room.floor;
+  const list = (kind === "wall" ? WALLPAPERS : FLOORS).filter((st) => !ROOM_STYLE_IDS.has(st.id) || st.id === own);
   const now = currentStyle()[kind];
   for (const st of list) {
     let btn;
@@ -4018,7 +4025,8 @@ function renderStyles(kind) {
       btn = makeButton("적용", () => useStyle(kind, st));
     }
     const owned = ownsStyle(st) && st.price ? "<span>보유</span>" : "";
-    shopList.append(makeCard(makeRoomPreview(room, { [kind]: st.id }), st.name, priceHtml(st.price) + owned, btn));
+    const name = st.id === own ? `${st.name} (기본)` : st.name;
+    shopList.append(makeCard(makeRoomPreview(room, { [kind]: st.id }), name, priceHtml(st.price) + owned, btn));
   }
 }
 
