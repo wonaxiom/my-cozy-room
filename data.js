@@ -408,6 +408,12 @@ const EYES = [
   { id: "sunglasses", name: "선글라스" },
 ];
 
+// 얼굴 크기 (ver.세밀): 대두는 머리를 1.25배로 키워 그림
+const HEAD_SIZES = [
+  { id: "normal", name: "보통" },
+  { id: "big", name: "대두" },
+];
+
 const MOUTHS = [
   { id: "smile", name: "미소" },
   { id: "grin", name: "활짝 웃음" },

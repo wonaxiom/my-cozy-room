@@ -2115,7 +2115,7 @@ const OLD_OUTFIT_BOTTOM = {
 
 function normLook(look = {}) {
   const l = Object.assign({
-    gender: "female", hair: "short", hairColor: "brown", skin: "light", eyes: "basic", mouth: "smile",
+    gender: "female", hair: "short", hairColor: "brown", skin: "light", eyes: "basic", mouth: "smile", head: "normal",
   }, look);
   if (!l.top) l.top = TOPS.some((t) => t.id === l.outfit) ? l.outfit : "teeCream";
   if (!l.bottom) l.bottom = OLD_OUTFIT_BOTTOM[l.outfit] || "pantsNavy";
@@ -2308,25 +2308,26 @@ function drawBottomArt(look, rows, w, h, px, colors, base) {
     }
     return;
   }
+  // 치마: 반바지 윗줄부터 반바지보다 3줄 아래까지. 줄마다 그 줄의 하의·다리 폭을 덮고(걸을 때 벌어진 다리를 따라감)
+  // 아래로 갈수록 조금씩 넓어짐
   let y1 = h, y2 = -1;
-  const span = {};
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      if (partAt(x, y) !== "bottom") continue;
-      y1 = Math.min(y1, y); y2 = Math.max(y2, y);
-      const sp = span[y] || (span[y] = [x, x]);
-      sp[0] = Math.min(sp[0], x); sp[1] = Math.max(sp[1], x);
-    }
-  }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (partAt(x, y) === "bottom") { y1 = Math.min(y1, y); y2 = Math.max(y2, y); }
   if (y2 < 0) return;
-  // 치마: 반바지보다 3줄 길게, 허리에서 아래로 갈수록 한 칸씩 넓어짐
   const cut = Math.min(h - 4, y2 + 3);
-  const top = span[y1];
   const hem = mixColor(colors.P, "#000000", 0.2), light = mixColor(colors.P, "#ffffff", 0.18);
   const filled = new Set();
+  let prev = null;
   for (let y = y1; y <= cut; y++) {
-    const grow = Math.floor((y - y1) / 2);
-    const x1 = top[0] - grow, x2 = top[1] + grow;
+    let a = w, b = -1;
+    for (let x = 0; x < w; x++) {
+      const g = partAt(x, y);
+      if (g === "bottom" || (y > y2 - 1 && g === "leg")) { a = Math.min(a, x); b = Math.max(b, x); }
+    }
+    if (b < 0) { if (!prev) continue; [a, b] = prev; }
+    if (prev) { a = Math.min(a, prev[0]); b = Math.max(b, prev[1]); } // 위 줄보다 좁아지지 않게
+    const grow = Math.floor((y - y1) / 3);
+    const x1 = a - grow, x2 = b + grow;
+    prev = [a, b];
     for (let x = x1; x <= x2; x++) {
       px(x, y, y === cut ? hem : x === x1 ? light : x === x2 ? hem : colors.P);
       filled.add(y * w + x);
@@ -2337,9 +2338,25 @@ function drawBottomArt(look, rows, w, h, px, colors, base) {
     const x = k % w, y = Math.floor(k / w);
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1]]) {
       const nx = x + dx, ny = y + dy;
-      if (!filled.has(ny * w + nx) && !partAt(nx, ny)) px(nx, ny, OUTLINE);
+      if (!filled.has(ny * w + nx) && (!partAt(nx, ny) || ny > cut)) px(nx, ny, OUTLINE);
     }
   }
+}
+
+// 대두: 머리(턱 위)만 1.25배로 키워 다시 그림. 턱 가운데를 기준으로 키우고, 위로 늘어난 만큼 그림이 높아짐
+const BIG_HEAD = 1.25;
+function bigHead(c, head) {
+  if (!head) return c;
+  const chin = Math.min(c.height, head[1] + 23), cx = head[0] + 13.5;
+  const extra = Math.ceil(chin * (BIG_HEAD - 1));
+  const o = document.createElement("canvas");
+  o.width = c.width;
+  o.height = c.height + extra;
+  const g = o.getContext("2d");
+  g.imageSmoothingEnabled = false;
+  g.drawImage(c, 0, chin, c.width, c.height - chin, 0, chin + extra, c.width, c.height - chin); // 몸은 그대로
+  g.drawImage(c, 0, 0, c.width, chin, Math.round(cx - cx * BIG_HEAD), 0, Math.round(c.width * BIG_HEAD), chin + extra);
+  return o;
 }
 
 // ver.세밀 얼굴: 눈 모양(큰 눈·실눈)과 표정별 입. 볼터치는 그림에 원래 있음
@@ -2523,7 +2540,7 @@ function heroArtCanvas(name, lookIn, flip) {
   const set = heroArtSet(gender, hair);
   const frame = set[name] ? name : "idle";
   const colors = heroColors(look);
-  const key = [gender, hair, frame, colors.H, colors.S, colors.C, colors.P, look.eyes, look.mouth, look.bottom, look.acc, flip].join("|");
+  const key = [gender, hair, frame, colors.H, colors.S, colors.C, colors.P, look.eyes, look.mouth, look.bottom, look.acc, look.head, flip].join("|");
   if (heroArtCache.has(key)) return heroArtCache.get(key);
   if (heroArtCache.size > 200) heroArtCache.clear();
   const rows = set[frame];
@@ -2563,8 +2580,9 @@ function heroArtCanvas(name, lookIn, flip) {
       for (let x = boxes[i].x2 + 2; x < boxes[i + 1].x1 - 1; x++) px(x, boxes[i].y1, kind.frame); // 코다리
     }
   }
-  heroArtCache.set(key, c);
-  return c;
+  const out = look.head === "big" && frame !== "lie" ? bigHead(c, heroArtHead(gender, hair, frame)) : c;
+  heroArtCache.set(key, out);
+  return out;
 }
 
 // 동작 이름(idle, blink, walk1, walk2, sleep)에 맞는 그림을 그립니다.

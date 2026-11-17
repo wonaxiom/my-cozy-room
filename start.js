@@ -118,6 +118,7 @@ const Start = (() => {
     if (step === 1) {
       chips($("ob-gender"), GENDERS, "gender");
       swatches($("ob-skin"), SKIN_TONES, "skin");
+      chips($("ob-head"), HEAD_SIZES, "head");
     } else if (step === 2) {
       chips($("ob-hair"), HAIR_STYLES, "hair");
       swatches($("ob-color"), HAIR_COLORS, "hairColor");
