@@ -2734,7 +2734,21 @@ function drawHero() {
   ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
   ctx.fillRect(p.x - 4, p.y - 1, 8, 2); // 그림자
   drawHeroFrame(frame, p.x, p.y - jump, hero.dir < 0);
+  if (onChair && seatAway(hero.seat)) drawSeatBack(hero.seat); // 뒷모습으로 앉으면 등받이가 등을 가림
   if (!useHeroArt() && (hero.mode === "read" || hero.mode === "snack")) drawActivityIcon(p);
+}
+
+// 의자 등받이(앉는 면보다 높고, 앉는 사람보다 화면 앞쪽에 있는 상자)만 다시 그림
+function drawSeatBack(item) {
+  if (!item.parts) return; // 그림 가구는 상자로 다시 그릴 수 없음
+  const v = seatDir(item);
+  const f = footprint(item);
+  const cx = f.w / 2 + (f.x - item.x), cy = f.d / 2 + (f.y - item.y);
+  const seatTop = item.seat.z;
+  const back = partsOf(item).filter(([x, y, z, w, d, h]) =>
+    z + h > seatTop + 0.5 && (x + w / 2 - cx) * v[0] + (y + d / 2 - cy) * v[1] < -1);
+  if (artStyle === "detail") for (const [x, y, z, w, d, h] of back) if (w >= 0.05 && d >= 0.05) outlineBox(item.x + x, item.y + y, item.z + z, w, d, h);
+  for (const [x, y, z, w, d, h, color] of back) box(item.x + x, item.y + y, item.z + z, w, d, h, color);
 }
 
 // ver.하찮: 책 읽기·간식 먹기 중이면 머리 위에 작은 그림
