@@ -649,7 +649,15 @@ function depthSort(parts) {
     for (let j = 0; j < n && pick < 0; j++) {
       if (!done[j] && before[j].every((i) => done[i])) pick = j;
     }
-    if (pick < 0) pick = done.indexOf(false); // 순서가 꼬이면 적힌 순서대로
+    if (pick < 0) {
+      // 순서가 꼬이면 남은 것 중 가장 뒤(가운데 x+y가 작은 것)부터
+      let best = Infinity;
+      for (let j = 0; j < n; j++) {
+        if (done[j]) continue;
+        const [x, y, , w, d] = parts[j], key = x + w / 2 + y + d / 2;
+        if (key < best) { best = key; pick = j; }
+      }
+    }
     done[pick] = true;
     out.push(parts[pick]);
   }
@@ -699,7 +707,9 @@ function screenBounds(item) {
 
 // 그림 가구: 방향을 돌렸으면 좌우를 뒤집어 그립니다.
 function drawMirrored(item, img, r) {
-  if (!swapped(item)) {
+  // GPT 벽 장식 그림(세밀, 하찮)은 반대쪽 벽 기준으로 그려져 있어서, 뒤집는 방향을 반대로
+  const mirror = item.type === "wall" && item.image && !item.parts ? !swapped(item) : swapped(item);
+  if (!mirror) {
     ctx.drawImage(img, r.x, r.y, r.w, r.h);
     return;
   }
