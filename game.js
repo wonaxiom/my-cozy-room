@@ -21,11 +21,11 @@ const SKY = {
 const DARKNESS = { dawn: 0.15, day: 0, evening: 0.2, night: 0.5 };
 
 // 날씨: 이름과 방이 더 어두워지는 정도
-const WEATHER_NAMES = { clear: "맑음", cloudy: "흐림", rain: "비", snow: "눈" };
+const WEATHER_NAMES = { clear: "맑음", cloudy: "흐림", rain: "비", snow: "눈", storm: "뇌우" };
 const WEATHER_DARK = { clear: 0, cloudy: 0.05, rain: 0.12, snow: 0.04 };
 
 // 테스트용: 주소 뒤에 ?hour=21 을 붙이면 밤 9시처럼 보입니다.
-// ?weather=rain 처럼 붙이면 날씨를 고정합니다. (clear, cloudy, rain, snow)
+// ?weather=rain 처럼 붙이면 날씨를 고정합니다. (clear, cloudy, rain, snow, storm)
 // ?room=attic 처럼 붙이면 해당 방으로 시작합니다.
 const params = new URLSearchParams(location.search);
 const TEST_HOUR = params.has("hour") ? Number(params.get("hour")) : null;
@@ -91,6 +91,7 @@ function phaseOf(h) {
 // ---- 날씨 --------------------------------------------------------
 // 사는 곳을 골랐으면 그 도시의 실제 날씨를, 아니면 3시간마다 바뀌는 무작위 날씨를 씁니다.
 let weather = "clear";
+let storm = false; // 천둥번개 (비가 오면서 가끔 번쩍임)
 const WEATHER_KEY = "cozyroom-weather";
 const WEATHER_REFRESH = 30 * 60 * 1000; // 30분마다 새로 받아오기
 let realWeather = null; // { city, kind, at }
@@ -103,6 +104,7 @@ function myCity() {
 // 날씨 코드(WMO)를 게임 날씨로 바꿉니다.
 function weatherFromCode(code) {
   if ([71, 73, 75, 77, 85, 86].includes(code)) return "snow";
+  if (code >= 95) return "storm"; // 뇌우
   if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95) return "rain";
   if (code >= 2) return "cloudy"; // 구름 많음, 흐림, 안개
   return "clear";
@@ -145,6 +147,7 @@ function weatherNow() {
   if ([11, 0, 1].includes(d.getMonth())) {
     return r < 0.2 ? "snow" : r < 0.28 ? "rain" : r < 0.5 ? "cloudy" : "clear"; // 12~2월
   }
+  if ([5, 6, 7].includes(d.getMonth()) && r < 0.05) return "storm"; // 6~8월에는 가끔 천둥번개
   return r < 0.2 ? "rain" : r < 0.45 ? "cloudy" : "clear";
 }
 
@@ -773,7 +776,10 @@ function drawItem(item) {
   if (img) {
     // 문 열린 그림은 오른쪽으로 더 넓음: 닫힌 그림(몸통) 너비를 기준으로 뒤집음
     const shut = isOpenNow(item) ? (simpleArtOf(item) || readyImage(item.image)) : null;
+    const rock = rockAngle(item);
+    if (rock) { ctx.save(); rockAround(item, rock); }
     drawMirrored(item, img, imageRect(item, img), shut && shut !== img ? imageRect(item, shut).w : undefined);
+    if (rock) ctx.restore();
     return;
   }
   if (artStyle === "detail") drawItemOutline(item);
@@ -1413,18 +1419,32 @@ function drawCloudDetail(win, ca, cz, color, index) {
 function drawPrecipitation(win, phase, yMin, yMax, zMin, zMax) {
   if (weather !== "rain" && weather !== "snow") return;
   const w = yMax - yMin, h = zMax - zMin;
-  const count = Math.max(3, Math.round(w / 2.5));
+  const count = Math.max(3, Math.round((w / 2.5) * (storm ? 1.6 : 1)));
   ctx.globalAlpha = weather === "rain" ? 0.85 : 0.9;
   for (let i = 0; i < count; i++) {
     if (weather === "rain") {
       const a = yMin + ((i * 7.3) % w);
-      const z = zMax - ((time * 30 + i * 5.1) % h);
+      const z = zMax - ((time * (storm ? 42 : 30) + i * 5.1) % h);
       skyRect(win, a, a + 0.5, z - 3, z, phase === "night" ? "#8a97b0" : "#f4f7fb");
     } else {
       const a = yMin + (((i * 5.7 + Math.sin(time + i) * 1.5) % w) + w) % w;
       const z = zMax - ((time * 4 + i * 3.3) % h);
       skyRect(win, a, a + 1, z - 1, z, "#ffffff");
     }
+  }
+  if (weather === "rain") {
+    // 유리에 맺혀 천천히 흘러내리는 물방울
+    ctx.globalAlpha = 0.55;
+    const drops = Math.max(2, Math.round(w / 5));
+    for (let i = 0; i < drops; i++) {
+      const a = yMin + 0.5 + ((i * 11.7) % Math.max(1, w - 1));
+      const z = zMax - 0.5 - ((time * (0.8 + (i % 3) * 0.4) + i * 7.9) % (h - 1));
+      skyRect(win, a, a + 0.6, z - 0.8, z, phase === "night" ? "#a9b6cc" : "#ffffff");
+    }
+  } else {
+    // 창틀 아래에 쌓인 눈
+    ctx.globalAlpha = 0.95;
+    skyRect(win, yMin, yMax, zMin, zMin + 0.8, "#ffffff");
   }
   ctx.globalAlpha = 1;
 }
@@ -1968,9 +1988,21 @@ const INTERACT = {
   windowCurtain: "look", windowShoji: "look", windowRound: "look", windowTrain: "look", telescope: "look", globe: "look",
   plant: "water",
   lamp: "lamp", andon: "lamp",
+  piano: "piano", gramophone: "music", vanity: "dress", wardrobe: "dress",
 };
-const USE_MODES = ["read", "snack", "look", "water", "lamp", "sitChair", "fridge"];
-const USE_TIME = { read: [10, 18], snack: [8, 12], look: [6, 10], water: [3, 4], lamp: [1.2, 1.2], sitChair: [8, 14], fridge: [3.5, 5] };
+const USE_MODES = ["read", "snack", "look", "water", "lamp", "sitChair", "fridge", "piano", "music", "warm", "dress", "yawn", "stretch"];
+const USE_TIME = {
+  read: [10, 18], snack: [8, 12], look: [6, 10], water: [3, 4], lamp: [1.2, 1.2], sitChair: [8, 14], fridge: [3.5, 5],
+  piano: [10, 16],  // 피아노 치기
+  music: [1.5, 1.5], // 축음기 틀기 (손 뻗기). 음악은 그 뒤로도 한동안 나옴
+  warm: [10, 16],   // 벽난로 앞에서 불 쬐기
+  dress: [4, 6],    // 화장대·옷장 앞에서 옷매무새 고치기
+  yawn: [2.2, 2.2], // 자러 가기 전 하품
+  stretch: [2.6, 2.6], // 일어나서 기지개
+};
+const FRONT_ACTS = ["piano", "music", "warm", "dress"]; // 가구 앞면(건반·불·거울·문) 앞에 서는 일
+const MUSIC_TIME = 90;  // 축음기를 틀면 음악이 나오는 시간 (초)
+const PIANO_SEAT = 4.5; // 피아노 의자 높이
 // 식사 시간 (시): 이 시간에는 냉장고에 한 번 가서 뭐 먹을지 고르고 먹음
 const MEALS = [[12, 13, "lunch"], [18, 19, "dinner"]];
 
@@ -1998,6 +2030,12 @@ function seatAway(item) {
   return !!v && v[0] + v[1] < 0;
 }
 
+// 그림 가구의 앞면 앞자리 (그림은 앞면이 왼쪽 아래(+y)를 봄. 뒤집으면 오른쪽 아래(+x))
+function frontSpot(item, gap, along = 0.5) {
+  const f = footprint(item);
+  return swapped(item) ? { x: f.x + f.w + gap, y: f.y + f.d * along } : { x: f.x + f.w * along, y: f.y + f.d + gap };
+}
+
 // 가구 앞에 설 자리 (벽 장식은 벽에서 조금 떨어진 곳, 방석은 그 위)
 function useSpot(item, act) {
   if (item.type === "wall") {
@@ -2009,6 +2047,10 @@ function useSpot(item, act) {
   }
   const f = footprint(item);
   if (act === "sit" || act === "chair") return { x: f.x + f.w / 2, y: f.y + f.d / 2 };
+  if (FRONT_ACTS.includes(act) || (act === "lamp" && item.id === "fireplace")) {
+    const spot = frontSpot(item, act === "piano" ? 2.6 : 3.5);
+    return isFree(spot.x, spot.y) ? spot : null;
+  }
   if (item.imageOpen) {
     // 문이 열리는 가구(냉장고): 문이 달린 앞쪽에 섬 (그림을 뒤집으면 앞쪽도 바뀜)
     // 문 반대쪽(손잡이 쪽)으로 조금 비켜 서서, 열린 문과 냉장고 안이 보이게 함
@@ -2026,7 +2068,9 @@ function pickInteraction(h) {
   const night = phaseOf(h) === "night" || phaseOf(h) === "evening";
   const plans = [];
   for (const item of items) {
-    const act = INTERACT[item.id] || item.use;
+    let act = INTERACT[item.id] || item.use;
+    // 벽난로: 저녁에 불을 켜러, 아침에 끄러 가고, 불이 켜진 밤에는 앞에 앉아 불을 쬠
+    if (item.id === "fireplace") act = night !== isLit(item) && item.lightAt !== lightPeriod() ? "lamp" : night && isLit(item) ? "warm" : null;
     if (!act) continue;
     // 조명: 저녁에 한 번 켜러, 아침에 한 번 끄러 감. 이 시간대에 이미 켜고 끈 조명(직접 만진 것 포함)은 그대로 둠
     if (act === "lamp" && (night === isLit(item) || item.lightAt === lightPeriod())) continue;
@@ -2044,6 +2088,11 @@ function pickInteraction(h) {
   if (fridge && hero.mealDone !== mealKey) {
     hero.mealDone = mealKey;
     return fridge;
+  }
+  // 비나 눈이 오면 창밖을 더 자주 봄
+  if ((weather === "rain" || weather === "snow") && Math.random() < 0.5) {
+    const wins = plans.filter((p) => p.act === "look" && p.item.id.startsWith("window"));
+    if (wins.length) return wins[Math.floor(Math.random() * wins.length)];
   }
   return plans.length ? plans[Math.floor(Math.random() * plans.length)] : null;
 }
@@ -2071,9 +2120,14 @@ function startUse() {
   if (Math.abs(sdx) > 0.5) hero.dir = Math.sign(sdx);
   if (mode === "sitChair" && seatFacing(plan.item)) hero.dir = seatFacing(plan.item);
   if (mode === "lamp") toggleLight(plan.item, true);
+  if (mode === "music") plan.item.playUntil = time + MUSIC_TIME; // 축음기에서 한동안 음악이 나옴
+  if (mode === "piano") Object.assign(hero, frontSpot(plan.item, 0.8)); // 건반 앞 의자에 바짝 붙어 앉음
 }
 
 function endUse() {
+  // 불 쬐기·옷매무새 고치기·눈 구경을 마치면 하트
+  const win = hero.use && hero.use.item.id.startsWith("window");
+  if (hero.mode === "warm" || hero.mode === "dress" || (hero.mode === "look" && win && weather === "snow")) hero.heartT = 1.2;
   stopUse();
   hero.mode = "idle";
   hero.timer = 2 + Math.random() * 3;
@@ -2112,15 +2166,24 @@ function updateHeroLocal(dt, h) {
 
   // 밤에는 잠자리로, 아침에는 일어나기
   const sleepy = isSleepTime(h) && !desk;
-  if (sleepy && bedItem() && hero.mode !== "sleep" && hero.mode !== "toBed") {
+  if (sleepy && bedItem() && hero.mode !== "sleep" && hero.mode !== "toBed" && hero.mode !== "yawn") {
     stopUse();
-    hero.mode = "toBed";
-    hero.target = bedSide();
+    if (hero.yawnAt !== lightPeriod()) {
+      // 자러 가기 전에 한 번 하품 (밤마다 한 번)
+      hero.yawnAt = lightPeriod();
+      hero.mode = "yawn";
+      hero.actT = USE_TIME.yawn[0];
+    } else {
+      hero.mode = "toBed";
+      hero.target = bedSide();
+    }
   }
   if (!sleepy && (hero.mode === "sleep" || hero.mode === "toBed")) {
-    if (hero.mode === "sleep") Object.assign(hero, bedSide());
+    const woke = hero.mode === "sleep";
+    if (woke) Object.assign(hero, bedSide());
     hero.mode = "idle";
     hero.timer = 2;
+    if (woke) { hero.mode = "stretch"; hero.actT = USE_TIME.stretch[0]; } // 일어나서 기지개
   }
 
   hero.waveT = Math.max(0, (hero.waveT || 0) - dt);
@@ -2247,6 +2310,12 @@ function heroRows(name, lookIn = save.look) {
   hair.rows.forEach((pat, r) => {
     for (let c = 0; c < pat.length; c++) if (pat[c] === "H") put(r, c, "H");
   });
+  // 기지개: 옆구리 손을 지우고 두 팔을 머리 옆으로 쭉 올림
+  if (name === "stretch") {
+    put(9, 1, "."); put(9, 8, ".");
+    for (let r = 3; r <= 8; r++) { put(r, 0, "C"); put(r, 9, "C"); }
+    put(2, 0, "S"); put(2, 9, "S");
+  }
   // 뒷모습: 얼굴 자리를 머리카락으로 덮음 (목 줄은 그대로)
   if (back) for (let r = 3; r <= 5; r++) for (let c = 1; c <= 8; c++) if (rows[r][c] === "S") put(r, c, "H");
 
@@ -2770,8 +2839,18 @@ function drawHero() {
     frame = hero.mode; // ver.세밀: 앉아서 책·간식 (ver.하찮은 가만히 그림)
   } else if (hero.mode === "sitChair") {
     frame = "sitChair";
-  } else if (hero.mode === "look" || hero.mode === "fridge") {
-    frame = "back"; // 창밖·망원경·지구본·냉장고 안을 바라보는 뒷모습
+  } else if (hero.mode === "look" || hero.mode === "fridge" || hero.mode === "dress") {
+    frame = "back"; // 창밖·망원경·지구본·냉장고 안·거울을 바라보는 뒷모습
+  } else if (hero.mode === "piano") {
+    frame = useHeroArt() ? "chairBack" : "back"; // 피아노 의자에 앉아 건반 치기 (뒷모습)
+  } else if (hero.mode === "music") {
+    frame = "switch"; // 축음기 바늘 올리기
+  } else if (hero.mode === "warm") {
+    frame = useHeroArt() ? "sitFloor" : "back"; // 벽난로 앞에 무릎 안고 앉기 (ver.하찮은 불 바라보기)
+  } else if (hero.mode === "yawn") {
+    frame = "blink"; // 눈 감고 하품
+  } else if (hero.mode === "stretch") {
+    frame = useHeroArt() ? "wave2" : "stretch"; // 두 팔 번갈아 올려 기지개
   } else if (hero.mode === "lamp") {
     frame = "switch"; // 손을 뻗어 스위치 누르기
   } else if (hero.mode === "water") {
@@ -2782,7 +2861,14 @@ function drawHero() {
     frame = "breathe"; // 가만히 있을 때 숨쉬기 (ver.하찮은 가만히 그림)
   }
 
-  const p = onChair ? (() => { const q = project(hero.x, hero.y, hero.seat.z); return { x: Math.round(q.x), y: Math.round(q.y) }; })() : heroScreen();
+  const piano = hero.mode === "piano" && useHeroArt();
+  const p = onChair ? (() => { const q = project(hero.x, hero.y, hero.seat.z); return { x: Math.round(q.x), y: Math.round(q.y) }; })()
+    : piano ? (() => { const q = project(hero.x, hero.y, PIANO_SEAT); return { x: Math.round(q.x), y: Math.round(q.y) }; })()
+    : heroScreen();
+  // 기지개는 양팔을 번갈아 (그림을 좌우로 뒤집어 반대 팔)
+  const flip = hero.mode === "stretch" ? Math.floor(hero.actT / 1.3) % 2 === 0 : hero.dir < 0;
+  const rock = hero.seat && rockAngle(hero.seat);
+  if (rock) { ctx.save(); rockAround(hero.seat, rock); }
   const jump = hero.jumpT > 0 ? Math.round(Math.sin((1 - hero.jumpT / 0.35) * Math.PI) * 4) : 0;
   ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
   ctx.fillRect(p.x - 4, p.y - 1, 8, 2); // 그림자
@@ -2793,13 +2879,36 @@ function drawHero() {
     ctx.beginPath();
     ctx.rect(p.x - 40, seatY - 80, 80, 80);
     ctx.clip();
-    drawHeroFrame(frame, p.x, p.y - jump, hero.dir < 0);
+    drawHeroFrame(frame, p.x, p.y - jump, flip);
     ctx.restore();
     drawSeatBack(hero.seat); // 등받이가 등을 가림
+  } else if (piano) {
+    // 피아노 의자에 앉은 뒷모습: 의자 아래로 내려간 다리는 그리지 않음
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(p.x - 40, p.y - 80, 80, 80 + 1);
+    ctx.clip();
+    drawHeroFrame(frame, p.x, p.y + 1, flip);
+    ctx.restore();
   } else {
-    drawHeroFrame(frame, p.x, p.y - jump, hero.dir < 0);
+    drawHeroFrame(frame, p.x, p.y - jump, flip);
   }
+  if (rock) ctx.restore();
   if (!useHeroArt() && (hero.mode === "read" || hero.mode === "snack")) drawActivityIcon(p);
+}
+
+// 흔들의자: 앉아 있는 동안 앞뒤로 살짝 흔들림 (각도, 라디안)
+function rockAngle(item) {
+  return item.rock && hero.seat === item && hero.mode === "sitChair" ? Math.sin(time * 2.2) * 0.06 : 0;
+}
+// 의자 그림 아래 가운데를 축으로 돌림 (의자와 앉은 캐릭터에 같이 씀)
+function rockAround(item, angle) {
+  const img = itemImage(item);
+  const r = img ? imageRect(item, img) : { x: project(item.x, item.y, 0).x, y: project(item.x, item.y, 0).y, w: 0, h: 0 };
+  const px = r.x + r.w / 2, py = r.y + r.h;
+  ctx.translate(px, py);
+  ctx.rotate(angle);
+  ctx.translate(-px, -py);
 }
 
 // 의자 등받이(앉는 면보다 높고, 앉는 사람보다 화면 앞쪽에 있는 상자)만 다시 그림
@@ -3272,6 +3381,16 @@ function tintItem(item, color) {
   }
 }
 
+// 음표 하나 (♪ 모양, 화면 픽셀 단위)
+function drawNote(x, y, color) {
+  x = Math.round(x); y = Math.round(y);
+  ctx.fillStyle = color;
+  ctx.fillRect(x, y + 3, 2, 2);     // 머리
+  ctx.fillRect(x + 1, y, 1, 3);     // 기둥
+  ctx.fillRect(x + 2, y, 1, 1);     // 꼬리
+  ctx.fillRect(x + 3, y + 1, 1, 1);
+}
+
 // 하트, Zzz 같은 효과 (조명 위에 그려서 잘 보이게)
 function drawEffects() {
   // 김이 나는 물건(머그잔): 컵 위로 하얀 김 두 줄기가 살랑이며 올라가다 사라짐
@@ -3315,6 +3434,30 @@ function drawEffects() {
       ctx.globalAlpha = 1 - p;
       drawSprite(EFFECTS.zzz, Math.round(base.x + 5 + p * 6), Math.round(base.y - 12 - p * 12), { Z: "zzz" }, false, true);
     }
+    ctx.globalAlpha = 1;
+  }
+  // 음표: 피아노를 치는 동안, 축음기를 튼 뒤 한동안
+  for (const it of items) {
+    const playing = (it.id === "piano" && hero.mode === "piano" && hero.use && hero.use.item === it)
+      || (it.playUntil && time < it.playUntil && time > it.playUntil - MUSIC_TIME + 1.2);
+    if (!playing) continue;
+    const f = footprint(it);
+    const top = project(f.x + f.w / 2, f.y + f.d / 2, it.z + itemHeight(it));
+    for (let i = 0; i < 3; i++) {
+      const t = (time * 0.45 + i / 3) % 1;
+      ctx.globalAlpha = Math.sin(t * Math.PI);
+      drawNote(top.x - 4 + i * 4 + Math.sin(t * 6 + i) * 1.5, top.y - 2 - t * 12, ["#e07a8a", "#7a9be0", "#e0b04a"][i]);
+    }
+    ctx.globalAlpha = 1;
+  }
+  if (hero.mode === "yawn") {
+    // 하품: 입김 같은 동그라미가 위로 올라감
+    const p = heroScreen();
+    const t = 1 - hero.actT / USE_TIME.yawn[0];
+    ctx.globalAlpha = Math.max(0, 1 - t);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(p.x + 3, p.y - heroSize().h - 1 - t * 6, 2, 2);
+    ctx.fillRect(p.x + 5, p.y - heroSize().h - 5 - t * 6, 1, 1);
     ctx.globalAlpha = 1;
   }
   if (hero.mode === "work" || hero.mode === "fridge") {
@@ -4716,7 +4859,9 @@ let loopToken = 0;
 
 function tick(dt) {
   time += dt;
-  weather = weatherNow();
+  const w = weatherNow();
+  storm = w === "storm";
+  weather = storm ? "rain" : w; // 뇌우는 비로 그리고, 번개만 더함
   if (typeof Focus !== "undefined") Focus.update();
   const h = hourNow();
   const phase = phaseOf(h);
@@ -4748,6 +4893,7 @@ function tick(dt) {
   drawLighting(phase);
   if (artStyle === "detail") drawSceneOutline();
   drawEffects();
+  drawLightning(dt);
 
   // 배경색도 시간에 따라 조금씩 바뀝니다.
   const bg = mixColor(PALETTE.bgDay, PALETTE.bgNight, DARKNESS[phase] * 2);
@@ -4761,8 +4907,24 @@ function tick(dt) {
   const d = now();
   const city = cityWeather() && myCity();
   const label = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
-    + (city ? ` · ${city.name} ${WEATHER_NAMES[weather]}` : weather !== "clear" ? ` · ${WEATHER_NAMES[weather]}` : "");
+    + (city ? ` · ${city.name} ${weatherName()}` : weather !== "clear" ? ` · ${weatherName()}` : "");
   if (clockText.textContent !== label) clockText.textContent = label;
+}
+
+function weatherName() {
+  return storm ? WEATHER_NAMES.storm : WEATHER_NAMES[weather];
+}
+
+// 천둥번개: 가끔 방 전체가 두 번 번쩍임
+let flashT = 0, nextFlash = 6;
+function drawLightning(dt) {
+  if (!storm) return;
+  if (time > nextFlash) { flashT = 0.45; nextFlash = time + 8 + Math.random() * 16; }
+  if (flashT <= 0) return;
+  flashT -= dt;
+  const a = flashT > 0.33 ? 0.35 : flashT > 0.24 ? 0.05 : flashT > 0 ? 0.22 : 0;
+  ctx.fillStyle = `rgba(255, 255, 240, ${a})`;
+  ctx.fillRect(0, 0, W, H);
 }
 
 // 작은 창이 열려 있으면 그 창 기준으로 화면을 갱신합니다.

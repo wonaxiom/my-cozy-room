@@ -1798,7 +1798,7 @@ Object.assign(FURNITURE, {
 Object.assign(FURNITURE, {
   canopyBed: { name: "캐노피 침대", category: "furniture", price: 360, style: "antique", size: [24, 16, 30], image: "img/furn/canopyBed.png", imageSimple: "img/furn/s/canopyBed.png", hires: true, sleep: { side: [12, 20], pillow: [19, 8, 8] } },
   chesterfield: { name: "체스터필드 소파", category: "furniture", price: 280, style: "antique", size: [10, 22, 12], image: "img/furn/chesterfield.png", imageSimple: "img/furn/s/chesterfield.png", hires: true, seat: { z: 6, back: "-y" }, use: "chair" },
-  rockingChair: { name: "흔들의자", category: "furniture", price: 170, style: "antique", size: [9, 9, 16], image: "img/furn/rockingChair.png", imageSimple: "img/furn/s/rockingChair.png", hires: true, seat: { z: 6, back: "-y" }, use: "chair" },
+  rockingChair: { name: "흔들의자", category: "furniture", price: 170, style: "antique", size: [9, 9, 16], image: "img/furn/rockingChair.png", imageSimple: "img/furn/s/rockingChair.png", hires: true, rock: true, seat: { z: 6, back: "-y" }, use: "chair" },
   teaTable: { name: "티테이블", category: "furniture", price: 150, style: "antique", size: [10, 10, 12], image: "img/furn/teaTable.png", imageSimple: "img/furn/s/teaTable.png", surface: 12, hires: true, use: "snack" },
   vanity: { name: "화장대", category: "furniture", price: 220, style: "antique", size: [9, 16, 20], image: "img/furn/vanity.png", imageSimple: "img/furn/s/vanity.png", hires: true },
   rolltopDesk: { name: "롤톱 책상", category: "furniture", price: 240, style: "antique", size: [8, 16, 15], image: "img/furn/rolltopDesk.png", imageSimple: "img/furn/s/rolltopDesk.png", work: [10, 8], hires: true, use: "read" },
