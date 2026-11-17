@@ -714,12 +714,12 @@ function slantLeg(x0, y0, x1, y1, z1, color, n = 6) {
 
 // 선물 상자: 리본이 지나가는 띠(x 방향 rx~rx+1, y 방향 ry~ry+1)로 상자를 나눠 겹치지 않게 쌓음
 // (겹치는 상자는 돌렸을 때 그리는 순서가 꼬여서 리본이 깨져 보임). bow: 위에 올리는 리본 매듭
-function giftBox(w, d, h, rx, ry, body, ribbon, bow, lift = 0) {
+function giftBox(w, d, h, rx, ry, body, ribbon, bow, lift = 0, band = 1) {
   const out = [];
-  const xs = [[0, rx], [rx, rx + 1], [rx + 1, w]], ys = [[0, ry], [ry, ry + 1], [ry + 1, d]];
+  const xs = [[0, rx], [rx, rx + band], [rx + band, w]], ys = [[0, ry], [ry, ry + band], [ry + band, d]];
   xs.forEach(([x1, x2], i) => ys.forEach(([y1, y2], j) => {
-    const band = i === 1 || j === 1; // 리본 띠 (lift만큼 살짝 높여서 잘 보이게)
-    if (x2 - x1 > 0 && y2 - y1 > 0) out.push([x1, y1, 0, x2 - x1, y2 - y1, band ? h + lift : h, band ? ribbon : body]);
+    const onBand = i === 1 || j === 1; // 리본 띠 (lift만큼 살짝 높여서 잘 보이게)
+    if (x2 - x1 > 0 && y2 - y1 > 0) out.push([x1, y1, 0, x2 - x1, y2 - y1, onBand ? h + lift : h, onBand ? ribbon : body]);
   }));
   return out.concat(bow);
 }
@@ -1291,7 +1291,7 @@ const FURNITURE = {
     name: "선물 상자 (빨강)",
     category: "xmas", price: 60,
     small: true,
-    parts: giftBox(5, 5, 4, 2, 2, "giftRed", "ribbonGold", [[1, 1, 4, 3, 3, 1, "ribbonGold"]], 0.3),
+    parts: giftBox(6, 6, 4, 2, 2, "giftRed", "ribbonGold", [[1.5, 1.5, 4.3, 3, 3, 1, "ribbonGold"]], 0.3, 2), // 하찮: 리본 띠 두 칸
     detail: giftBox(5, 5, 13 / 3, 2, 2, "giftRed", "ribbonGold", [
       [1, 1.5, 13 / 3, 1, 2, 1, "ribbonGold"],
       [3, 1.5, 13 / 3, 1, 2, 1, "ribbonGold"],
