@@ -14,10 +14,11 @@ def label_base(a,f,chin,oy,eyeb=None,ox=0):
             orange=(h<0.12 or h>0.9)
             if v<0.3: L[y,x]='keep'; continue
             if f in PROP and PROP[f](x,y): L[y,x]='keep'; continue
-            if y<chin+oy or f=='back' and y<chin:
+            isb=f in ('back','chairBack')
+            if y<chin+oy:
                 if orange and s>=0.1 and v>=0.6: L[y,x]='skin'
                 elif orange and s>=0.3: L[y,x]='keep'      # 머리 외곽선의 갈색 번짐
-                elif f=='back' or eyeb is None: L[y,x]='keep' if f=='back' else 'eye'
+                elif isb or eyeb is None: L[y,x]='keep' if isb else 'eye'
                 else: L[y,x]='eye' if any(b[0]+ox<=x<=b[1]+ox and b[2]+oy<=y<=b[3]+oy for b in eyeb) else 'keep'
             else:
                 if orange and s>=0.12 and v>=0.55: L[y,x]='skin'
@@ -25,6 +26,14 @@ def label_base(a,f,chin,oy,eyeb=None,ox=0):
                 else: L[y,x]='keep'
     # 다리: 반바지 아래쪽에서 발끝(맨 아래)까지 이어진 피부 덩어리 (서 있는 그림만).
     # 걸을 때 비스듬히 벌어진 다리도 따라가고, 옆에 내린 손(바닥까지 이어지지 않음)은 빼기
+    if f.startswith('chair'):
+        bys=[y for y in range(H) for x in range(W) if L[y,x]=='bottom']
+        if bys:
+            yb=max(bys)
+            for y in range(yb+1,H):
+                for x in range(W):
+                    if L[y,x]=='skin': L[y,x]='leg'
+        return L
     if f not in SIT:
         bys=[y for y in range(H) for x in range(W) if L[y,x]=='bottom']
         if bys:
@@ -42,7 +51,7 @@ def label_base(a,f,chin,oy,eyeb=None,ox=0):
                         for py,px in pts: L[py,px]='leg'
     return L
 def build(pre):
-    frames=[strip_small(load(B+f'{pre}_{i:02d}.png')) for i in range(21)]
+    frames=[strip_small(load(B+f'{pre}_{i:02d}.png')) for i in range(24)]
     idle=frames[0]; ii=headinfo(idle); back=frames[20]; bi=headinfo(back)
     xs=[x for y in range(10) for x in range(idle.shape[1]) if idle[y,x,3]]; hc=(min(xs)+max(xs)+1)/2
     xs=[x for y in range(10) for x in range(back.shape[1]) if back[y,x,3]]; hcb=(min(xs)+max(xs)+1)/2
@@ -64,7 +73,7 @@ def build(pre):
     eyeb=[(min(p[1] for p in e),max(p[1] for p in e),min(p[0] for p in e),max(p[0] for p in e)) for e in eyeb]
     print(pre,'eyes',eyeb)
     hli=int(min(np.nonzero((idle[:20,:,3]>0).any(0))[0])); hlb=int(min(np.nonzero((back[:20,:,3]>0).any(0))[0]))
-    offs=[head_offset(idle,ii['chin'],a) if k!=20 else (0,0) for k,a in enumerate(frames)]
+    offs=[(0,0) if k==20 else head_offset(back,bi['chin'],a) if k==23 else head_offset(idle,ii['chin'],a) for k,a in enumerate(frames)]
     res={}
     for si,st in enumerate(STYLES):
         r=si//2; i=r*4+(si%2)*2
@@ -85,12 +94,12 @@ def build(pre):
         res[st]={}
         for k,a in enumerate(frames):
             f=FR[k]; ox,oy=offs[k]
-            isback=(k==20); hair=hb if isback else hf
-            dx,dy=(bdx,bdy) if isback else (fdx+ox,fdy+oy)
+            isback=k in (20,23); hair=hb if isback else hf
+            dx,dy=(bdx+ox,bdy+oy) if isback else (fdx+ox,fdy+oy)
             chinY=None if isback else ii['chin']+oy
             L=label_base(a,f,ii['chin'],oy,eyeb,ox)
             H,W=a.shape[:2]; padT=14
-            cx=(hcb if isback else hc+ox)
+            cx=(hcb+ox if isback else hc+ox)
             ox0=int(round(CW/2-cx))
             C=np.zeros((H+padT,CW,4),np.uint8); G=np.full((H+padT,CW),'',object)
             def put(img,lab,X,Y):
@@ -104,7 +113,7 @@ def build(pre):
                     if a[y,x,3]: put(a[y,x],L[y,x],x+ox0,y+padT)
             for y,x in hp:
                 if chinY is None or y+dy<chinY: put(hair[y,x],hl(hair[y,x]),x+dx+ox0,y+dy+padT)
-            HL=(hlb+ox0, padT) if isback else (hli+ox+ox0, oy+padT)   # 머리(민머리) 왼쪽 위
+            HL=(hlb+ox+ox0, oy+padT) if isback else (hli+ox+ox0, oy+padT)   # 머리(민머리) 왼쪽 위
             EB=[] if isback else [[b[0]+ox+ox0,b[2]+oy+padT,b[1]+ox+ox0,b[3]+oy+padT] for b in sorted(eyeb)]
             res[st][f]=(C,G,EB,HL)
             if f=='blink':

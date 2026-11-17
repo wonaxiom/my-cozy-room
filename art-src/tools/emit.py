@@ -1,6 +1,6 @@
 exec(open('make.py').read())
 def hx(p): return '#%02x%02x%02x'%tuple(int(v) for v in p[:3])
-pal={}; chars=[chr(c) for c in range(ord('!'),ord('~')+1) if chr(c) not in '."\\`0123456789']+[chr(c) for c in range(0xC0,0x24F)]
+pal={}; chars=[chr(c) for c in range(ord('!'),ord('~')+1) if chr(c) not in '."\\`0123456789']+[chr(c) for c in range(0xC0,0x1000)]
 def enc(C,G):
     rows=[]
     for y in range(C.shape[0]):

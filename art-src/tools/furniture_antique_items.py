@@ -1,8 +1,8 @@
 # 엔티크 15종 (GPT 그림 순서대로). 크기: [오른쪽 아래, 왼쪽 아래, 높이]
 ITEMS = [
   (0,  'canopyBed',     '캐노피 침대',     'furniture', 360, [24, 16, 30], dict(style='antique', sleep=dict(side=[12, 20], pillow=[19, 8, 8]))),
-  (1,  'chesterfield',  '체스터필드 소파', 'furniture', 280, [10, 22, 12], dict(style='antique', seat=dict(z=6, back='+x'), use='chair')),
-  (2,  'rockingChair',  '흔들의자',        'furniture', 170, [9, 9, 16],   dict(style='antique', seat=dict(z=6, back='+x'), use='chair')),
+  (1,  'chesterfield',  '체스터필드 소파', 'furniture', 280, [10, 22, 12], dict(style='antique', seat=dict(z=6, back='-y'), use='chair')),
+  (2,  'rockingChair',  '흔들의자',        'furniture', 170, [9, 9, 16],   dict(style='antique', seat=dict(z=6, back='-y'), use='chair')),
   (3,  'teaTable',      '티테이블',        'furniture', 150, [10, 10, 12], dict(style='antique', use='snack')),
   (4,  'vanity',        '화장대',          'furniture', 220, [9, 16, 20],  dict(style='antique')),
   (5,  'rolltopDesk',   '롤톱 책상',       'furniture', 240, [8, 16, 15],  dict(style='antique', use='read')),

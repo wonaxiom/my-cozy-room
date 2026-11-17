@@ -1943,13 +1943,26 @@ const USE_TIME = { read: [10, 18], snack: [8, 12], look: [6, 10], water: [3, 4],
 
 // 의자에 앉았을 때 바라보는 쪽 (등받이 반대쪽). 화면에서 오른쪽이면 1, 왼쪽이면 -1
 function seatFacing(item) {
+  const v = seatDir(item);
+  if (!v) return 0;
+  const sdx = v[0] - v[1];
+  return Math.abs(sdx) > 0.01 ? Math.sign(sdx) : 0;
+}
+
+// 앉았을 때 바라보는 방향 (바닥 좌표). 등받이가 없으면 null
+function seatDir(item) {
   const back = item.seat && item.seat.back;
-  if (!back) return 0;
-  let [vx, vy] = back === "+x" ? [-1, 0] : [1, 0]; // 등받이 반대 방향
+  if (!back) return null;
+  let [vx, vy] = { "+x": [-1, 0], "-x": [1, 0], "+y": [0, -1], "-y": [0, 1] }[back] || [1, 0]; // 등받이 반대 방향
   if (item.image && !item.parts) { if (swapped(item)) [vx, vy] = [vy, vx]; } // 그림 가구: 좌우로 뒤집기만
   else for (let r = rotOf(item); r > 0; r--) [vx, vy] = [-vy, vx];
-  const sdx = vx - vy;
-  return Math.abs(sdx) > 0.01 ? Math.sign(sdx) : 0;
+  return [vx, vy];
+}
+
+// 의자가 화면 안쪽(벽 쪽)을 보고 있으면 뒷모습으로 앉음
+function seatAway(item) {
+  const v = seatDir(item);
+  return !!v && v[0] + v[1] < 0;
 }
 
 // 가구 앞에 설 자리 (벽 장식은 벽에서 조금 떨어진 곳, 방석은 그 위)
@@ -2688,7 +2701,11 @@ function drawHero() {
   if (hero.mode === "sleep") return; // 잘 때는 잠자리 위에 따로 그림
 
   let frame = "idle";
-  if (hero.mode === "walk" || hero.mode === "toBed" || hero.mode === "toWork" || hero.mode === "toUse") {
+  // ver.세밀: 의자(높이가 있는 자리)에 앉으면 다리를 내리고 앉은 그림. 발이 바닥에 닿게 그림
+  const onChair = useHeroArt() && hero.seat && hero.seat.seat && hero.seat.seat.z >= 3 && (hero.mode === "sitChair" || hero.mode === "work");
+  if (onChair) {
+    frame = seatAway(hero.seat) ? "chairBack" : hero.mode === "work" ? "chairType" : "chairSit";
+  } else if (hero.mode === "walk" || hero.mode === "toBed" || hero.mode === "toWork" || hero.mode === "toUse") {
     frame = walkFrame(hero.walkT);
   } else if (hero.waveT > 0) {
     frame = Math.floor(hero.waveT * 6) % 2 ? "wave1" : "wave2";
@@ -2712,7 +2729,7 @@ function drawHero() {
     frame = "breathe"; // 가만히 있을 때 숨쉬기 (ver.하찮은 가만히 그림)
   }
 
-  const p = heroScreen();
+  const p = onChair ? (() => { const q = project(hero.x, hero.y, hero.seat.z); return { x: Math.round(q.x), y: Math.round(q.y) }; })() : heroScreen();
   const jump = hero.jumpT > 0 ? Math.round(Math.sin((1 - hero.jumpT / 0.35) * Math.PI) * 4) : 0;
   ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
   ctx.fillRect(p.x - 4, p.y - 1, 8, 2); // 그림자
