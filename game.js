@@ -4011,7 +4011,7 @@ const shopEl = byId("shop");
 const shopList = byId("shop-list");
 const shopBtn = byId("shop-btn");
 let shopCategory = "furniture";
-const shopSub = { furniture: "all", prop: "all", room: "room" }; // 탭마다 고른 세부 분류 (스타일·종류)
+const shopSub = { furniture: "all", prop: "all", room: "room", look: "top" }; // 탭마다 고른 세부 분류 (스타일·종류)
 
 // 받침 있는 글자면 "을", 없으면 "를"
 function withObject(word) {
@@ -4203,6 +4203,21 @@ function makeHeroPreview(look = save.look) {
   return makeSpritePreview(heroRows("idle", look), heroColors(look), false, look);
 }
 
+// 상점 세부 분류 버튼 줄 (방·옷 탭에서 씀). 고른 값은 shopSub[cat]에 기억
+function subTabs(cat, list) {
+  const row = document.createElement("div");
+  row.className = "shop-subs";
+  for (const t of list) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "subtab" + (shopSub[cat] === t.id ? " active" : "");
+    b.textContent = t.name;
+    b.addEventListener("click", () => { shopSub[cat] = t.id; renderShop(); });
+    row.append(b);
+  }
+  shopList.append(row);
+}
+
 function sectionTitle(text) {
   const h = document.createElement("div");
   h.className = "shop-section";
@@ -4222,8 +4237,15 @@ function renderLook() {
   note.className = "shop-section";
   note.textContent = "머리, 얼굴, 기본 옷은 오른쪽 위 '내 정보'에서 바꿀 수 있어요.";
   shopList.append(note);
-  for (const [title, list, key] of [["상의", TOPS, "top"], ["하의", BOTTOMS, "bottom"]]) {
-    sectionTitle(title);
+  // 상의 · 하의 · 액세서리 · 아우터로 나눠 봄
+  subTabs("look", [{ id: "top", name: "상의" }, { id: "bottom", name: "하의" }, { id: "acc", name: "액세서리" }, { id: "outer", name: "아우터" }]);
+  const sub = shopSub.look;
+  if (sub === "outer") {
+    sectionTitle("아우터는 곧 나올 예정이에요.");
+    return;
+  }
+  for (const [list, key] of [[TOPS, "top"], [BOTTOMS, "bottom"]]) {
+    if (key !== sub) continue;
     for (const item of list.filter((x) => x.price > 0)) {
       const look = Object.assign({}, save.look, { [key]: item.id });
       const owned = ownsCloth(item);
@@ -4246,8 +4268,8 @@ function renderLook() {
         priceHtml(item.price) + (owned ? "<span>보유</span>" : ""), btn));
     }
   }
-  // 장신구: 하나만 쓸 수 있고, 다시 누르면 벗음
-  sectionTitle("장신구");
+  // 액세서리: 하나만 쓸 수 있고, 다시 누르면 벗음
+  if (sub !== "acc") return;
   for (const item of ACCESSORIES) {
     const look = Object.assign({}, save.look, { acc: item.id });
     const owned = save.outfits.includes(item.id);
@@ -4325,17 +4347,7 @@ function renderShop() {
   }
   // 방 탭: 방 · 벽지 · 바닥으로 한 번 더 나눠 봄
   if (shopCategory === "room") {
-    const row = document.createElement("div");
-    row.className = "shop-subs";
-    for (const t of [{ id: "room", name: "방" }, { id: "wall", name: "벽지" }, { id: "floor", name: "바닥" }]) {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "subtab" + (shopSub.room === t.id ? " active" : "");
-      b.textContent = t.name;
-      b.addEventListener("click", () => { shopSub.room = t.id; renderShop(); });
-      row.append(b);
-    }
-    shopList.append(row);
+    subTabs("room", [{ id: "room", name: "방" }, { id: "wall", name: "벽지" }, { id: "floor", name: "바닥" }]);
     if (shopSub.room === "room") renderRooms();
     else renderStyles(shopSub.room);
     updateShopButtons();
