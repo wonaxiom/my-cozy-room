@@ -1754,6 +1754,20 @@ Object.assign(FURNITURE, {
   noren: { name: "노렌", type: "wall", category: "prop", price: 80, size: [14, 1, 13], image: "img/furn/noren.png", imageSimple: "img/furn/s/noren.png", hires: true },
 });
 
+// 크리스마스 트리는 둥글어서 어느 쪽으로 돌려도 장식이 보여야 함: 앞면 장식(전구, 가지 그림자, 리본)을
+// 가운데를 기준으로 반대편에도 붙입니다. (전구 색은 조금씩 바꿔서)
+{
+  const t = FURNITURE.xmasTree, W = 12;
+  const back = (q) => {
+    const [x, y, z, w, d, h, c] = q;
+    const color = c.startsWith("bulb") ? "bulb" + (((Number(c.slice(4)) + 1) % 4) + 1) : c;
+    return [W - x - w, W - y - d, z, w, d, h, color];
+  };
+  const decor = (q) => q[6].startsWith("bulb") || q[6] === "pineDark" || q[6] === "ribbonGold";
+  t.parts = [...t.parts, ...t.parts.filter(decor).map(back)];
+  t.detail = [...t.detail, ...t.detail.filter(decor).map(back)];
+}
+
 // ---- 엔티크 가구 (GPT 그림) ----
 Object.assign(FURNITURE, {
   canopyBed: { name: "캐노피 침대", category: "furniture", price: 360, style: "antique", size: [24, 16, 30], image: "img/furn/canopyBed.png", imageSimple: "img/furn/s/canopyBed.png", hires: true, sleep: { side: [12, 20], pillow: [19, 8, 8] } },
