@@ -798,13 +798,15 @@ const FURNITURE = {
     name: "머그잔",
     category: "prop", kind: "goods", price: 20,
     small: true,
+    steam: true, // 위로 김이 피어오름 (game.js drawEffects)
     parts: [
-      [0, 0, 0, 2, 2, 3, "mug"],
+      [0, 0, 0, 3, 3, 3, "mug"],
+      [3, 1, 1, 1, 1, 1, "mug"],
     ],
     detail: [
-      [0, 0, 0, 2, 2, 7 / 3, "mug"],
-      [1 / 3, 1 / 3, 7 / 3, 4 / 3, 4 / 3, 0.01, "coffee"],
-      [2, 2 / 3, 2 / 3, 2 / 3, 2 / 3, 1, "mug"],
+      [0, 0, 0, 3, 3, 3, "mug"],
+      [1 / 3, 1 / 3, 3, 7 / 3, 7 / 3, 0.01, "coffee"],
+      [3, 2 / 3, 2 / 3, 1, 5 / 3, 5 / 3, "mug"],
     ],
   },
   notebook: {

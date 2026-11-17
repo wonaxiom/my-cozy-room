@@ -3230,6 +3230,30 @@ function tintItem(item, color) {
 
 // 하트, Zzz 같은 효과 (조명 위에 그려서 잘 보이게)
 function drawEffects() {
+  // 김이 나는 물건(머그잔): 컵 위로 하얀 김 두 줄기가 살랑이며 올라가다 사라짐
+  const px = artStyle === "detail" ? 2 / 3 : 1; // 김 점 크기
+  for (const it of items) {
+    if (!FURNITURE[it.id] || !FURNITURE[it.id].steam) continue;
+    const f = footprint(it);
+    const top = project(f.x + f.w / 2, f.y + f.d / 2, it.z + itemHeight(it));
+    for (let k = 0; k < 2; k++) {
+      for (let i = 0; i < 7; i++) {
+        const t = (time * 0.35 + k * 0.43 + i / 7) % 1; // 0: 컵 입구 → 1: 위로 사라짐
+        const sx = top.x + (k ? 1 : -1) * 0.8 + Math.sin(t * 7 + k * 2.5) * 1.3;
+        const sy = top.y - 1.5 - t * 10;
+        const x = Math.round(sx / px) * px, y = Math.round(sy / px) * px;
+        const a = Math.sin(t * Math.PI);
+        // 밝은 벽지에서도 보이게 아래쪽에 옅은 그림자 점을 깔고 하얀 점을 그림
+        ctx.globalAlpha = 0.25 * a;
+        ctx.fillStyle = "#8a7f74";
+        ctx.fillRect(x, y + px, px, px);
+        ctx.globalAlpha = 0.9 * a;
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(x, y, px, px);
+      }
+    }
+  }
+  ctx.globalAlpha = 1;
   // 화분에 물 주기: 잎 위로 물방울이 떨어짐
   if (hero.mode === "water" && hero.use && items.includes(hero.use.item)) {
     const f = footprint(hero.use.item);
