@@ -8,7 +8,7 @@
 
 const GCal = (() => {
   const OWNER_ID = "f235ee74-5e77-4233-a222-de9ee3b65e6f"; // 이 계정에서만 연결 버튼을 보여 줌
-  const CLIENT_ID = ""; // 예: "1234-abcd.apps.googleusercontent.com" (콘솔 설정 뒤 채움)
+  const CLIENT_ID = "457708425576-3v745lco1bbn7jgkt0sp9nt805k499jp.apps.googleusercontent.com";
   const SCOPE = "https://www.googleapis.com/auth/calendar.events.readonly";
   const CACHE_KEY = "cozyroom-gcal";
   const REFRESH_MS = 15 * 60 * 1000; // 연결돼 있는 동안 15분마다 새로 불러옴
