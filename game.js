@@ -4573,7 +4573,8 @@ async function togglePip() {
   }
 
   try {
-    pipWin = await documentPictureInPicture.requestWindow({ width: 380, height: Math.round(380 * H / W) });
+    // preferInitialWindowPlacement: 지난번 크기(예: 세로 보기로 길게 늘인 크기)를 기억하지 않고 기본 크기로 엶
+    pipWin = await documentPictureInPicture.requestWindow({ width: 380, height: Math.round(380 * H / W), preferInitialWindowPlacement: true });
   } catch (err) {
     pipNote.textContent = "작은 창을 열지 못했어요. 브라우저 설정을 확인해 주세요.";
     return;
@@ -4601,6 +4602,8 @@ async function togglePip() {
   pipNote.textContent = "";
   updatePipButton();
   if (typeof Side !== "undefined") Side.pip(true); // 세로 보기 버튼 보이기
+  // 위 옵션을 모르는 예전 브라우저용: 열자마자 기본 크기로 한 번 더 맞춤
+  try { if (pipWin.innerHeight > Math.round(380 * H / W) + 80) pipWin.resizeTo(380, Math.round(380 * H / W) + 40); } catch (e) { /* 크기를 못 바꾸면 그대로 */ }
   startLoop();
 
   // 작은 창이 닫히면 원래 자리로 돌아오기
