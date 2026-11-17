@@ -3035,7 +3035,8 @@ function outlineBox(x, y, z, w, d, h) {
 }
 
 // ---- 반려동물 ----------------------------------------------------
-const pet = { x: 20, y: 50, dir: 1, mode: "idle", timer: 1, target: null, walkT: 0, heartT: 0, jumpT: 0 };
+const pet = { x: 20, y: 50, z: 0, dir: 1, mode: "idle", timer: 1, target: null, walkT: 0, heartT: 0, jumpT: 0, on: null, act: null, hop: null };
+const PET_HOP = 0.45; // 가구 위로 뛰어오르거나 내려오는 시간 (초)
 const PET_SPEED = 10;
 
 function petDef() {
@@ -3054,6 +3055,7 @@ function placePet() {
   }
   pet.mode = "idle";
   pet.timer = 1;
+  pet.z = 0; pet.on = null; pet.act = null; pet.hop = null;
 }
 
 // 반려동물이 갈 곳: 절반쯤은 캐릭터 근처, 나머지는 아무 데나
@@ -3073,16 +3075,166 @@ function petTarget() {
   return null;
 }
 
+// ---- 반려동물 가구 ----
+// 쓸 수 있는 반려동물 가구 (캣타워는 고양이만)
+function petFurniture(use) {
+  const kind = petDef() && petDef().kind;
+  return items.filter((i) => i.petUse === use && i.z === 0 && (!i.petKind || i.petKind === kind));
+}
+const pickOne = (list) => list[Math.floor(Math.random() * list.length)];
+
+// 가구 옆 빈자리 (반려동물이 서는 곳). 지금 위치에서 가까운 쪽
+function petSpot(item, gap = 2.6) {
+  const f = footprint(item);
+  const spots = [
+    { x: f.x + f.w / 2, y: f.y + f.d + gap }, { x: f.x + f.w + gap, y: f.y + f.d / 2 },
+    { x: f.x + f.w / 2, y: f.y - gap }, { x: f.x - gap, y: f.y + f.d / 2 },
+  ].filter((p) => isFree(p.x, p.y));
+  spots.sort((a, b) => Math.hypot(a.x - pet.x, a.y - pet.y) - Math.hypot(b.x - pet.x, b.y - pet.y));
+  return spots[0] || null;
+}
+
+// 할 일 고르기: 잠은 침대·캣타워 위에서, 가끔 공놀이·밥 먹기·캣타워에 올라가 앉기
+function pickPetAct(h) {
+  const sleepy = isSleepTime(h) || Math.random() < 0.2;
+  const beds = [...petFurniture("bed"), ...petFurniture("tower")];
+  if (sleepy) return beds.length ? { item: pickOne(beds), act: "sleep" } : { act: "sleep" };
+  const r = Math.random();
+  const ball = petFurniture("ball"), bowl = petFurniture("bowl"), tower = petFurniture("tower");
+  if (r < 0.25 && ball.length && !editing) return { item: pickOne(ball), act: "play" }; // 꾸미는 중에는 공을 굴리지 않음
+  if (r < 0.4 && bowl.length) return { item: pickOne(bowl), act: "eat" };
+  if (r < 0.55 && tower.length) return { item: pickOne(tower), act: "perch" };
+  return null;
+}
+
+function startPetAct(plan) {
+  if (!plan.item) { pet.mode = "sleep"; pet.timer = 8 + Math.random() * 12; return; } // 침대가 없으면 바닥에서 낮잠
+  const spot = petSpot(plan.item);
+  if (!spot) { pet.timer = 2; return; }
+  pet.act = plan;
+  pet.target = spot;
+  pet.mode = "toAct";
+}
+
+// 가구 위(가운데)로 뛰어오르기 / 옆 빈자리로 내려오기
+function petHop(x, y, z, then) {
+  pet.hop = { x0: pet.x, y0: pet.y, z0: pet.z, x1: x, y1: y, z1: z, t: 0, then };
+  pet.mode = "hop";
+  if (Math.abs(x - pet.x - (y - pet.y)) > 0.01) pet.dir = Math.sign(x - pet.x - (y - pet.y));
+}
+function petHopDown() {
+  const item = pet.on;
+  const spot = (item && petSpot(item)) || { x: pet.x, y: pet.y };
+  pet.on = null;
+  petHop(spot.x, spot.y, 0, () => { pet.mode = "idle"; pet.timer = 1 + Math.random() * 2; });
+}
+
+// 가구에 도착했을 때
+function arrivePetAct() {
+  const { item, act } = pet.act;
+  if (!items.includes(item)) { pet.act = null; pet.mode = "idle"; pet.timer = 1; return; }
+  const f = footprint(item);
+  const face = () => { const sdx = (f.x + f.w / 2 - pet.x) - (f.y + f.d / 2 - pet.y); if (Math.abs(sdx) > 0.3) pet.dir = Math.sign(sdx); };
+  if (act === "sleep" || act === "perch") {
+    petHop(f.x + f.w / 2, f.y + f.d / 2, item.z + item.petZ, () => {
+      pet.on = item;
+      pet.mode = act === "sleep" ? "sleep" : "perch";
+      pet.timer = act === "sleep" ? 10 + Math.random() * 15 : 6 + Math.random() * 6;
+    });
+  } else if (act === "eat") {
+    face();
+    pet.mode = "eat";
+    pet.timer = 4 + Math.random() * 2;
+  } else if (act === "play") {
+    face();
+    pet.mode = "play";
+    pet.kicks = 2 + Math.floor(Math.random() * 2); // 공을 몇 번 굴릴지
+    kickBall(item);
+  }
+}
+
+// 공 굴리기: 공이 6~10칸 굴러가고, 반려동물이 쫓아감
+function kickBall(ball) {
+  for (let i = 0; i < 20; i++) {
+    const a = Math.random() * Math.PI * 2, d = 6 + Math.random() * 4;
+    const x = ball.x + Math.cos(a) * d, y = ball.y + Math.sin(a) * d;
+    if (!insideFloor(x + 1, y + 1, 4)) continue;
+    // 공이 굴러갈 자리에 다른 가구가 없어야 함
+    if (blockers.some((b) => b !== footprint(ball) && x + 2 > b.x && x < b.x + b.w && y + 2 > b.y && y < b.y + b.d)) continue;
+    ball.roll = { x0: ball.x, y0: ball.y, x1: x, y1: y, t: 0 };
+    pet.jumpT = 0.3;
+    return true;
+  }
+  return false;
+}
+
 function updatePet(dt, h) {
   if (!petVisible()) return;
   pet.heartT = Math.max(0, pet.heartT - dt);
   pet.jumpT = Math.max(0, pet.jumpT - dt);
+  // 올라가 있던 가구가 치워지면 바닥으로
+  if (pet.on && !items.includes(pet.on)) { pet.on = null; pet.z = 0; pet.mode = "idle"; pet.timer = 1; }
+  // 굴러가는 공
+  for (const it of items) {
+    if (!it.roll) continue;
+    it.roll.t = Math.min(1, it.roll.t + dt / 0.7);
+    const e = 1 - (1 - it.roll.t) ** 2; // 점점 느려짐
+    it.x = it.roll.x0 + (it.roll.x1 - it.roll.x0) * e;
+    it.y = it.roll.y0 + (it.roll.y1 - it.roll.y0) * e;
+    if (it.roll.t >= 1) { it.x = Math.round(it.roll.x1 * 2) / 2; it.y = Math.round(it.roll.y1 * 2) / 2; it.roll = null; refreshItems(); saveLayout({ auto: true }); }
+  }
+  if (pet.mode === "hop") {
+    const hp = pet.hop;
+    hp.t = Math.min(1, hp.t + dt / PET_HOP);
+    pet.x = hp.x0 + (hp.x1 - hp.x0) * hp.t;
+    pet.y = hp.y0 + (hp.y1 - hp.y0) * hp.t;
+    pet.z = hp.z0 + (hp.z1 - hp.z0) * hp.t + Math.sin(hp.t * Math.PI) * 3; // 포물선
+    if (hp.t >= 1) { pet.z = hp.z1; pet.hop = null; hp.then(); }
+    return;
+  }
+  if (pet.mode === "toAct") {
+    const dx = pet.target.x - pet.x, dy = pet.target.y - pet.y, dist = Math.hypot(dx, dy);
+    if (dist < 0.3) { arrivePetAct(); return; }
+    const step = Math.min(dist, PET_SPEED * dt);
+    pet.x += (dx / dist) * step; pet.y += (dy / dist) * step;
+    if (Math.abs(dx - dy) > 0.01) pet.dir = Math.sign(dx - dy);
+    pet.walkT += dt;
+    return;
+  }
+  if (pet.mode === "perch" || pet.mode === "eat") {
+    pet.timer -= dt;
+    if (pet.mode === "eat" && Math.floor(pet.timer * 3) % 2 === 0 && pet.jumpT <= 0) pet.jumpT = 0.15; // 오물오물
+    if (pet.timer <= 0) {
+      if (pet.mode === "eat") { pet.heartT = 1.2; pet.mode = "idle"; pet.timer = 2; pet.act = null; }
+      else petHopDown();
+    }
+    return;
+  }
+  if (pet.mode === "play") {
+    const ball = pet.act && pet.act.item;
+    if (!ball || !items.includes(ball)) { pet.mode = "idle"; pet.timer = 1; return; }
+    if (ball.roll) return; // 공이 굴러가는 동안 지켜봄
+    // 멈춘 공 쪽으로 쫓아가서 다시 굴림
+    const spot = { x: ball.x + 1 - 2.5 * Math.sign(ball.x - pet.x || 1), y: ball.y + 1 };
+    const dx = spot.x - pet.x, dy = spot.y - pet.y, dist = Math.hypot(dx, dy);
+    if (dist > 0.4) {
+      const step = Math.min(dist, PET_SPEED * 1.4 * dt);
+      pet.x += (dx / dist) * step; pet.y += (dy / dist) * step;
+      if (Math.abs(dx - dy) > 0.01) pet.dir = Math.sign(dx - dy);
+      pet.walkT += dt;
+      return;
+    }
+    pet.kicks -= 1;
+    if (pet.kicks > 0 && kickBall(ball)) return;
+    pet.heartT = 1.2; pet.mode = "idle"; pet.timer = 2; pet.act = null;
+    return;
+  }
   if (pet.mode === "idle") {
     pet.timer -= dt;
     if (pet.timer <= 0) {
-      if (isSleepTime(h) || Math.random() < 0.2) {
-        pet.mode = "sleep"; // 낮잠 (밤에는 계속 잠)
-        pet.timer = 8 + Math.random() * 12;
+      const plan = pickPetAct(h);
+      if (plan) {
+        startPetAct(plan);
       } else {
         const t = petTarget();
         if (t) { pet.target = t; pet.mode = "walk"; } else pet.timer = 2;
@@ -3092,6 +3244,7 @@ function updatePet(dt, h) {
     pet.timer -= dt;
     if (pet.timer <= 0) {
       if (isSleepTime(h)) pet.timer = 10;
+      else if (pet.on) { pet.act = null; petHopDown(); }
       else { pet.mode = "idle"; pet.timer = 1; }
     }
   } else if (pet.mode === "walk") {
@@ -3111,14 +3264,14 @@ function updatePet(dt, h) {
 }
 
 function petScreen() {
-  const p = project(pet.x, pet.y, 0);
+  const p = project(pet.x, pet.y, pet.z || 0);
   return { x: Math.round(p.x), y: Math.round(p.y) };
 }
 
 function petRows() {
   const frames = PET_FRAMES[petDef().kind];
   if (pet.mode === "sleep") return frames.sleep;
-  if (pet.mode === "walk") return [frames.walk1, frames.idle, frames.walk2, frames.idle][Math.floor(pet.walkT * 10) % 4];
+  if (pet.mode === "walk" || pet.mode === "toAct" || (pet.mode === "play" && petMoving())) return [frames.walk1, frames.idle, frames.walk2, frames.idle][Math.floor(pet.walkT * 10) % 4];
   return frames.idle;
 }
 
@@ -3145,8 +3298,15 @@ function petArtCanvas(pd, frame, flip) {
 
 function petArtFrame() {
   if (pet.mode === "sleep") return "sleep";
-  if (pet.mode === "walk") return Math.floor(pet.walkT * 6) % 2 ? "walk1" : "walk2";
+  if (pet.mode === "walk" || pet.mode === "toAct" || pet.mode === "hop" || (pet.mode === "play" && petMoving())) return Math.floor(pet.walkT * 6) % 2 ? "walk1" : "walk2";
   return "sit";
+}
+
+// 공놀이 중 쫓아가는 중인지 (걷는 그림)
+let petLastWalkT = 0, petMovingNow = false;
+function petMoving() {
+  if (pet.walkT !== petLastWalkT) { petLastWalkT = pet.walkT; petMovingNow = true; } else petMovingNow = false;
+  return petMovingNow;
 }
 
 const usePetArt = () => artStyle === "detail" && typeof PET_ART !== "undefined";
@@ -3347,6 +3507,7 @@ function drawObjects() {
     drawOrder.push(item);
     if (item.sleep) drawSleeper();
     if (hero.seat === item && ownsRoom()) drawHero(); // 방석 위에 앉은 캐릭터
+    if (pet.on === item && petVisible()) drawPet();   // 침대·캣타워 위의 반려동물
   } }));
   if (hero.mode !== "sleep" && !(hero.seat && items.includes(hero.seat)) && ownsRoom()) {
     list.push({ fp: { x: hero.x - 1.5, y: hero.y - 1.5, w: 3, d: 3 }, draw: drawHero });
@@ -3357,7 +3518,8 @@ function drawObjects() {
   for (const w of walkers.values()) {
     if (walkerVisible(w)) list.push({ fp: { x: w.x - 1.5, y: w.y - 1.5, w: 3, d: 3 }, draw: () => drawPerson(w, w.look) });
   }
-  if (petVisible()) {
+  // 반려동물: 가구 위에 올라가 있으면 그 가구를 그린 다음 바로 그림
+  if (petVisible() && !(pet.on && objects.includes(pet.on) && !lifted.includes(pet.on))) {
     list.push({ fp: { x: pet.x - 1, y: pet.y - 1, w: 2, d: 2 }, draw: drawPet });
   }
 

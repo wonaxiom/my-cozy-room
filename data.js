@@ -64,6 +64,14 @@ const PALETTE = {
   shojiPaper: "#f7f1e1",
   teapot: "#5b7d6e",
   cup: "#f1ece0",
+  petBed: "#c98b7a",        // 반려동물 침대 테두리
+  petBedIn: "#f3e2cf",      // 반려동물 침대 속 쿠션
+  rope: "#cfae7e",          // 캣타워 기둥 (삼줄)
+  towerPad: "#a8927f",      // 캣타워 발판
+  ballRed: "#e0505a",
+  ballLine: "#f6e9d0",
+  bowl: "#7ea6d8",
+  kibble: "#b07a4a",        // 사료
   cushion: "#b4505a",
   cushionLight: "#c9666f",
   futonBase: "#f3efe6",
@@ -1050,6 +1058,88 @@ const FURNITURE = {
       [28 / 3, 19 / 3, 9, 1, 1, 0.01, "tea"],
     ],
   },
+  // ---- 반려동물 가구 (petUse: 반려동물이 하는 일, petZ: 올라가 앉는 높이) ----
+  petBed: {
+    name: "펫 쿠션 침대",
+    category: "prop", kind: "pet", price: 80,
+    petUse: "bed", petZ: 1.5,
+    parts: [
+      [0, 0, 0, 9, 9, 1, "petBed"],
+      [0, 0, 1, 9, 1.5, 1.5, "petBed"],
+      [0, 1.5, 1, 1.5, 7.5, 1.5, "petBed"],
+      [7.5, 1.5, 1, 1.5, 7.5, 0.7, "petBed"],
+      [1.5, 7.5, 1, 6, 1.5, 0.7, "petBed"],
+      [1.5, 1.5, 1, 6, 6, 0.5, "petBedIn"],
+    ],
+    detail: [
+      [0, 0, 0, 9, 9, 1, "petBed"],
+      [0, 0, 1, 9, 4 / 3, 5 / 3, "petBed"],
+      [0, 4 / 3, 1, 4 / 3, 23 / 3, 5 / 3, "petBed"],
+      [23 / 3, 4 / 3, 1, 4 / 3, 23 / 3, 2 / 3, "petBed"],
+      [4 / 3, 23 / 3, 1, 19 / 3, 4 / 3, 2 / 3, "petBed"],
+      [4 / 3, 4 / 3, 1, 19 / 3, 19 / 3, 2 / 3, "petBedIn"],
+    ],
+  },
+  catTower: {
+    name: "캣타워",
+    category: "prop", kind: "pet", price: 180,
+    petUse: "tower", petKind: "cat", petZ: 17,
+    parts: [
+      [0, 0, 0, 8, 8, 1.5, "towerPad"],
+      [3, 3, 1.5, 2, 2, 7, "rope"],
+      [1, 1, 8.5, 6, 6, 1, "towerPad"],
+      [3, 3, 9.5, 2, 2, 6, "rope"],
+      [0.5, 0.5, 15.5, 7, 7, 1, "towerPad"],
+      [0.5, 0.5, 16.5, 7, 1, 1, "towerPad"],
+      [0.5, 1.5, 16.5, 1, 6, 1, "towerPad"],
+      [6.6, 2.3, 6.5, 0.3, 0.3, 2, "rope"],
+      [6.2, 1.9, 5.5, 1, 1, 1, "ballRed"],
+    ],
+    detail: [
+      [0, 0, 0, 8, 8, 4 / 3, "towerPad"],
+      [3, 3, 4 / 3, 2, 2, 22 / 3, "rope"],
+      [3, 4 / 3 + 3, 3, 2, 1 / 3, 1 / 3, "towerPad"],
+      [1, 1, 26 / 3, 6, 6, 1, "towerPad"],
+      [3, 3, 29 / 3, 2, 2, 17 / 3, "rope"],
+      [1 / 3, 1 / 3, 46 / 3, 22 / 3, 22 / 3, 4 / 3, "towerPad"],
+      [1 / 3, 1 / 3, 50 / 3, 22 / 3, 1, 1, "towerPad"],
+      [1 / 3, 4 / 3, 50 / 3, 1, 19 / 3, 1, "towerPad"],
+      [4 / 3, 4 / 3, 50 / 3, 19 / 3, 19 / 3, 0.01, "petBedIn"],
+      [20 / 3, 7 / 3, 19 / 3, 1 / 3, 1 / 3, 7 / 3, "rope"],
+      [19 / 3, 2, 16 / 3, 1, 1, 1, "ballRed"],
+    ],
+  },
+  petBall: {
+    name: "장난감 공",
+    category: "prop", kind: "pet", price: 20,
+    petUse: "ball",
+    parts: [
+      [0, 0, 0, 2, 2, 2, "ballRed"],
+      [0, 0.8, 0, 2, 0.4, 2, "ballLine"],
+    ],
+    detail: [
+      [1 / 3, 1 / 3, 0, 4 / 3, 4 / 3, 2, "ballRed"],
+      [0, 1 / 3, 1 / 3, 2, 4 / 3, 4 / 3, "ballRed"],
+      [1 / 3, 0, 1 / 3, 4 / 3, 2, 4 / 3, "ballRed"],
+      [0, 5 / 6, 1 / 3, 2, 1 / 3, 4 / 3, "ballLine"],
+    ],
+  },
+  petBowl: {
+    name: "밥그릇",
+    category: "prop", kind: "pet", price: 30,
+    petUse: "bowl",
+    parts: [
+      [0, 0, 0, 4, 4, 1.5, "bowl"],
+      [0.5, 0.5, 1.5, 3, 3, 0.01, "kibble"],
+    ],
+    detail: [
+      [1 / 3, 1 / 3, 0, 10 / 3, 10 / 3, 1 / 3, "bowl"],
+      [0, 0, 1 / 3, 4, 4, 4 / 3, "bowl"],
+      [1 / 3, 1 / 3, 5 / 3, 10 / 3, 10 / 3, 0.01, "kibble"],
+      [1, 1, 5 / 3, 1, 1, 1 / 3, "kibble"],
+      [2, 2, 5 / 3, 1, 1, 1 / 3, "kibble"],
+    ],
+  },
   cushion: {
     name: "방석",
     category: "prop", price: 30,
@@ -1823,6 +1913,7 @@ const FURNITURE_STYLES = [
   { id: "japanese", name: "일본풍" },
 ];
 const PROP_KINDS = [
+  { id: "pet", name: "반려동물" },
   { id: "light", name: "조명" },
   { id: "plant", name: "식물" },
   { id: "rug", name: "러그·방석" },
