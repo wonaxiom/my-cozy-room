@@ -3213,6 +3213,9 @@ function updatePet(dt, h) {
   if (pet.mode === "play") {
     const ball = pet.act && pet.act.item;
     if (!ball || !items.includes(ball)) { pet.mode = "idle"; pet.timer = 1; return; }
+    // 공 쪽을 바라봄
+    const sdx = (ball.x + 1 - pet.x) - (ball.y + 1 - pet.y);
+    if (Math.abs(sdx) > 0.3) pet.dir = Math.sign(sdx);
     if (ball.roll) return; // 공이 굴러가는 동안 지켜봄
     // 멈춘 공 쪽으로 쫓아가서 다시 굴림
     const spot = { x: ball.x + 1 - 2.5 * Math.sign(ball.x - pet.x || 1), y: ball.y + 1 };
@@ -3298,7 +3301,11 @@ function petArtCanvas(pd, frame, flip) {
 
 function petArtFrame() {
   if (pet.mode === "sleep") return "sleep";
-  if (pet.mode === "walk" || pet.mode === "toAct" || pet.mode === "hop" || (pet.mode === "play" && petMoving())) return Math.floor(pet.walkT * 6) % 2 ? "walk1" : "walk2";
+  if (pet.mode === "hop") return "jump";  // 가구 위로 뛰어오르기·내려오기
+  if (pet.mode === "eat") return "eat";   // 고개 숙여 밥 먹기
+  const moving = petMoving(); // 한 번만 확인 (부를 때마다 값이 바뀜)
+  if (pet.mode === "play" && !moving) return "play"; // 공 앞에서 앞발 들기
+  if (pet.mode === "walk" || pet.mode === "toAct" || (pet.mode === "play" && moving)) return Math.floor(pet.walkT * 6) % 2 ? "walk1" : "walk2";
   return "sit";
 }
 
