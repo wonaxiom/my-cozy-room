@@ -1847,8 +1847,19 @@ function spotNear(b, offset) {
 
 // ---- 책상 (집중 타이머) -------------------------------------------
 // 집중하는 동안 캐릭터가 가서 일할 가구 (data.js에서 work가 있는 가구)
+// 일할 수 있는 가구가 여러 개면 옆에 의자가 있는 쪽을 먼저 고름
 function workItem() {
-  return items.find((f) => f.work && f.z === 0);
+  const list = items.filter((f) => f.work && f.z === 0);
+  return list.find((d) => workChair(d)) || list[0];
+}
+
+// 책상 가까이에 놓인 등받이 의자 (없으면 null)
+function workChair(desk) {
+  const df = footprint(desk);
+  return items.find((o) => o.seat && o.seat.back && o.z === 0 && (() => {
+    const f = footprint(o);
+    return Math.hypot(f.x + f.w / 2 - (df.x + df.w / 2), f.y + f.d / 2 - (df.y + df.d / 2)) < 16;
+  })()) || null;
 }
 
 function isFocusing() {
@@ -2058,12 +2069,8 @@ function updateHeroLocal(dt, h) {
     stopUse();
     hero.mode = "toWork";
     // 책상 가까이에 의자가 있으면 의자에 앉아서, 없으면 책상 옆 바닥에서
-    const df = footprint(desk);
-    const chair = items.find((o) => o.seat && o.seat.back && o.z === 0 && (() => {
-      const f = footprint(o);
-      return Math.hypot(f.x + f.w / 2 - (df.x + df.w / 2), f.y + f.d / 2 - (df.y + df.d / 2)) < 16;
-    })());
-    hero.workSeat = chair || null;
+    const chair = workChair(desk);
+    hero.workSeat = chair;
     if (chair) { const f = footprint(chair); hero.target = { x: f.x + f.w / 2, y: f.y + f.d / 2 }; }
     else hero.target = spotNear(desk, turnedPoint(desk, desk.work));
   }
