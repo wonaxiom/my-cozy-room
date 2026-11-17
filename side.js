@@ -49,20 +49,36 @@ const Side = (() => {
     }
   }
 
-  // 집중 타이머: 남은 시간과 시작/멈춤
+  // 집중 타이머: 남은 시간, 시작/멈춤/그만, 집중 시간 고르기
   function renderTimer() {
     const t = save.timer;
     const box = $("side-timer");
     const left = t.endAt ? Math.max(0, t.endAt - Date.now()) : t.remain || t.length * 60000;
-    const label = t.mode === "break" ? "쉬는 중" : t.mode ? (t.endAt ? "집중 중" : "멈춤") : `${t.length}분`;
+    const label = t.mode === "break" ? "쉬는 중" : t.mode ? (t.endAt ? "집중 중" : "멈춤") : "";
     const text = `${pad(Math.floor(left / 60000))}:${pad(Math.floor((left % 60000) / 1000))}`;
     if (!box.firstChild) {
-      box.innerHTML = '<span class="side-timer-time"></span><span class="side-timer-label"></span><button type="button"></button>';
-      box.querySelector("button").addEventListener("click", () => (save.timer.endAt ? Focus.pause() : Focus.start()));
+      box.innerHTML =
+        '<div class="side-timer-row"><span class="side-timer-time"></span><span class="side-timer-label"></span>' +
+        '<button type="button" class="side-timer-go"></button><button type="button" class="side-timer-stop">그만</button></div>' +
+        '<div class="side-timer-len"><button type="button" data-step="-5" aria-label="5분 줄이기">−</button>' +
+        '<span class="side-timer-min"></span><button type="button" data-step="5" aria-label="5분 늘리기">+</button>' +
+        '<span class="side-timer-gap"></span><button type="button" data-set="15">15</button>' +
+        '<button type="button" data-set="25">25</button><button type="button" data-set="50">50</button></div>';
+      // 누르면 1초를 기다리지 않고 바로 다시 그림
+      const act = (fn) => () => { fn(); renderTimer(); };
+      box.querySelector(".side-timer-go").addEventListener("click", act(() => (save.timer.endAt ? Focus.pause() : Focus.start())));
+      box.querySelector(".side-timer-stop").addEventListener("click", act(() => Focus.stop()));
+      box.querySelectorAll("[data-step]").forEach((b) => b.addEventListener("click", act(() => Focus.setLength(save.timer.length + Number(b.dataset.step)))));
+      box.querySelectorAll("[data-set]").forEach((b) => b.addEventListener("click", act(() => Focus.setLength(Number(b.dataset.set)))));
     }
     box.querySelector(".side-timer-time").textContent = text;
     box.querySelector(".side-timer-label").textContent = label;
-    box.querySelector("button").textContent = t.endAt ? "멈춤" : "시작";
+    box.querySelector(".side-timer-go").textContent = !t.mode ? "시작" : t.endAt ? "멈춤" : "계속";
+    box.querySelector(".side-timer-stop").hidden = !t.mode;
+    // 집중 시간은 타이머가 멈춰 있을 때만 바꿀 수 있음
+    box.querySelector(".side-timer-len").hidden = !!t.mode;
+    box.querySelector(".side-timer-min").textContent = `${t.length}분`;
+    box.querySelectorAll("[data-set]").forEach((b) => b.classList.toggle("active", Number(b.dataset.set) === t.length));
   }
 
   // 오늘 할 일 (집중 창의 할 일과 같은 목록)

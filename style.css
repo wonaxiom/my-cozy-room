@@ -1383,10 +1383,28 @@ body.pip.side-mode #shop-btn { display: none; }
 .side-cal .sun { color: #e59a8a; }
 .side-cal .today { color: #2a2622; background: #f2d27e; font-weight: 700; }
 
-.side-timer {
+.side-timer-row {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.side-timer-len {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.side-timer-len[hidden] { display: none; }
+.side-timer-min { min-width: 40px; text-align: center; font-size: 13px; }
+.side-timer-gap { flex: 1; }
+.side-timer-len button { min-width: 30px; padding: 3px 6px; }
+
+.side-timer .active {
+  border-color: #f2d27e;
+  color: #2a2622;
+  background: #f2d27e;
 }
 
 .side-timer-time { font-size: 22px; font-weight: 700; }

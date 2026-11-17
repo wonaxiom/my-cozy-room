@@ -295,5 +295,12 @@ const Focus = (() => {
   render();
   // 세로 보기(side.js)에서도 같은 할 일을 쓰도록 내보냄
   function setTodoRender(fn) { onTodos = fn; }
-  return { isFocusing, update, open, close, addTodo, toggleTodo, setTodoRender, start, pause };
+  // 세로 보기에서 집중 시간 바꾸기 (5분 ~ 120분, 타이머가 멈춰 있을 때만)
+  function setLength(min) {
+    if (save.timer.mode) return;
+    save.timer.length = Math.min(120, Math.max(5, Math.round(min)));
+    Save.save(save);
+    render();
+  }
+  return { isFocusing, update, open, close, addTodo, toggleTodo, setTodoRender, start, pause, stop, setLength };
 })();
