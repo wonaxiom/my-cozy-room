@@ -23,13 +23,23 @@ def label_base(a,f,chin,oy,eyeb=None,ox=0):
                 if orange and s>=0.12 and v>=0.55: L[y,x]='skin'
                 elif s<0.14: L[y,x]='bottom' if y>=waist else 'top'
                 else: L[y,x]='keep'
-    # 다리: 반바지 밑단보다 아래에 있는 같은 세로줄의 피부 (서 있는 그림만). 옆에 내린 손은 제외
+    # 다리: 반바지 아래쪽에서 발끝(맨 아래)까지 이어진 피부 덩어리 (서 있는 그림만).
+    # 걸을 때 비스듬히 벌어진 다리도 따라가고, 옆에 내린 손(바닥까지 이어지지 않음)은 빼기
     if f not in SIT:
-        for x in range(W):
-            ys=[y for y in range(H) if L[y,x]=='bottom']
-            if not ys: continue
-            for y in range(max(ys)+1,H):
-                if L[y,x]=='skin': L[y,x]='leg'
+        bys=[y for y in range(H) for x in range(W) if L[y,x]=='bottom']
+        if bys:
+            top=min(bys); seen=np.zeros((H,W),bool)
+            for y0 in range(top,H):
+                for x0 in range(W):
+                    if L[y0,x0]!='skin' or seen[y0,x0]: continue
+                    q=[(y0,x0)]; seen[y0,x0]=True; pts=[]
+                    while q:
+                        cy,cx=q.pop(); pts.append((cy,cx))
+                        for dy,dx in ((1,0),(-1,0),(0,1),(0,-1)):
+                            ny,nx=cy+dy,cx+dx
+                            if top<=ny<H and 0<=nx<W and not seen[ny,nx] and L[ny,nx]=='skin': seen[ny,nx]=True; q.append((ny,nx))
+                    if max(p[0] for p in pts)>=H-4:
+                        for py,px in pts: L[py,px]='leg'
     return L
 def build(pre):
     frames=[strip_small(load(B+f'{pre}_{i:02d}.png')) for i in range(21)]
