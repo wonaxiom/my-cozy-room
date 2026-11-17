@@ -1742,7 +1742,7 @@ Object.assign(FURNITURE, {
   officeChair: { name: "사무용 의자", category: "furniture", price: 110, size: [7, 7, 15], image: "img/furn/officeChair.png", imageSimple: "img/furn/s/officeChair.png", hires: true, seat: { z: 7, back: "-y" }, use: "chair" },
   woodTable: { name: "원목 테이블", category: "furniture", price: 140, size: [14, 16, 11], image: "img/furn/woodTable.png", imageSimple: "img/furn/s/woodTable.png", surface: 11, work: [16, 8], hires: true, use: "snack" },
   laptop: { name: "노트북", category: "prop", price: 90, size: [5, 5, 3], image: "img/furn/laptop.png", imageSimple: "img/furn/s/laptop.png", hires: true, small: true },
-  fridge: { name: "냉장고", category: "furniture", price: 240, size: [9, 9, 24], image: "img/furn/fridge.png", imageSimple: "img/furn/s/fridge.png", hires: true, use: "snack" },
+  fridge: { name: "냉장고", category: "furniture", price: 240, size: [9, 9, 24], image: "img/furn/fridge.png", imageSimple: "img/furn/s/fridge.png", imageOpen: "img/furn/fridge-open.png", imageSimpleOpen: "img/furn/s/fridge-open.png", hires: true, use: "snack" },
   tallBookcase: { name: "큰 책장", category: "furniture", price: 160, size: [6, 12, 22], image: "img/furn/tallBookcase.png", imageSimple: "img/furn/s/tallBookcase.png", hires: true, use: "read" },
   bookChest: { name: "책장 수납장", category: "furniture", price: 150, size: [6, 12, 18], image: "img/furn/bookChest.png", imageSimple: "img/furn/s/bookChest.png", hires: true, use: "read" },
   glassCabinet: { name: "유리 장식장", category: "furniture", price: 170, size: [6, 12, 22], image: "img/furn/glassCabinet.png", imageSimple: "img/furn/s/glassCabinet.png", hires: true },

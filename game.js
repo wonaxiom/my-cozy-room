@@ -505,11 +505,20 @@ function readyImage(src) {
   return img && img.ready ? img : null;
 }
 
-Object.values(FURNITURE).forEach((f) => { loadImage(f.image); loadImage(f.imageOff); loadImage(f.imageSimple); loadImage(f.imageSimpleOff); });
+Object.values(FURNITURE).forEach((f) => { loadImage(f.image); loadImage(f.imageOff); loadImage(f.imageSimple); loadImage(f.imageSimpleOff); loadImage(f.imageOpen); loadImage(f.imageSimpleOpen); });
 if (CHARACTER_SHEET) loadImage(CHARACTER_SHEET.image);
 
 // 가구에 쓸 그림 (없거나 아직 못 불러왔으면 null → 상자로 그림)
+// 냉장고처럼 문이 열리는 가구: 캐릭터가 문을 열고 안을 들여다보는 동안만 열림
+function isOpenNow(item) {
+  return !!item.imageOpen && hero.mode === "fridge" && !!hero.use && hero.use.item === item;
+}
+
 function itemImage(item) {
+  if (isOpenNow(item)) {
+    const open = readyImage(simpleArtOf(item) ? item.imageSimpleOpen : item.imageOpen);
+    if (open) return open;
+  }
   if (simpleArtOf(item)) {
     if (item.light && !isLit(item) && item.imageSimpleOff) return readyImage(item.imageSimpleOff) || simpleArtOf(item);
     return simpleArtOf(item);
@@ -711,7 +720,7 @@ function screenBounds(item) {
 }
 
 // 그림 가구: 방향을 돌렸으면 좌우를 뒤집어 그립니다.
-function drawMirrored(item, img, r) {
+function drawMirrored(item, img, r, pivotW = r.w) {
   // GPT 벽 장식 그림(세밀, 하찮)은 반대쪽 벽 기준으로 그려져 있어서, 뒤집는 방향을 반대로
   const mirror = item.type === "wall" && item.image && !item.parts ? !swapped(item) : swapped(item);
   if (!mirror) {
@@ -719,7 +728,7 @@ function drawMirrored(item, img, r) {
     return;
   }
   ctx.save();
-  ctx.translate(r.x * 2 + r.w, 0);
+  ctx.translate(r.x * 2 + pivotW, 0);
   ctx.scale(-1, 1);
   ctx.drawImage(img, r.x, r.y, r.w, r.h);
   ctx.restore();
@@ -762,7 +771,9 @@ function drawItem(item) {
   }
   const img = itemImage(item);
   if (img) {
-    drawMirrored(item, img, imageRect(item, img));
+    // 문 열린 그림은 오른쪽으로 더 넓음: 닫힌 그림(몸통) 너비를 기준으로 뒤집음
+    const shut = isOpenNow(item) ? (simpleArtOf(item) || readyImage(item.image)) : null;
+    drawMirrored(item, img, imageRect(item, img), shut && shut !== img ? imageRect(item, shut).w : undefined);
     return;
   }
   if (artStyle === "detail") drawItemOutline(item);
@@ -1958,8 +1969,10 @@ const INTERACT = {
   plant: "water",
   lamp: "lamp", andon: "lamp",
 };
-const USE_MODES = ["read", "snack", "look", "water", "lamp", "sitChair"];
-const USE_TIME = { read: [10, 18], snack: [8, 12], look: [6, 10], water: [3, 4], lamp: [1.2, 1.2], sitChair: [8, 14] };
+const USE_MODES = ["read", "snack", "look", "water", "lamp", "sitChair", "fridge"];
+const USE_TIME = { read: [10, 18], snack: [8, 12], look: [6, 10], water: [3, 4], lamp: [1.2, 1.2], sitChair: [8, 14], fridge: [3.5, 5] };
+// 식사 시간 (시): 이 시간에는 냉장고에 한 번 가서 뭐 먹을지 고르고 먹음
+const MEALS = [[12, 13, "lunch"], [18, 19, "dinner"]];
 
 // 의자에 앉았을 때 바라보는 쪽 (등받이 반대쪽). 화면에서 오른쪽이면 1, 왼쪽이면 -1
 function seatFacing(item) {
@@ -1996,6 +2009,12 @@ function useSpot(item, act) {
   }
   const f = footprint(item);
   if (act === "sit" || act === "chair") return { x: f.x + f.w / 2, y: f.y + f.d / 2 };
+  if (item.imageOpen) {
+    // 문이 열리는 가구(냉장고): 문이 달린 앞쪽에 섬 (그림을 뒤집으면 앞쪽도 바뀜)
+    // 문 반대쪽(손잡이 쪽)으로 조금 비켜 서서, 열린 문과 냉장고 안이 보이게 함
+    const spot = swapped(item) ? { x: f.x + f.w * 0.8, y: f.y + f.d + 4 } : { x: f.x + f.w + 4, y: f.y + f.d * 0.8 };
+    return isFree(spot.x, spot.y) ? spot : null;
+  }
   const sides = [
     { x: f.x + f.w / 2, y: f.y + f.d + 3.5 }, { x: f.x + f.w + 3.5, y: f.y + f.d / 2 },
     { x: f.x + f.w / 2, y: f.y - 3.5 }, { x: f.x - 3.5, y: f.y + f.d / 2 },
@@ -2018,6 +2037,14 @@ function pickInteraction(h) {
   // 조명은 먼저 (어두워졌는데 꺼져 있으면 바로 켜러 감)
   const lamp = plans.find((p) => p.act === "lamp");
   if (lamp) return lamp;
+  // 식사 시간이면 냉장고로 (끼니마다 한 번)
+  const meal = MEALS.find(([a, b]) => h >= a && h < b);
+  const fridge = meal && plans.find((p) => p.item.imageOpen && p.act === "snack");
+  const mealKey = meal && `${new Date().toDateString()}-${meal[2]}`;
+  if (fridge && hero.mealDone !== mealKey) {
+    hero.mealDone = mealKey;
+    return fridge;
+  }
   return plans.length ? plans[Math.floor(Math.random() * plans.length)] : null;
 }
 
@@ -2031,6 +2058,8 @@ function startUse() {
   } else if (mode === "chair") {
     hero.seat = plan.item; // 의자에 앉아 쉬기
     mode = "sitChair";
+  } else if (mode === "snack" && plan.item.imageOpen) {
+    mode = "fridge"; // 냉장고: 먼저 문을 열고 뭐 먹을지 들여다봄 → 그다음 앉아서 먹음
   }
   hero.mode = mode;
   const [a, b] = USE_TIME[mode];
@@ -2098,7 +2127,12 @@ function updateHeroLocal(dt, h) {
   if (USE_MODES.includes(hero.mode)) {
     // 가구 쓰기: 정해 둔 시간이 지나면 다시 돌아다님
     hero.actT -= dt;
-    if (hero.actT <= 0) endUse();
+    if (hero.actT <= 0 && hero.mode === "fridge") {
+      // 다 골랐으면 문을 닫고 그 자리에 앉아 먹기
+      hero.mode = "snack";
+      const [a, b] = USE_TIME.snack;
+      hero.actT = a + Math.random() * (b - a);
+    } else if (hero.actT <= 0) endUse();
   } else if (hero.mode === "idle") {
     hero.timer -= dt;
     if (hero.timer <= 0 && Math.random() < 0.4) {
@@ -2185,23 +2219,24 @@ function heroRows(name, lookIn = save.look) {
   const base = CHARACTER[name] || CHARACTER.idle;
   const headOnly = name === "sleep";
   const closed = name === "blink" || name === "sleep";
+  const back = name === "back"; // 뒷모습: 얼굴 대신 뒤통수 (창밖·냉장고 안을 볼 때)
   // 원래 그림의 머리카락·눈·볼은 지우고 맨얼굴에서 시작
   const rows = base.map((r) => r.replace(/[HEB]/g, "S").split(""));
   const put = (r, c, ch) => { if (rows[r] && c >= 0 && c < rows[r].length) rows[r][c] = ch; };
 
   // 볼터치
-  if (look.gender === "female") { put(5, 2, "B"); put(5, 7, "B"); }
+  if (look.gender === "female" && !back) { put(5, 2, "B"); put(5, 7, "B"); }
 
   // 눈 (안경·선글라스는 머리카락 위에 따로 그림)
-  if (look.eyes === "calm") {
+  if (look.eyes === "calm" && !back) {
     for (const c of [2, 3, 6, 7]) put(4, c, "E");
-  } else if (!closed && look.eyes !== "sunglasses") {
+  } else if (!closed && !back && look.eyes !== "sunglasses") {
     put(4, 3, "E"); put(4, 6, "E");
     if (look.eyes === "big") { put(3, 3, "E"); put(3, 6, "E"); }
   }
 
   // 표정 (잘 때는 입을 다뭄)
-  if (!headOnly) {
+  if (!headOnly && !back) {
     if (look.mouth === "smile") { put(5, 4, "M"); put(5, 5, "M"); }
     else if (look.mouth === "grin") { for (let c = 3; c <= 6; c++) put(5, c, "M"); }
     else if (look.mouth === "wow") { put(5, 4, "O"); put(5, 5, "O"); put(6, 4, "O"); put(6, 5, "O"); }
@@ -2212,6 +2247,8 @@ function heroRows(name, lookIn = save.look) {
   hair.rows.forEach((pat, r) => {
     for (let c = 0; c < pat.length; c++) if (pat[c] === "H") put(r, c, "H");
   });
+  // 뒷모습: 얼굴 자리를 머리카락으로 덮음 (목 줄은 그대로)
+  if (back) for (let r = 3; r <= 5; r++) for (let c = 1; c <= 8; c++) if (rows[r][c] === "S") put(r, c, "H");
 
   // 장신구 (머리카락 위에)
   const recolorRow = (r, from, to) => { if (rows[r]) rows[r] = rows[r].map((ch) => (ch === from ? to : ch)); };
@@ -2652,7 +2689,7 @@ function simpleHeroCanvas(name, lookIn) {
   ctx = base.getContext("2d");
   ctx.setTransform(RES, 0, 0, RES, 0, 0);
   drawSprite(rows, 0, 0, heroColors(look), false, true);
-  drawEyewear(look, 0, extra);
+  if (name !== "back") drawEyewear(look, 0, extra);
   ctx = prev;
   if (look.head !== "big") return { c: base, headRows: 0 };
   const headN = Math.min(h, extra + 7); // 머리: 기본 그림의 위 7줄 (+머리 위로 올라간 줄)
@@ -2703,7 +2740,7 @@ function drawHeroFrame(name, centerX, bottomY, flip, look) {
   const left = centerX - Math.floor(rows[0].length / 2), top = bottomY - rows.length;
   drawSprite(rows, left, top, heroColors(look), flip);
   const extra = rows.length - (CHARACTER[name] || CHARACTER.idle).length; // 머리 위로 더 올라간 줄
-  drawEyewear(normLook(look || save.look), left, top + extra);
+  if (name !== "back") drawEyewear(normLook(look || save.look), left, top + extra);
 }
 
 // 걷는 그림 순서: ver.세밀은 4장을 이어서, ver.하찮은 두 발 그림 사이에 가만히 그림
@@ -2733,8 +2770,8 @@ function drawHero() {
     frame = hero.mode; // ver.세밀: 앉아서 책·간식 (ver.하찮은 가만히 그림)
   } else if (hero.mode === "sitChair") {
     frame = "sitChair";
-  } else if (hero.mode === "look") {
-    frame = "back"; // 창밖·망원경·지구본을 바라보는 뒷모습
+  } else if (hero.mode === "look" || hero.mode === "fridge") {
+    frame = "back"; // 창밖·망원경·지구본·냉장고 안을 바라보는 뒷모습
   } else if (hero.mode === "lamp") {
     frame = "switch"; // 손을 뻗어 스위치 누르기
   } else if (hero.mode === "water") {
@@ -3280,8 +3317,8 @@ function drawEffects() {
     }
     ctx.globalAlpha = 1;
   }
-  if (hero.mode === "work") {
-    // 일하는 중: 머리 위에 점 세 개가 차례로 깜빡임
+  if (hero.mode === "work" || hero.mode === "fridge") {
+    // 일하는 중·뭐 먹을지 고르는 중: 머리 위에 점 세 개가 차례로 깜빡임
     const p = heroScreen();
     const n = Math.floor(time * 2) % 4;
     for (let i = 0; i < n; i++) {
