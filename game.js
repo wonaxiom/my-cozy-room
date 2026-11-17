@@ -3569,6 +3569,7 @@ function startDrag(item, p) {
     wall,
     start: wall ? unprojectWall(p.x, p.y, wall) : unproject(p.x, p.y, item.z),
     orig: { x: item.x, y: item.y, z: item.z },
+    home: { x: item.x, y: item.y, z: item.z, flip: item.flip }, // 끌기 전 자리 (놓을 수 없으면 여기로)
     rel: { x: fp.x - item.x, y: fp.y - item.y, w: fp.w, d: fp.d },
     carried: carried.map((o) => ({ o, dx: o.x - item.x, dy: o.y - item.y, dz: o.z - item.z, orig: { x: o.x, y: o.y, z: o.z } })),
     valid: true,
@@ -3576,12 +3577,27 @@ function startDrag(item, p) {
 }
 
 function moveDrag(p) {
-  const { item, orig } = drag;
+  const { item } = drag;
+  let { orig } = drag;
 
   // 벽에 거는 가구
   if (drag.wall) {
+    // 손가락(마우스)이 방 모서리를 넘어 반대쪽 벽으로 가면 그 벽으로 옮겨 걸기
+    const target = p.x >= viewOX ? "right" : "left";
+    if (target !== drag.wall && room.shape !== "attic" && room.shape !== "round") {
+      const was = { flip: item.flip, x: item.x, y: item.y };
+      item.flip = target === "left";
+      const cur = unprojectWall(p.x, p.y, target), e = wallExtent(item);
+      const a = snap(cur.a - (e.a1 + e.a2) / 2);
+      if (target === "right") { item.x = a; item.y = 0; } else { item.x = 0; item.y = a; }
+      drag.wall = target;
+      drag.start = cur;
+      drag.orig = { x: item.x, y: item.y, z: item.z };
+      if (!Number.isFinite(a)) Object.assign(item, was);
+    }
     const cur = unprojectWall(p.x, p.y, drag.wall);
     const e = wallExtent(item);
+    orig = drag.orig;
     const da = cur.a - drag.start.a;
     const top = drag.wall === "right" ? rightWallTop() : (room.wallHeight || room.peakHeight);
     item.z = clamp(snap(orig.z + cur.z - drag.start.z), 3 - e.z1, top - e.z2 - 1);
@@ -3623,7 +3639,7 @@ function endDrag(e) {
 
   // 보관함 위에 놓으면 다시 보관함으로
   if (e && isOverBag(e)) {
-    Object.assign(drag.item, drag.orig);
+    Object.assign(drag.item, drag.home);
     for (const c of drag.carried) Object.assign(c.o, c.orig);
     const item = drag.item;
     drag = null;
@@ -3632,7 +3648,7 @@ function endDrag(e) {
   }
 
   if (!drag.valid) {
-    Object.assign(drag.item, drag.orig);
+    Object.assign(drag.item, drag.home);
     for (const c of drag.carried) Object.assign(c.o, c.orig);
   } else {
     saveLayout();
@@ -3663,7 +3679,7 @@ function storeItem(item) {
 // 위에 올린 물건도 함께 돌아갑니다.
 function rotateItem(item) {
   if (item.type === "wall") {
-    toast("벽에 건 물건은 벽을 따라 옮겨 주세요.");
+    moveToOtherWall(item);
     return;
   }
   const carried = itemsOn(item);
@@ -3715,6 +3731,39 @@ function rotateItem(item) {
   toast("돌릴 공간이 없어요. 주변을 조금 비워 주세요.");
 }
 
+// 벽 장식을 반대쪽 벽으로 옮김: 같은 높이·같은 위치부터, 안 되면 그 벽의 빈자리
+function moveToOtherWall(item) {
+  if (room.shape === "attic" || room.shape === "round") {
+    toast("이 방은 한쪽 벽에만 걸 수 있어요.");
+    return;
+  }
+  const before = { flip: item.flip, x: item.x, y: item.y, z: item.z };
+  const a = item.flip ? item.y : item.x;
+  item.flip = !item.flip;
+  if (item.flip) { item.x = 0; item.y = a; } else { item.x = a; item.y = 0; }
+  if (!wallValid(item)) {
+    const wall = wallOf(item);
+    let ok = false;
+    for (let dz = 0; dz <= 30 && !ok; dz += GRID) {
+      for (const z of [before.z - dz, before.z + dz]) {
+        for (let aa = 2; aa < wallLength(wall) && !ok; aa += GRID) {
+          if (item.flip) { item.x = 0; item.y = aa; } else { item.x = aa; item.y = 0; }
+          item.z = z;
+          ok = wallValid(item);
+        }
+        if (ok) break;
+      }
+    }
+    if (!ok) {
+      Object.assign(item, before);
+      toast("반대쪽 벽에 빈자리가 없어요.");
+      return;
+    }
+  }
+  saveLayout();
+  afterLayoutChange();
+}
+
 // ---- 선택한 가구 (꾸미기 중) ----
 let selected = null;
 const selBar = document.getElementById("sel-bar");
@@ -3725,6 +3774,8 @@ function select(item) {
   selBar.hidden = !item;
   editHint.hidden = !!item;
   if (item) document.getElementById("sel-name").textContent = item.name;
+  // 벽 장식은 돌리는 대신 반대쪽 벽으로 옮김
+  if (item) document.getElementById("sel-rotate").textContent = item.type === "wall" ? "반대쪽 벽으로" : "방향 돌리기";
 }
 
 document.getElementById("sel-rotate").addEventListener("click", () => selected && rotateItem(selected));
