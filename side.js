@@ -5,11 +5,12 @@
 // =============================================================
 
 const Side = (() => {
-  const $ = (id) => document.getElementById(id);
+  // 작은 창(항상 위)으로 옮겨진 화면에서도 찾을 수 있게: 원래 창에 없으면 방 화면(app) 안에서 찾음
+  const $ = (id) => document.getElementById(id) || app.querySelector("#" + id);
   const panel = $("side");
   const btn = $("side-btn");
   const WEEK = ["일", "월", "화", "수", "목", "금", "토"];
-  const SIDE_SIZE = { width: 300, height: 760 }; // 세로 보기 창 크기 (화면이 작으면 화면 높이에 맞춤)
+  const SIDE_SIZE = { width: 300 }; // 세로 보기 창 너비 (높이는 화면 높이에 꽉 맞춤)
   let on = false;
   let lastDay = "";
 
@@ -110,8 +111,11 @@ const Side = (() => {
     if (on) { lastDay = ""; renderClock(); renderTimer(); renderTodos(); }
     if (win && win.resizeTo) {
       try {
-        if (on) win.resizeTo(SIDE_SIZE.width, Math.min(SIDE_SIZE.height, screen.availHeight - 40));
-        else win.resizeTo(380, Math.round(380 * H / W) + 40);
+        if (on) {
+          // 화면 위아래를 꽉 채우고, 되면 오른쪽 끝으로 붙임
+          win.resizeTo(SIDE_SIZE.width, win.screen.availHeight);
+          try { win.moveTo(win.screen.availLeft + win.screen.availWidth - SIDE_SIZE.width, win.screen.availTop); } catch (e) { /* 위치는 못 바꾸는 브라우저면 그대로 */ }
+        } else win.resizeTo(380, Math.round(380 * H / W) + 40);
       } catch (e) { /* 크기를 못 바꾸는 브라우저면 그대로 */ }
     }
   }

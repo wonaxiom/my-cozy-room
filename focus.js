@@ -8,7 +8,8 @@ const TODO_REWARD = 5;              // 할 일 하나를 끝내면 받는 코인
 const TODO_DAILY_MAX = 10;          // 하루에 코인을 받을 수 있는 할 일 개수
 
 const Focus = (() => {
-  const $ = (id) => document.getElementById(id);
+  // 작은 창(항상 위)으로 옮겨진 화면에서도 찾을 수 있게: 원래 창에 없으면 방 화면(app) 안에서 찾음
+  const $ = (id) => document.getElementById(id) || app.querySelector("#" + id);
   const panel = $("focus");
   const openBtn = $("focus-btn");
   const timeEl = $("timer-time");

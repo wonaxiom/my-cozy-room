@@ -35,13 +35,17 @@ const TEST_MONTH = params.has("month") ? Number(params.get("month")) : null;
 // ---- 화면 준비 ---------------------------------------------------
 const app = document.getElementById("app");
 const appHome = document.getElementById("app-home");
-const placeholder = document.getElementById("pip-placeholder");
-const view = document.getElementById("game");
-const clockText = document.getElementById("clock");
-const coinText = document.getElementById("coins");
-const pipBtn = document.getElementById("pip-btn");
-const pipNote = document.getElementById("pip-note");
-const roomName = document.getElementById("room-name");
+// 요소 찾기: 방 화면(app)이 작은 창(항상 위)으로 옮겨져 있어도 찾을 수 있게
+function byId(id) {
+  return document.getElementById(id) || app.querySelector("#" + id);
+}
+const placeholder = byId("pip-placeholder");
+const view = byId("game");
+const clockText = byId("clock");
+const coinText = byId("coins");
+const pipBtn = byId("pip-btn");
+const pipNote = byId("pip-note");
+const roomName = byId("room-name");
 const vctx = view.getContext("2d");
 
 // 작은 해상도로 그린 뒤 크게 확대해서 도트 느낌을 냅니다.
@@ -541,7 +545,7 @@ const ART_KEY = "cozyroom-art";
 let artStyle = "simple";
 try { artStyle = localStorage.getItem(ART_KEY) === "detail" ? "detail" : "simple"; } catch (e) { /* 저장소를 못 쓰면 기본 */ }
 
-const artBtn = document.getElementById("art-btn");
+const artBtn = byId("art-btn");
 function showArtStyle() {
   artBtn.textContent = artStyle === "detail" ? "ver.세밀" : "ver.하찮";
 }
@@ -869,16 +873,16 @@ function ownsRoom(r = room) {
   return !r.price || save.ownedRooms.includes(r.id);
 }
 
-const lockEl = document.getElementById("locked");
+const lockEl = byId("locked");
 function updateLock() {
   const locked = !ownsRoom();
   lockEl.hidden = !locked;
   editBtn.disabled = locked;
   if (locked) {
     if (editing) setEditing(false);
-    document.getElementById("lock-name").textContent = room.name;
-    document.getElementById("lock-price").textContent = `${room.price.toLocaleString()}코인으로 열 수 있어요`;
-    const btn = document.getElementById("lock-buy");
+    byId("lock-name").textContent = room.name;
+    byId("lock-price").textContent = `${room.price.toLocaleString()}코인으로 열 수 있어요`;
+    const btn = byId("lock-buy");
     btn.disabled = save.coins < room.price;
     btn.textContent = save.coins < room.price ? "코인 부족" : "열기";
   }
@@ -960,8 +964,8 @@ function changeRoom(step) {
   setRoom(ROOMS[(i + step + ROOMS.length) % ROOMS.length].id);
 }
 
-document.getElementById("room-prev").addEventListener("click", () => changeRoom(-1));
-document.getElementById("room-next").addEventListener("click", () => changeRoom(1));
+byId("room-prev").addEventListener("click", () => changeRoom(-1));
+byId("room-next").addEventListener("click", () => changeRoom(1));
 
 // ---- 방 모양 -----------------------------------------------------
 const RW = () => room.width || ROOM;  // 바닥 가로 길이 (x 방향)
@@ -3395,9 +3399,9 @@ const GRID = 2;          // 가구가 움직이는 칸 크기
 let editing = false;     // 꾸미기 중인지
 let drag = null;         // 옮기는 중인 가구 정보
 let hoverItem = null;    // 마우스가 올라가 있는 가구
-const editBtn = document.getElementById("edit-btn");
-const editBar = document.getElementById("edit-bar");
-const bagEl = document.getElementById("inventory");
+const editBtn = byId("edit-btn");
+const editBar = byId("edit-bar");
+const bagEl = byId("inventory");
 
 function setEditing(on) {
   editing = on;
@@ -3766,21 +3770,21 @@ function moveToOtherWall(item) {
 
 // ---- 선택한 가구 (꾸미기 중) ----
 let selected = null;
-const selBar = document.getElementById("sel-bar");
+const selBar = byId("sel-bar");
 const editHint = document.querySelector(".edit-hint");
 
 function select(item) {
   selected = item;
   selBar.hidden = !item;
   editHint.hidden = !!item;
-  if (item) document.getElementById("sel-name").textContent = item.name;
+  if (item) byId("sel-name").textContent = item.name;
   // 벽 장식은 돌리는 대신 반대쪽 벽으로 옮김
-  if (item) document.getElementById("sel-rotate").textContent = item.type === "wall" ? "반대쪽 벽으로" : "방향 돌리기";
+  if (item) byId("sel-rotate").textContent = item.type === "wall" ? "반대쪽 벽으로" : "방향 돌리기";
 }
 
-document.getElementById("sel-rotate").addEventListener("click", () => selected && rotateItem(selected));
-document.getElementById("sel-store").addEventListener("click", () => selected && storeItem(selected));
-document.getElementById("sel-cancel").addEventListener("click", () => select(null));
+byId("sel-rotate").addEventListener("click", () => selected && rotateItem(selected));
+byId("sel-store").addEventListener("click", () => selected && storeItem(selected));
+byId("sel-cancel").addEventListener("click", () => select(null));
 
 // R 키로도 방향 돌리기
 function onKey(e) {
@@ -4003,9 +4007,9 @@ function makePreview(id) {
 }
 
 // ---- 상점 --------------------------------------------------------
-const shopEl = document.getElementById("shop");
-const shopList = document.getElementById("shop-list");
-const shopBtn = document.getElementById("shop-btn");
+const shopEl = byId("shop");
+const shopList = byId("shop-list");
+const shopBtn = byId("shop-btn");
 let shopCategory = "furniture";
 const shopSub = { furniture: "all", prop: "all" }; // 탭마다 고른 세부 분류 (스타일·종류)
 
@@ -4388,20 +4392,20 @@ function updateShopButtons() {
 
 // ---- 구매 확인 창 ----
 // 실수로 사지 않게 "○○을 N코인에 살까요?"를 한 번 물어봅니다.
-const confirmEl = document.getElementById("confirm");
+const confirmEl = byId("confirm");
 let confirmYes = null;
 
 function confirmBuy(name, price, preview, onYes, ask = "살까요?") {
   if (save.coins < price) return;
-  document.getElementById("confirm-text").textContent = `${withObject(name)} ${ask}`;
-  document.getElementById("confirm-coins").textContent =
+  byId("confirm-text").textContent = `${withObject(name)} ${ask}`;
+  byId("confirm-coins").textContent =
     `${price.toLocaleString()}코인 · 사고 나면 ${(save.coins - price).toLocaleString()}코인 남아요`;
-  const box = document.getElementById("confirm-preview");
+  const box = byId("confirm-preview");
   box.innerHTML = "";
   if (preview) box.append(preview);
   confirmYes = onYes;
   confirmEl.hidden = false;
-  document.getElementById("confirm-yes").focus();
+  byId("confirm-yes").focus();
 }
 
 function closeConfirm() {
@@ -4409,12 +4413,12 @@ function closeConfirm() {
   confirmYes = null;
 }
 
-document.getElementById("confirm-yes").addEventListener("click", () => {
+byId("confirm-yes").addEventListener("click", () => {
   const run = confirmYes;
   closeConfirm();
   if (run) run();
 });
-document.getElementById("confirm-no").addEventListener("click", closeConfirm);
+byId("confirm-no").addEventListener("click", closeConfirm);
 confirmEl.addEventListener("click", (e) => { if (e.target === confirmEl) closeConfirm(); }); // 바깥 누르면 취소
 
 function buy(id) {
@@ -4428,11 +4432,11 @@ function buy(id) {
 }
 
 shopBtn.addEventListener("click", () => (shopEl.hidden ? openShop() : closeShop()));
-document.getElementById("lock-buy").addEventListener("click", () => {
+byId("lock-buy").addEventListener("click", () => {
   const r = room;
   confirmBuy(r.name, r.price, makeRoomPreview(r), () => buyRoom(r), "열까요?");
 });
-document.getElementById("shop-close").addEventListener("click", closeShop);
+byId("shop-close").addEventListener("click", closeShop);
 shopEl.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => {
   shopCategory = t.dataset.cat;
   renderShop();
@@ -4441,7 +4445,7 @@ shopEl.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () =>
 // ---- 코인 --------------------------------------------------------
 const COINS_PER_MINUTE = 2;      // 1분에 받는 코인
 const OFFLINE_MAX_MINUTES = 180; // 꺼져 있을 때 최대 몇 분치까지 쌓이는지
-const coinPop = document.getElementById("coin-pop");
+const coinPop = byId("coin-pop");
 
 function updateCoins(gained) {
   coinText.textContent = save.coins.toLocaleString();
@@ -4482,7 +4486,7 @@ if (params.has("coins")) {
 }
 
 // ---- 알림 --------------------------------------------------------
-const toastEl = document.getElementById("toast");
+const toastEl = byId("toast");
 let toastTimer = null;
 function toast(message) {
   toastEl.textContent = message;
@@ -4528,8 +4532,8 @@ function startVisit(friend, snap) {
   save = visitSave(snap || {});
   save.look = normLook(save.look);
   document.body.classList.add("visiting");
-  document.getElementById("visit-name").textContent = `${friend.name || "친구"}의 방`;
-  document.getElementById("title").textContent = `${friend.name || "친구"}의 방 · 구경 중`;
+  byId("visit-name").textContent = `${friend.name || "친구"}의 방`;
+  byId("title").textContent = `${friend.name || "친구"}의 방 · 구경 중`;
   setRoom(save.roomId);
   placeGuest();
   refreshWeather(true);
@@ -4544,7 +4548,7 @@ function endVisit() {
   Save.locked = false;
   document.body.classList.remove("visiting");
   const myName = save.profile && save.profile.name;
-  document.getElementById("title").textContent = myName ? `${myName}의 방` : "My Cozy Room";
+  byId("title").textContent = myName ? `${myName}의 방` : "My Cozy Room";
   setRoom(save.roomId);
   refreshWeather(true);
   updateCoins();

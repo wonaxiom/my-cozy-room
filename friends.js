@@ -13,7 +13,8 @@ const POLL_MS = 20000;               // 실시간 알림이 끊겼을 때를 대
 const CHAT_POLL_MS = 4000;           // 대화창을 열어 둔 동안 확인하는 간격
 
 const Friends = (() => {
-  const $ = (id) => document.getElementById(id);
+  // 작은 창(항상 위)으로 옮겨진 화면에서도 찾을 수 있게: 원래 창에 없으면 방 화면(app) 안에서 찾음
+  const $ = (id) => document.getElementById(id) || app.querySelector("#" + id);
   const panel = $("friends");
   const bodyEl = $("friends-body");
   const pill = $("friends-pill");
