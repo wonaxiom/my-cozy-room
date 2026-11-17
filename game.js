@@ -2733,8 +2733,19 @@ function drawHero() {
   const jump = hero.jumpT > 0 ? Math.round(Math.sin((1 - hero.jumpT / 0.35) * Math.PI) * 4) : 0;
   ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
   ctx.fillRect(p.x - 4, p.y - 1, 8, 2); // 그림자
-  drawHeroFrame(frame, p.x, p.y - jump, hero.dir < 0);
-  if (onChair && seatAway(hero.seat)) drawSeatBack(hero.seat); // 뒷모습으로 앉으면 등받이가 등을 가림
+  if (onChair && seatAway(hero.seat)) {
+    // 뒷모습: 다리는 의자 너머로 가려져 안 보이므로, 앉는 면보다 아래는 그리지 않음
+    const seatY = project(hero.x, hero.y, hero.seat.z + hero.seat.seat.z).y;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(p.x - 40, seatY - 80, 80, 80);
+    ctx.clip();
+    drawHeroFrame(frame, p.x, p.y - jump, hero.dir < 0);
+    ctx.restore();
+    drawSeatBack(hero.seat); // 등받이가 등을 가림
+  } else {
+    drawHeroFrame(frame, p.x, p.y - jump, hero.dir < 0);
+  }
   if (!useHeroArt() && (hero.mode === "read" || hero.mode === "snack")) drawActivityIcon(p);
 }
 
