@@ -2111,6 +2111,7 @@ function startUse() {
     mode = "fridge"; // 냉장고: 먼저 문을 열고 뭐 먹을지 들여다봄 → 그다음 앉아서 먹음
   }
   hero.mode = mode;
+  if (mode === "snack") hero.food = pickFood(plan.item);
   const [a, b] = USE_TIME[mode];
   hero.actT = a + Math.random() * (b - a);
   // 가구 쪽을 바라보기
@@ -2122,6 +2123,16 @@ function startUse() {
   if (mode === "lamp") toggleLight(plan.item, true);
   if (mode === "music") plan.item.playUntil = time + MUSIC_TIME; // 축음기에서 한동안 음악이 나옴
   if (mode === "piano") Object.assign(hero, frontSpot(plan.item, 0.8)); // 건반 앞 의자에 바짝 붙어 앉음
+}
+
+// 간식: 어디서 먹느냐에 따라 음식이 다름 (말풍선에 그림)
+const FOODS = {
+  fridge: ["milk", "cake"], lowTable: ["tangerine"], kotatsu: ["tangerine"], cushion: ["onigiri"],
+  teaTable: ["cake", "cookie"], windowTable: ["cookie", "tangerine"], woodTable: ["cookie", "onigiri"], chest: ["cookie"],
+};
+function pickFood(item) {
+  const list = FOODS[item && item.id] || ["cookie"];
+  return list[Math.floor(Math.random() * list.length)];
 }
 
 function endUse() {
@@ -2193,6 +2204,7 @@ function updateHeroLocal(dt, h) {
     if (hero.actT <= 0 && hero.mode === "fridge") {
       // 다 골랐으면 문을 닫고 그 자리에 앉아 먹기
       hero.mode = "snack";
+      hero.food = pickFood(hero.use && hero.use.item);
       const [a, b] = USE_TIME.snack;
       hero.actT = a + Math.random() * (b - a);
     } else if (hero.actT <= 0) endUse();
@@ -2905,7 +2917,7 @@ function drawHero() {
     drawHeroFrame(frame, p.x, p.y - jump, flip);
   }
   if (rock) ctx.restore();
-  if (!useHeroArt() && (hero.mode === "read" || hero.mode === "snack")) drawActivityIcon(p);
+  if (!useHeroArt() && hero.mode === "read") drawActivityIcon(p);
 }
 
 // 흔들의자: 앉아 있는 동안 앞뒤로 살짝 흔들림 (각도, 라디안)
@@ -3392,6 +3404,35 @@ function tintItem(item, color) {
   }
 }
 
+// 말풍선 속 음식 그림 (5×5칸). 글자마다 색
+const FOOD_ART = {
+  cookie: [".ccc.", "cdccc", "cccdc", "cdccc", ".ccc."],
+  milk: ["g...g", "gwwwg", "gwwwg", "gwwwg", ".ggg."], // 우유 한 잔
+  cake: ["..r..", ".www.", "yyyyy", "wwwww", "yyyyy"],
+  tangerine: ["..l..", ".ooo.", "ooooo", "ooooo", ".ooo."],
+  onigiri: ["..g..", ".gwg.", "gwwwg", "gnnng", "nnnnn"],
+};
+const FOOD_COLORS = {
+  c: "#c98a4b", d: "#6e4a2d", g: "#9fb3c8", w: "#ffffff", b: "#7ea6d8", r: "#e0505a",
+  y: "#f2c48a", l: "#6aa84f", o: "#f0962e", n: "#33403a",
+};
+function drawFoodBubble(p, food) {
+  const art = FOOD_ART[food] || FOOD_ART.cookie;
+  // 지금 그린 그림(앉은 그림은 서 있을 때보다 낮음)의 머리 바로 위에 띄움
+  const h = useHeroArt() ? heroArtCanvas("snack", save.look, false).height / 3 : heroSize().h;
+  const x = Math.round(p.x - 4), y = Math.round(p.y - h - 10);
+  // 말풍선: 테두리 → 속 → 아래 꼬리
+  ctx.fillStyle = "#3a2a24";
+  ctx.fillRect(x + 1, y, 7, 9); ctx.fillRect(x, y + 1, 9, 7); ctx.fillRect(x + 2, y + 9, 2, 1); ctx.fillRect(x + 2, y + 10, 1, 1);
+  ctx.fillStyle = "#fff8ec";
+  ctx.fillRect(x + 1, y + 1, 7, 7); ctx.fillRect(x + 2, y + 8, 1, 1);
+  art.forEach((row, r) => [...row].forEach((ch, c) => {
+    if (ch === ".") return;
+    ctx.fillStyle = FOOD_COLORS[ch];
+    ctx.fillRect(x + 2 + c, y + 2 + r, 1, 1);
+  }));
+}
+
 // 음표 하나 (♪ 모양, 화면 픽셀 단위)
 function drawNote(x, y, color) {
   x = Math.round(x); y = Math.round(y);
@@ -3461,6 +3502,7 @@ function drawEffects() {
     }
     ctx.globalAlpha = 1;
   }
+  if (hero.mode === "snack") drawFoodBubble(heroScreen(), hero.food || "cookie");
   if (hero.mode === "yawn") {
     // 하품: 입김 같은 동그라미가 위로 올라감
     const p = heroScreen();
