@@ -1424,3 +1424,22 @@ body.pip.side-mode #shop-btn { display: none; }
   background: #2a2622;
   font-size: 12px;
 }
+
+/* ---- 휴대폰 (좁은 화면) ---- */
+@media (max-width: 560px) {
+  .page { margin: 12px auto; padding: 0 8px; }
+  .top { flex-wrap: wrap; }
+  #app { padding: 8px; }
+
+  /* 아래 버튼: 방 바꾸기 한 줄, 기능 버튼 한 줄 (누르기 쉽게 크게) */
+  .toolbar { flex-wrap: wrap; gap: 6px; }
+  .room-picker { width: 100%; justify-content: center; }
+  .actions { width: 100%; }
+  .actions button { flex: 1; padding: 9px 0; font-size: 14px; }
+
+  /* 상점·집중·친구 창이 열리면 방 칸을 화면 높이만큼 늘려서 목록이 잘 보이게 */
+  .stage:has(> .shop:not([hidden])),
+  .stage:has(> .panel:not([hidden])) { min-height: 72vh; }
+  .shop-list { grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); }
+  .tabs .tab { padding: 6px 10px; }
+}

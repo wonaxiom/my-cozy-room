@@ -3406,6 +3406,7 @@ function setEditing(on) {
   editBtn.textContent = on ? "완료" : "꾸미기";
   editBtn.classList.toggle("active", on);
   editBar.hidden = !on;
+  view.style.touchAction = on ? "none" : ""; // 휴대폰: 꾸미는 중에는 가구를 끌 때 화면이 같이 밀리지 않게
   if (typeof select === "function") select(null);
   editBar.classList.remove("drop");
   view.style.cursor = "default";
@@ -4559,6 +4560,8 @@ async function togglePip() {
 }
 
 pipBtn.addEventListener("click", togglePip);
+// 항상 위 작은 창을 못 여는 브라우저(휴대폰 등)에서는 버튼을 숨김
+if (!("documentPictureInPicture" in window)) pipBtn.hidden = true;
 
 // ---- 게임 루프 ---------------------------------------------------
 let lastTick = performance.now();
