@@ -2310,13 +2310,17 @@ function heroRows(name, lookIn = save.look) {
   hair.rows.forEach((pat, r) => {
     for (let c = 0; c < pat.length; c++) if (pat[c] === "H") put(r, c, "H");
   });
-  // 기지개 (옆구리 손을 지우고 팔을 올림): 1 = 손이 얼굴 옆, 2 = 머리 위로 쭉 (눈 감고 하품)
+  // 기지개 (GPT 그림 기준): 1 = 손을 턱 옆으로 올림, 2 = 두 팔을 양옆으로 쭉 (눈 감음)
   if (name === "stretch1" || name === "stretch2") {
-    put(9, 1, "."); put(9, 8, ".");
-    put(7, 0, "C"); put(7, 9, "C"); put(8, 0, "C"); put(8, 9, "C"); // 소매
-    const top = name === "stretch1" ? 5 : 1;
-    for (let r = top; r <= 6; r++) { put(r, 0, "S"); put(r, 9, "S"); } // 팔(살)과 손
-    if (name === "stretch2") { put(4, 3, "S"); put(4, 6, "S"); put(4, 2, "S"); put(4, 7, "S"); put(5, 4, "O"); put(5, 5, "O"); put(6, 4, "O"); put(6, 5, "O"); }
+    put(9, 1, "."); put(9, 8, ".");                       // 옆구리에 있던 손 지우기
+    if (name === "stretch1") {
+      put(6, 1, "S"); put(6, 8, "S");                     // 손
+      put(7, 1, "C"); put(7, 8, "C"); put(7, 2, "."); put(7, 7, "."); // 팔꿈치(소매)와 몸 사이 틈
+    } else {
+      put(6, 0, "S"); put(6, 9, "S"); put(6, 1, "C"); put(6, 8, "C"); // 손과 소매
+      for (let c = 1; c <= 8; c++) put(7, c, "C");          // 어깨
+      for (const c of [2, 3, 6, 7]) if (rows[4][c] === "E") put(4, c, "S"); // 눈 감기
+    }
   }
   // 뒷모습: 얼굴 자리를 머리카락으로 덮음 (목 줄은 그대로)
   if (back) for (let r = 3; r <= 5; r++) for (let c = 1; c <= 8; c++) if (rows[r][c] === "S") put(r, c, "H");
