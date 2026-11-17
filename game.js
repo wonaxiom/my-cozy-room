@@ -3873,6 +3873,7 @@ const shopEl = document.getElementById("shop");
 const shopList = document.getElementById("shop-list");
 const shopBtn = document.getElementById("shop-btn");
 let shopCategory = "furniture";
+const shopSub = { furniture: "all", prop: "all" }; // 탭마다 고른 세부 분류 (스타일·종류)
 
 // 받침 있는 글자면 "을", 없으면 "를"
 function withObject(word) {
@@ -4196,8 +4197,26 @@ function renderShop() {
     note.textContent = "기간 한정 · 1월 31일까지 살 수 있어요. 산 물건은 기간이 끝나도 계속 쓸 수 있어요.";
     shopList.append(note);
   }
+  // 가구는 스타일, 소품은 종류로 한 번 더 나눠 봄
+  const subs = shopCategory === "furniture" ? { field: "style", list: FURNITURE_STYLES }
+    : shopCategory === "prop" ? { field: "kind", list: PROP_KINDS } : null;
+  if (subs) {
+    const row = document.createElement("div");
+    row.className = "shop-subs";
+    for (const t of [{ id: "all", name: "전체" }, ...subs.list]) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "subtab" + (shopSub[shopCategory] === t.id ? " active" : "");
+      b.textContent = t.name;
+      b.addEventListener("click", () => { shopSub[shopCategory] = t.id; renderShop(); });
+      row.append(b);
+    }
+    shopList.append(row);
+  }
+  const sub = subs && shopSub[shopCategory];
   const entries = Object.entries(FURNITURE)
     .filter(([, f]) => f.category === shopCategory && f.price != null)
+    .filter(([, f]) => !sub || sub === "all" || f[subs.field] === sub)
     .sort((a, b) => a[1].price - b[1].price);
   for (const [id, f] of entries) {
     const card = document.createElement("div");

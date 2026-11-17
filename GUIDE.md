@@ -151,6 +151,7 @@
   - `detail`: ver.세밀 모양 (없으면 `parts`를 씀)
 - 앉을 수 있는 가구는 `seat`, 잠잘 수 있는 가구는 `sleep`, 조명은 빛 정보를 넣습니다.
 - 캐릭터 상호작용은 `game.js`의 `INTERACT`에 가구 종류별로 등록합니다.
+- 상점 세부 분류: 가구는 `style`(내추럴, 모던, 엔티크, 일본풍), 소품은 `kind`(조명, 식물, 러그·방석, 벽 장식, 창문, 잡화). `data.js` 맨 아래 `SHOP_TAGS` 표에 이름을 넣거나 가구에 직접 적습니다. 새 분류는 `FURNITURE_STYLES`, `PROP_KINDS`에 추가합니다.
 - 기간 한정 가구는 `category`로 묶고, 열리는 기간은 `game.js`에서 정합니다 (예: `isXmasSeason()`).
 
 ### 그림 넣는 과정 (ver.세밀)

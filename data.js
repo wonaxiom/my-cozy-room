@@ -1748,3 +1748,39 @@ Object.assign(FURNITURE, {
   noren: { name: "노렌", type: "wall", category: "prop", price: 80, size: [14, 1, 13], image: "img/furn/noren.png", imageSimple: "img/furn/s/noren.png", hires: true },
 });
 
+// ---- 상점 세부 분류 ----------------------------------------------------
+// 가구는 스타일(style), 소품은 종류(kind)로 나눕니다. 상점 탭 아래 버튼으로 골라 볼 수 있어요.
+// 새 가구를 추가할 때는 가구에 style: "antique"처럼 직접 적거나, 아래 표에 이름(id)을 넣으면 됩니다.
+const FURNITURE_STYLES = [
+  { id: "natural", name: "내추럴" },
+  { id: "modern", name: "모던" },
+  { id: "antique", name: "엔티크" },
+  { id: "japanese", name: "일본풍" },
+];
+const PROP_KINDS = [
+  { id: "light", name: "조명" },
+  { id: "plant", name: "식물" },
+  { id: "rug", name: "러그·방석" },
+  { id: "wall", name: "벽 장식" },
+  { id: "window", name: "창문" },
+  { id: "goods", name: "잡화" },
+];
+const SHOP_TAGS = {
+  style: {
+    natural: ["desk", "chair", "cabinet", "bed", "stool", "bookcase", "windowTable", "mattress", "woodTable", "tallBookcase", "bookChest", "sideboard", "pinkBed", "bunkBed", "bunkBedWhite"],
+    modern: ["officeChair", "fridge", "sofa", "fabricChair", "trainSeat", "berth"],
+    antique: ["armchair", "chest", "glassCabinet", "fireplace"],
+    japanese: ["lowTable", "futon", "lowBed", "kotatsu", "shojiScreen"],
+  },
+  kind: {
+    light: ["lamp", "andon", "tableLamp", "floorLamp", "moonLamp", "paperLantern", "squareLamp", "stoneLantern"],
+    plant: ["plant", "squarePot", "bigPlant", "yellowFlower", "pinkFlower", "bonsai", "sakuraVase", "tsukubai"],
+    rug: ["rug", "checkRug", "greenRug", "roundRug", "cushion"],
+    wall: ["frame", "shelf", "scroll", "wallClock", "digitalClock", "landscape", "catFrame", "photo1", "photo2", "fusuma", "noren", "luggageRack"],
+    window: ["windowCurtain", "windowShoji", "windowRound", "windowTrain"],
+    goods: ["laptop", "deskClock", "deskClockWhite", "diffuser", "globe", "telescope"],
+  },
+};
+for (const [field, groups] of Object.entries(SHOP_TAGS)) {
+  for (const [tag, ids] of Object.entries(groups)) for (const id of ids) if (FURNITURE[id] && !FURNITURE[id][field]) FURNITURE[id][field] = tag;
+}
