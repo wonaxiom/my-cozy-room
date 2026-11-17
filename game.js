@@ -2310,11 +2310,13 @@ function heroRows(name, lookIn = save.look) {
   hair.rows.forEach((pat, r) => {
     for (let c = 0; c < pat.length; c++) if (pat[c] === "H") put(r, c, "H");
   });
-  // 기지개: 옆구리 손을 지우고 두 팔을 머리 옆으로 쭉 올림
-  if (name === "stretch") {
+  // 기지개 (옆구리 손을 지우고 팔을 올림): 1 = 손이 얼굴 옆, 2 = 머리 위로 쭉 (눈 감고 하품)
+  if (name === "stretch1" || name === "stretch2") {
     put(9, 1, "."); put(9, 8, ".");
-    for (let r = 3; r <= 8; r++) { put(r, 0, "C"); put(r, 9, "C"); }
-    put(2, 0, "S"); put(2, 9, "S");
+    put(7, 0, "C"); put(7, 9, "C"); put(8, 0, "C"); put(8, 9, "C"); // 소매
+    const top = name === "stretch1" ? 5 : 1;
+    for (let r = top; r <= 6; r++) { put(r, 0, "S"); put(r, 9, "S"); } // 팔(살)과 손
+    if (name === "stretch2") { put(4, 3, "S"); put(4, 6, "S"); put(4, 2, "S"); put(4, 7, "S"); put(5, 4, "O"); put(5, 5, "O"); put(6, 4, "O"); put(6, 5, "O"); }
   }
   // 뒷모습: 얼굴 자리를 머리카락으로 덮음 (목 줄은 그대로)
   if (back) for (let r = 3; r <= 5; r++) for (let c = 1; c <= 8; c++) if (rows[r][c] === "S") put(r, c, "H");
@@ -2523,8 +2525,8 @@ function bigHead(c, head) {
 const FACE = { eye: "#2a2530", mouth: "#b85a5a", open: "#7a2e35", teeth: "#ffffff", blush: "#f4a3a3" };
 function drawFaceArt(look, rows, frame, gender, px, colors) {
   if (frame === "back" || frame === "sleep" || frame === "lie") return;
-  const closed = frame === "blink";
-  const boxes = heroArtEyes(gender, look.hair, closed ? "idle" : frame);
+  const closed = frame === "blink" || frame === "stretch2"; // 기지개 쭉 펼 때는 눈을 감음
+  const boxes = heroArtEyes(gender, look.hair, frame === "blink" ? "idle" : frame);
   if (!boxes.length) return;
   const side = SIDE_FRAMES.includes(frame);
   const skin = colors.S;
@@ -2545,7 +2547,7 @@ function drawFaceArt(look, rows, frame, gender, px, colors) {
   const bottom = Math.max(...boxes.map((b) => b.y2));
   const mx = boxes.length > 1 ? Math.round((boxes[0].x2 + boxes[boxes.length - 1].x1) / 2) : boxes[0].x1 + (side ? -1 : 0);
   const my = bottom + 3;
-  const mouth = look.mouth || "smile";
+  const mouth = frame === "stretch2" ? "wow" : look.mouth || "smile"; // 하품하듯 입을 벌림
   if (mouth === "wow") { px(mx, my, FACE.open); px(mx, my + 1, FACE.open); }
   else if (mouth === "grin") { px(mx - 1, my, FACE.mouth); px(mx, my + 1, FACE.open); px(mx + 1, my, FACE.mouth); }
   else { px(mx, my, FACE.mouth); px(mx + 1, my, FACE.mouth); }
@@ -2854,7 +2856,9 @@ function drawHero() {
   } else if (hero.mode === "yawn") {
     frame = "blink"; // 눈 감고 하품
   } else if (hero.mode === "stretch") {
-    frame = useHeroArt() ? "wave2" : "stretch"; // 두 팔 번갈아 올려 기지개
+    // 기지개: 팔 반쯤 → 쭉 뻗고 하품 → 다시 반쯤
+    const t = 1 - hero.actT / USE_TIME.stretch[0];
+    frame = t > 0.2 && t < 0.8 ? "stretch2" : "stretch1";
   } else if (hero.mode === "lamp") {
     frame = "switch"; // 손을 뻗어 스위치 누르기
   } else if (hero.mode === "water") {
@@ -2869,8 +2873,7 @@ function drawHero() {
   const p = onChair ? (() => { const q = project(hero.x, hero.y, hero.seat.z); return { x: Math.round(q.x), y: Math.round(q.y) }; })()
     : piano ? (() => { const q = project(hero.x, hero.y, PIANO_SEAT); return { x: Math.round(q.x), y: Math.round(q.y) }; })()
     : heroScreen();
-  // 기지개는 양팔을 번갈아 (그림을 좌우로 뒤집어 반대 팔)
-  const flip = hero.mode === "stretch" ? Math.floor(hero.actT / 1.3) % 2 === 0 : hero.dir < 0;
+  const flip = hero.dir < 0;
   const rock = hero.seat && rockAngle(hero.seat);
   if (rock) { ctx.save(); rockAround(hero.seat, rock); }
   const jump = hero.jumpT > 0 ? Math.round(Math.sin((1 - hero.jumpT / 0.35) * Math.PI) * 4) : 0;
