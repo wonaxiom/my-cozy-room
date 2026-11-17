@@ -4011,7 +4011,7 @@ const shopEl = byId("shop");
 const shopList = byId("shop-list");
 const shopBtn = byId("shop-btn");
 let shopCategory = "furniture";
-const shopSub = { furniture: "all", prop: "all" }; // 탭마다 고른 세부 분류 (스타일·종류)
+const shopSub = { furniture: "all", prop: "all", room: "room" }; // 탭마다 고른 세부 분류 (스타일·종류)
 
 // 받침 있는 글자면 "을", 없으면 "를"
 function withObject(word) {
@@ -4312,7 +4312,7 @@ function renderShop() {
   if (xmasTab.hidden && shopCategory === "xmas") shopCategory = "furniture";
   shopEl.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.cat === shopCategory));
   shopList.innerHTML = "";
-  shopList.classList.toggle("wide", ["wall", "floor", "room"].includes(shopCategory));
+  shopList.classList.toggle("wide", shopCategory === "room");
   if (shopCategory === "look") {
     renderLook();
     updateShopButtons();
@@ -4323,13 +4323,21 @@ function renderShop() {
     updateShopButtons();
     return;
   }
-  if (shopCategory === "wall" || shopCategory === "floor") {
-    renderStyles(shopCategory);
-    updateShopButtons();
-    return;
-  }
+  // 방 탭: 방 · 벽지 · 바닥으로 한 번 더 나눠 봄
   if (shopCategory === "room") {
-    renderRooms();
+    const row = document.createElement("div");
+    row.className = "shop-subs";
+    for (const t of [{ id: "room", name: "방" }, { id: "wall", name: "벽지" }, { id: "floor", name: "바닥" }]) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "subtab" + (shopSub.room === t.id ? " active" : "");
+      b.textContent = t.name;
+      b.addEventListener("click", () => { shopSub.room = t.id; renderShop(); });
+      row.append(b);
+    }
+    shopList.append(row);
+    if (shopSub.room === "room") renderRooms();
+    else renderStyles(shopSub.room);
     updateShopButtons();
     return;
   }
