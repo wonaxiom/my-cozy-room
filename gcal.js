@@ -7,7 +7,7 @@
 // =============================================================
 
 const GCal = (() => {
-  const OWNER_ID = "f235ee74-5e77-4233-a222-de9ee3b65e6f"; // 이 계정에서만 연결 버튼을 보여 줌
+  // 연결 버튼은 주인 계정(data.js의 OWNER_ID)에서만 보여 줌
   const CLIENT_ID = "457708425576-3v745lco1bbn7jgkt0sp9nt805k499jp.apps.googleusercontent.com";
   // 일정 읽기 + 캘린더 목록 읽기 (기본 캘린더 말고 다른 캘린더 일정도 가져오려고)
   const SCOPE = "https://www.googleapis.com/auth/calendar.events.readonly https://www.googleapis.com/auth/calendar.calendarlist.readonly";

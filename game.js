@@ -4812,6 +4812,7 @@ function renderShop() {
   const sub = subs && shopSub[shopCategory];
   const entries = Object.entries(FURNITURE)
     .filter(([, f]) => f.category === shopCategory && f.price != null)
+    .filter(([, f]) => !f.ownerOnly || isOwnerAccount()) // 주인만 살 수 있는 물건 (생일 케이크)
     .filter(([, f]) => !sub || sub === "all" || f[subs.field] === sub)
     .sort((a, b) => a[1].price - b[1].price);
   for (const [id, f] of entries) {
@@ -4875,8 +4876,14 @@ byId("confirm-yes").addEventListener("click", () => {
 byId("confirm-no").addEventListener("click", closeConfirm);
 confirmEl.addEventListener("click", (e) => { if (e.target === confirmEl) closeConfirm(); }); // 바깥 누르면 취소
 
+// 지금 로그인한 계정이 게임 주인(나)인지
+function isOwnerAccount() {
+  return typeof Cloud !== "undefined" && !!Cloud.userId && Cloud.userId() === OWNER_ID;
+}
+
 function buy(id) {
   const f = FURNITURE[id];
+  if (f.ownerOnly && !isOwnerAccount()) return;
   if (save.coins < f.price) return;
   save.coins -= f.price;
   addToBag(id);

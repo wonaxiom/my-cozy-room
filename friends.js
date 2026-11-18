@@ -296,6 +296,7 @@ const Friends = (() => {
         toast(`${nameOf(g.from_id)}님이 ${g.amount}코인을 선물했어요.`);
       } else if (FURNITURE[g.item_id]) {
         save.inventory[g.item_id] = (save.inventory[g.item_id] || 0) + 1;
+        if (g.item_id === "birthdayCake") { showBirthday(nameOf(g.from_id)); continue; } // 생일 축하 창
         toast(`${nameOf(g.from_id)}님이 ${FURNITURE[g.item_id].name}을(를) 선물했어요. 보관함을 확인해 보세요.`);
       }
     }
@@ -306,6 +307,21 @@ const Friends = (() => {
       if (!panel.hidden && view === "gift") render();
     }
   }
+
+  // ---- 생일 축하 창 (생일 케이크를 선물받았을 때) ----
+  function showBirthday(from) {
+    const box = document.getElementById("bday");
+    document.getElementById("bday-text").textContent = `${from}님이 생일 케이크를 보냈어요. 보관함에 넣어 두었어요. 오늘 하루 행복하길 바라요!`;
+    const pic = document.getElementById("bday-cake");
+    pic.innerHTML = "";
+    const c = makePreview("birthdayCake");
+    c.className = "bday-pic";
+    pic.append(c);
+    box.hidden = false;
+    hero.heartT = 1.2; // 캐릭터 머리 위에도 하트
+    toast(`${from}님이 생일 케이크를 선물했어요.`);
+  }
+  document.getElementById("bday-ok").addEventListener("click", () => { document.getElementById("bday").hidden = true; });
 
   // ---- 실시간 알림 ----
   function subscribe() {
@@ -762,5 +778,5 @@ const Friends = (() => {
     if (!panel.hidden && view !== "chat") render();
   }
 
-  return { start, stop, publish, refresh, claim, open, close, redraw, myId: () => (me ? me.id : null) };
+  return { start, stop, publish, refresh, claim, open, close, redraw, showBirthday, myId: () => (me ? me.id : null) };
 })();

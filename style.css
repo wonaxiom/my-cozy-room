@@ -1566,3 +1566,10 @@ body.pip.side-mode #shop-btn { display: none; }
 .pf-gcal[hidden] { display: none; }
 .pf-gcal-name { font-weight: 600; }
 .pf-gcal-status { flex: 1; color: var(--muted, #8a8178); font-size: 12px; }
+
+/* 생일 축하 창 */
+.bday-card { align-items: center; text-align: center; }
+.bday-cake { padding: 10px 18px; background: var(--bg); border-radius: 12px; }
+.bday-pic { width: 96px; height: auto; image-rendering: pixelated; }
+.bday-title { margin: 0; font-size: 20px; }
+.bday-text { margin: 0; color: #6b625a; font-size: 14px; line-height: 1.5; }
