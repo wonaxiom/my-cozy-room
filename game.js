@@ -5413,9 +5413,14 @@ function updateInstallRow() {
     appRow.hidden = false; installBtn.hidden = true;
     appStatus.textContent = "사파리 아래 공유 버튼 → '홈 화면에 추가'";
   } else {
-    // 이미 설치했으면 크롬은 설치 신호를 다시 주지 않음. 설치를 지원하지 않는 브라우저도 마찬가지
+    // [설치] 버튼은 크롬·엣지만 지원. 크롬·엣지에서 신호가 없으면 이 기기에 이미 설치한 것
     installBtn.hidden = true;
-    appStatus.textContent = "이미 설치했거나, 설치를 지원하지 않는 브라우저예요";
+    const ua = navigator.userAgent;
+    const mobile = /Android|Mobi/i.test(ua);
+    const chromeOrEdge = /Chrome\/|Edg\//.test(ua) && !/Whale|SamsungBrowser|NAVER|KAKAOTALK|OPR\/|YaBrowser/i.test(ua);
+    if (chromeOrEdge) appStatus.textContent = "이 기기에는 이미 설치했어요";
+    else if (mobile) appStatus.textContent = "브라우저 메뉴의 '홈 화면에 추가'로 설치하거나, 크롬에서 열어 주세요";
+    else appStatus.textContent = "크롬이나 엣지에서 열면 설치할 수 있어요";
   }
 }
 window.addEventListener("beforeinstallprompt", (e) => {
