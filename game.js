@@ -508,7 +508,7 @@ function readyImage(src) {
   return img && img.ready ? img : null;
 }
 
-Object.values(FURNITURE).forEach((f) => { loadImage(f.image); loadImage(f.imageOff); loadImage(f.imageSimple); loadImage(f.imageSimpleOff); loadImage(f.imageOpen); loadImage(f.imageSimpleOpen); });
+Object.values(FURNITURE).forEach((f) => { loadImage(f.image); loadImage(f.imageOff); loadImage(f.imageSimple); loadImage(f.imageSimpleOff); loadImage(f.imageOpen); loadImage(f.imageSimpleOpen); loadImage(f.imageBack); loadImage(f.imageSimpleBack); });
 if (CHARACTER_SHEET) loadImage(CHARACTER_SHEET.image);
 
 // 가구에 쓸 그림 (없거나 아직 못 불러왔으면 null → 상자로 그림)
@@ -517,7 +517,22 @@ function isOpenNow(item) {
   return !!item.imageOpen && hero.mode === "fridge" && !!hero.use && hero.use.item === item;
 }
 
+// 그림 가구의 뒤쪽(180도 돌린) 그림을 쓰는 방향인지: rot 2·3이고 imageBack이 있을 때
+function backSrc(item) {
+  return artStyle === "simple" && item.imageSimple ? item.imageSimpleBack : item.imageBack;
+}
+function backView(item) {
+  return !item.parts && item.type !== "wall" && rotOf(item) >= 2 && !!readyImage(backSrc(item));
+}
+
+// 다음 방향: 뒤쪽 그림이 없는 그림 가구는 두 방향(원래·뒤집기)만 오감
+function nextRot(item) {
+  const four = item.parts || item.imageBack || !item.image;
+  return (rotOf(item) + 1) % (four ? 4 : 2);
+}
+
 function itemImage(item) {
+  if (backView(item)) return readyImage(backSrc(item));
   if (isOpenNow(item)) {
     const open = readyImage(simpleArtOf(item) ? item.imageSimpleOpen : item.imageOpen);
     if (open) return open;
@@ -689,7 +704,9 @@ function turned(item, v) {
 
 // 가구 안의 자리 (베개, 서는 곳 등)를 돌린 방향에 맞게
 function turnedPoint(item, v) {
-  if (item.type === "wall" || (item.image && !item.parts)) return turned(item, v); // 그림 가구는 돌리면 좌우로 뒤집기만 함
+  // 그림 가구는 돌리면 좌우로 뒤집기만 함. 뒤쪽 그림(imageBack)을 쓰면 먼저 180도 돌린 자리로
+  if (backView(item)) v = [item.size[0] - v[0], item.size[1] - v[1], ...v.slice(2)];
+  if (item.type === "wall" || (item.image && !item.parts)) return turned(item, v);
   return [...rotPoint(item, v[0], v[1]), ...v.slice(2)];
 }
 
@@ -4255,7 +4272,7 @@ function rotateItem(item) {
   });
   const restore = () => before.forEach((b) => Object.assign(b.o, { x: b.x, y: b.y, rot: b.rot }));
 
-  item.rot = (rotOf(item) + 1) % 4;
+  item.rot = nextRot(item);
   const g = footprint(item);
   // 가운데를 유지하는 자리부터, 안 되면 모서리를 맞춘 자리로
   const cx = f.x + f.w / 2, cy = f.y + f.d / 2;
@@ -4289,7 +4306,7 @@ function rotateItem(item) {
       return;
     }
     restore();
-    item.rot = (rotOf(item) + 1) % 4;
+    item.rot = nextRot(item);
   }
   restore();
   toast("돌릴 공간이 없어요. 주변을 조금 비워 주세요.");
