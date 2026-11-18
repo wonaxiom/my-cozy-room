@@ -275,7 +275,8 @@ body.pip #sel-name { color: #e9e3da; }
   box-shadow: 0 10px 30px rgba(58, 54, 50, 0.2);
 }
 
-.shop-list { flex: 1 1 auto; min-height: 0; }
+/* 창 높이가 정해져 있어도 줄은 내용만큼만 (칸이 적을 때 버튼·카드가 길게 늘어나지 않게) */
+.shop-list { flex: 1 1 auto; min-height: 0; align-content: start; grid-auto-rows: min-content; }
 
 /* 보관함 창: 내용만큼만 */
 .bag-card { height: auto; max-height: min(520px, 100%); }
