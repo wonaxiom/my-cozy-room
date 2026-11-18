@@ -5164,29 +5164,14 @@ function endVisit() {
 let pipWin = null;
 
 function updatePipButton() {
-  pipBtn.textContent = pipWin ? "돌아가기" : "위에 띄우기";
+  // '위에 띄우기'는 없앰: 이 버튼은 세로 창 안에서만 '돌아가기'로 보임
+  pipBtn.textContent = "돌아가기";
+  pipBtn.hidden = !pipWin;
 }
 
-async function togglePip() {
-  if (pipWin) {
-    pipWin.close();
-    return;
-  }
-  if (!("documentPictureInPicture" in window)) {
-    pipNote.textContent = "이 브라우저는 '항상 위' 창을 지원하지 않아요. 최신 크롬이나 엣지에서 열어 주세요.";
-    return;
-  }
-  let win;
-  try {
-    // preferInitialWindowPlacement: 지난번 크기(예: 세로 보기로 길게 늘인 크기)를 기억하지 않고 기본 크기로 엶
-    win = await documentPictureInPicture.requestWindow({ width: 380, height: Math.round(380 * H / W), preferInitialWindowPlacement: true });
-  } catch (err) {
-    pipNote.textContent = "작은 창을 열지 못했어요. 브라우저 설정을 확인해 주세요.";
-    return;
-  }
-  moveAppTo(win);
-  // 위 옵션을 모르는 예전 브라우저용: 열자마자 기본 크기로 한 번 더 맞춤
-  try { if (win.innerHeight > Math.round(380 * H / W) + 80) win.resizeTo(380, Math.round(380 * H / W) + 40); } catch (e) { /* 크기를 못 바꾸면 그대로 */ }
+// 세로 창 닫기 ('돌아가기' 버튼)
+function togglePip() {
+  if (pipWin) pipWin.close();
 }
 
 // 세로 창: '항상 위'가 아닌 보통 창으로 세로 보기를 엶 (다른 창 뒤로 갈 수 있음)
@@ -5245,8 +5230,7 @@ window.addEventListener("pagehide", () => { if (pipWin) pipWin.close(); });
 
 pipBtn.addEventListener("click", togglePip);
 byId("side-win-btn").addEventListener("click", openSideWindow);
-// 항상 위 작은 창을 못 여는 브라우저(휴대폰 등)에서는 버튼을 숨김
-if (!("documentPictureInPicture" in window)) pipBtn.hidden = true;
+updatePipButton();
 
 // ---- 게임 루프 ---------------------------------------------------
 let lastTick = performance.now();
