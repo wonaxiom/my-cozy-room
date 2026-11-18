@@ -1294,7 +1294,7 @@ Object.assign(FURNITURE, {
   stoneLantern: { name: "석등", category: "prop", price: 120, size: [7, 7, 17], image: "img/furn/stoneLantern.png", imageSimple: "img/furn/s/stoneLantern.png", hires: true, light: { x: 3.5, y: 3.5, z: 11, radius: 36 } },
   tsukubai: { name: "돌 물그릇", category: "prop", price: 150, size: [16, 16, 8], image: "img/furn/tsukubai.png", imageSimple: "img/furn/s/tsukubai.png", hires: true },
   sakuraVase: { name: "벚꽃 꽃병", category: "prop", price: 50, size: [5, 5, 12], image: "img/furn/sakuraVase.png", imageSimple: "img/furn/s/sakuraVase.png", hires: true, small: true, use: "water" },
-  fusuma: { name: "미닫이문", type: "wall", category: "prop", price: 120, size: [18, 1, 22], image: "img/furn/fusuma.png", imageSimple: "img/furn/s/fusuma.png", hires: true },
+  fusuma: { name: "미닫이문", type: "wall", floorWall: true, category: "prop", price: 120, size: [18, 1, 28], image: "img/furn/fusuma.png", imageSimple: "img/furn/s/fusuma.png", hires: true },
   noren: { name: "노렌", type: "wall", category: "prop", price: 80, size: [14, 1, 13], image: "img/furn/noren.png", imageSimple: "img/furn/s/noren.png", hires: true },
 });
 

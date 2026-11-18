@@ -972,7 +972,8 @@ function makeItem(p) {
   const f = FURNITURE[p.id];
   const wall = f.type === "wall";
   const rot = wall ? 0 : p.rot != null ? p.rot : p.flip ? 1 : 0; // 예전 저장은 flip
-  return Object.assign({}, f, { id: p.id, x: p.x, y: p.y, z: p.z, flip: wall && !!p.flip, rot, closed: !!p.closed, off: p.off, lightAt: p.lightAt });
+  // 문(floorWall)은 예전 저장도 바닥으로
+  return Object.assign({}, f, { id: p.id, x: p.x, y: p.y, z: f.floorWall ? 0 : p.z, flip: wall && !!p.flip, rot, closed: !!p.closed, off: p.off, lightAt: p.lightAt });
 }
 
 function refreshItems() {
@@ -4191,7 +4192,7 @@ function rectsOverlap(p, q) {
 function wallValid(item) {
   const wall = wallOf(item), r = wallRect(item);
   if (wall === "round") return false; // 둥근 벽에는 걸 수 없음
-  if (r.a1 < 1 || r.a2 > wallLength(wall) - 1 || r.z1 < 3) return false;
+  if (r.a1 < 1 || r.a2 > wallLength(wall) - 1 || r.z1 < (item.floorWall ? 0 : 3)) return false; // 문(floorWall)은 바닥에 붙음
   const top = wall === "right" ? rightWallTop() : Math.min(leftWallTop(r.a1), leftWallTop(r.a2));
   if (r.z2 > top - 1) return false;
   if (wallObstacles(wall).some((o) => rectsOverlap(r, o))) return false;
@@ -4256,7 +4257,7 @@ function moveDrag(p) {
     orig = drag.orig;
     const da = cur.a - drag.start.a;
     const top = drag.wall === "right" ? rightWallTop() : (room.wallHeight || room.peakHeight);
-    item.z = clamp(snap(orig.z + cur.z - drag.start.z), 3 - e.z1, top - e.z2 - 1);
+    item.z = item.floorWall ? 0 : clamp(snap(orig.z + cur.z - drag.start.z), 3 - e.z1, top - e.z2 - 1);
     const len = wallLength(drag.wall);
     if (drag.wall === "right") item.x = clamp(snap(orig.x + da), 1 - e.a1, len - e.a2 - 1);
     else item.y = clamp(snap(orig.y + da), 1 - e.a1, len - e.a2 - 1);
@@ -4577,8 +4578,11 @@ function findSpot(item) {
       item.flip = wall === "left";
       // 눈높이(24)부터 아래로, 그다음 위로 찾아봅니다.
       const heights = [];
-      for (let z = 24; z >= 6; z -= GRID) heights.push(z);
-      for (let z = 26; z <= 40; z += GRID) heights.push(z);
+      if (item.floorWall) heights.push(0); // 문은 바닥에서만
+      else {
+        for (let z = 24; z >= 6; z -= GRID) heights.push(z);
+        for (let z = 26; z <= 40; z += GRID) heights.push(z);
+      }
       for (const z of heights) {
         for (let a = 2; a < wallLength(wall); a += GRID) {
           item.x = wall === "right" ? a : 0;
