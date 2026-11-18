@@ -1377,3 +1377,26 @@ const SHOP_TAGS = {
 for (const [field, groups] of Object.entries(SHOP_TAGS)) {
   for (const [tag, ids] of Object.entries(groups)) for (const id of ids) if (FURNITURE[id] && !FURNITURE[id][field]) FURNITURE[id][field] = tag;
 }
+
+// ---- 색상 변형 가구 ----------------------------------------------------
+// 같은 가구의 색만 바꾼 그림(img/furn/<id>_<색>.png, art-src/tools/recolor_variants.py로 만듦)
+// 색마다 따로 된 가구(<id>_<색>)로 등록해서 보관함·배치·저장은 그대로 씀. 상점에서는 원래 가구 카드에서 색을 고름
+const COLOR_VARIANTS = {
+  sofa: [["base", "크림", "#f3e6d2"], ["navy", "네이비", "#4f6a9a"], ["sage", "세이지", "#9db58e"], ["gray", "그레이", "#9a9aa2"], ["pink", "핑크", "#eab4bc"]],
+  bed: [["base", "블루", "#8fb3e3"], ["pink", "핑크", "#f0a8b8"], ["mint", "민트", "#8fd0b8"], ["yellow", "옐로", "#f0d27a"], ["gray", "그레이", "#a9adb5"]],
+  armchair: [["base", "퍼플", "#a7639a"], ["brown", "브라운", "#9a6444"], ["green", "그린", "#6f9a66"], ["navy", "네이비", "#4f6390"], ["mustard", "머스터드", "#d9aa45"]],
+};
+for (const [id, list] of Object.entries(COLOR_VARIANTS)) {
+  const base = FURNITURE[id];
+  base.colors = list.map(([c, name, hex]) => ({ id: c === "base" ? id : `${id}_${c}`, name, hex }));
+  for (const [c, name] of list) {
+    if (c === "base") continue;
+    const v = Object.assign({}, base, {
+      variantOf: id, colorName: name, colors: undefined,
+      image: base.image.replace(/\.png$/, `_${c}.png`),
+      imageSimple: base.imageSimple && base.imageSimple.replace(/\.png$/, `_${c}.png`),
+    });
+    if (base.imageBack) v.imageBack = base.imageBack.replace(/\.png$/, `_${c}.png`);
+    FURNITURE[`${id}_${c}`] = v;
+  }
+}

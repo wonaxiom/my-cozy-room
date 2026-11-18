@@ -4430,7 +4430,7 @@ function select(item) {
   selected = item;
   selBar.hidden = !item;
   editHint.hidden = !!item;
-  if (item) byId("sel-name").textContent = item.name;
+  if (item) byId("sel-name").textContent = FURNITURE[item.id] ? furnName(item.id) : item.name;
   // 벽 장식은 돌리는 대신 반대쪽 벽으로 옮김
   if (item) byId("sel-rotate").textContent = item.type === "wall" ? "반대쪽 벽으로" : "방향 돌리기";
 }
@@ -4633,10 +4633,10 @@ function renderBag() {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "bag-item";
-    btn.title = FURNITURE[id].name + " 꺼내기";
+    btn.title = furnName(id) + " 꺼내기";
     btn.append(makePreview(id));
     const name = document.createElement("span");
-    name.textContent = FURNITURE[id].name;
+    name.textContent = furnName(id);
     btn.append(name);
     if (save.inventory[id] > 1) {
       const n = document.createElement("span");
@@ -4678,13 +4678,20 @@ const shopEl = byId("shop");
 const shopList = byId("shop-list");
 const shopBtn = byId("shop-btn");
 let shopCategory = "furniture";
-const shopSub = { furniture: "all", prop: "all", room: "room", look: "top" }; // 탭마다 고른 세부 분류 (스타일·종류)
+const shopSub = { furniture: "all", prop: "all", room: "room", look: "top" };
+const shopColor = {}; // 상점 카드에서 고른 색 (가구 id → 색상 변형 id) // 탭마다 고른 세부 분류 (스타일·종류)
 
 // 받침 있는 글자면 "을", 없으면 "를"
 function withObject(word) {
   const c = word.charCodeAt(word.length - 1);
   if (c < 0xac00 || c > 0xd7a3) return word + "을(를)";
   return word + ((c - 0xac00) % 28 ? "을" : "를");
+}
+
+// 가구 이름 (색상 변형이면 색 이름을 앞에: "네이비 3인 소파")
+function furnName(id) {
+  const f = FURNITURE[id];
+  return f.colorName ? `${f.colorName} ${f.name}` : f.name;
 }
 
 // 가지고 있는 개수 (보관함 + 모든 방에 놓인 것)
@@ -5065,14 +5072,15 @@ function renderShop() {
   }
   const sub = subs && shopSub[shopCategory];
   const entries = Object.entries(FURNITURE)
-    .filter(([, f]) => f.category === shopCategory && f.price != null)
+    .filter(([, f]) => f.category === shopCategory && f.price != null && !f.variantOf) // 색상 변형은 원래 가구 카드에서 고름
     .filter(([, f]) => !f.ownerOnly || isOwnerAccount()) // 주인만 살 수 있는 물건 (생일 케이크)
     .filter(([, f]) => !sub || sub === "all" || f[subs.field] === sub)
     .sort((a, b) => a[1].price - b[1].price);
-  for (const [id, f] of entries) {
+  for (const [baseId, f] of entries) {
     const card = document.createElement("div");
     card.className = "card";
-    card.append(makePreview(id));
+    let id = shopColor[baseId] || baseId; // 색을 고를 수 있는 가구는 고른 색
+    if (!FURNITURE[id]) id = baseId;
     const name = document.createElement("div");
     name.className = "card-name";
     name.textContent = f.name;
@@ -5083,8 +5091,24 @@ function renderShop() {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.dataset.price = f.price;
-    btn.addEventListener("click", () => confirmBuy(f.name, f.price, makePreview(id), () => buy(id)));
-    card.append(name, meta, btn);
+    btn.addEventListener("click", () => confirmBuy(furnName(id), f.price, makePreview(id), () => buy(id)));
+    card.append(makePreview(id), name);
+    if (f.colors) {
+      const row = document.createElement("div");
+      row.className = "color-chips";
+      for (const c of f.colors) {
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "color-chip" + (c.id === id ? " active" : "") + (ownedCount(c.id) ? " owned" : "");
+        chip.style.background = c.hex;
+        chip.title = c.name + (ownedCount(c.id) ? " (보유)" : "");
+        chip.setAttribute("aria-label", c.name);
+        chip.addEventListener("click", () => { shopColor[baseId] = c.id; renderShop(); });
+        row.append(chip);
+      }
+      card.append(row);
+    }
+    card.append(meta, btn);
     shopList.append(card);
   }
   updateShopButtons();
@@ -5143,7 +5167,7 @@ function buy(id) {
   addToBag(id);
   updateCoins();
   renderShop();
-  toast(`${withObject(f.name)} 샀어요. 꾸미기에서 꺼내 놓을 수 있어요.`);
+  toast(`${withObject(furnName(id))} 샀어요. 꾸미기에서 꺼내 놓을 수 있어요.`);
 }
 
 shopBtn.addEventListener("click", () => (shopEl.hidden ? openShop() : closeShop()));
