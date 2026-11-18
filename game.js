@@ -3850,6 +3850,7 @@ let hoverItem = null;    // 마우스가 올라가 있는 가구
 const editBtn = byId("edit-btn");
 const editBar = byId("edit-bar");
 const bagEl = byId("inventory");
+const bagModal = byId("bag"); // 보관함 창
 
 function setEditing(on) {
   editing = on;
@@ -3862,6 +3863,7 @@ function setEditing(on) {
   if (typeof select === "function") select(null);
   editBar.classList.remove("drop");
   view.style.cursor = "default";
+  if (!on) bagModal.hidden = true; // 꾸미기를 끝내면 보관함 창도 닫음
   if (on) {
     closeShop();
     if (typeof Focus !== "undefined") Focus.close();
@@ -4361,6 +4363,7 @@ function takeFromBag(id) {
   afterLayoutChange();
   renderBag();
   hoverItem = item; // 새로 놓은 가구를 잠깐 표시
+  select(item);     // 바로 옮기거나 돌릴 수 있게 골라 둠
 }
 
 // 빈자리 찾기 (바닥은 방 가운데부터, 벽은 높은 곳부터)
@@ -4400,9 +4403,19 @@ function findSpot(item) {
   return false;
 }
 
+// ---- 보관함 창 ----
+function openBag() { renderBag(); bagModal.hidden = false; }
+function closeBag() { bagModal.hidden = true; }
+byId("bag-open").addEventListener("click", openBag);
+byId("bag-close").addEventListener("click", closeBag);
+bagModal.addEventListener("click", (e) => { if (e.target === bagModal) closeBag(); }); // 바깥을 누르면 닫힘
+
 function renderBag() {
   bagEl.innerHTML = "";
   const ids = Object.keys(save.inventory).filter((id) => save.inventory[id] > 0 && FURNITURE[id]);
+  // 아래 줄 버튼에 들어 있는 개수 표시
+  const total = ids.reduce((n, id) => n + save.inventory[id], 0);
+  byId("bag-open").textContent = total ? `보관함 열기 (${total})` : "보관함 열기";
   if (!ids.length) {
     const p = document.createElement("p");
     p.className = "empty";
@@ -4425,7 +4438,7 @@ function renderBag() {
       n.textContent = save.inventory[id];
       btn.append(n);
     }
-    btn.addEventListener("click", () => takeFromBag(id));
+    btn.addEventListener("click", () => { closeBag(); takeFromBag(id); });
     bagEl.append(btn);
   }
 }
@@ -4912,6 +4925,7 @@ byId("lock-buy").addEventListener("click", () => {
   confirmBuy(r.name, r.price, makeRoomPreview(r), () => buyRoom(r), "열까요?");
 });
 byId("shop-close").addEventListener("click", closeShop);
+shopEl.addEventListener("click", (e) => { if (e.target === shopEl) closeShop(); }); // 바깥(어두운 곳)을 누르면 닫힘
 shopEl.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => {
   shopCategory = t.dataset.cat;
   renderShop();

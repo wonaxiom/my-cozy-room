@@ -114,6 +114,10 @@ button.active {
 
 .edit-bar[hidden] { display: none; }
 
+.edit-row { display: flex; align-items: center; gap: 8px; }
+.edit-row .edit-hint { flex: 1; margin: 0; }
+#bag-open { flex: none; }
+
 /* 가구를 보관함 위로 끌고 왔을 때 */
 .edit-bar.drop {
   background: #f1ece5;
@@ -248,15 +252,35 @@ body.pip #sel-name { color: #e9e3da; }
 }
 
 /* ---- 상점 ---- */
+/* 상점·보관함: 화면 가운데 뜨는 창 (뒤는 살짝 어둡게) */
 .shop {
-  position: absolute;
+  position: fixed;
   inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(58, 54, 50, 0.35);
+}
+
+.shop-card {
   display: flex;
   flex-direction: column;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.97);
-  border-radius: 6px;
+  width: min(600px, 100%);
+  height: min(640px, 100%);
+  padding: 12px;
+  background: var(--card);
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(58, 54, 50, 0.2);
 }
+
+.shop-list { flex: 1 1 auto; min-height: 0; }
+
+/* 보관함 창: 내용만큼만 */
+.bag-card { height: auto; max-height: min(520px, 100%); }
+.bag-hint { margin: 0 0 8px; color: var(--sub); font-size: 12px; }
+.bag-card .inventory { flex-wrap: wrap; overflow-y: auto; }
 
 .shop[hidden] { display: none; }
 
@@ -597,9 +621,9 @@ button:disabled {
 
 /* ---- 구매 확인 ---- */
 .confirm {
-  position: absolute;
+  position: fixed;
   inset: 0;
-  z-index: 20;
+  z-index: 60; /* 상점 창 위 */
   display: flex;
   align-items: center;
   justify-content: center;
