@@ -725,7 +725,8 @@ function screenBounds(item) {
 // 그림 가구: 방향을 돌렸으면 좌우를 뒤집어 그립니다.
 function drawMirrored(item, img, r, pivotW = r.w) {
   // GPT 벽 장식 그림(세밀, 하찮)은 반대쪽 벽 기준으로 그려져 있어서, 뒤집는 방향을 반대로
-  const mirror = item.type === "wall" && item.image && !item.parts ? !swapped(item) : swapped(item);
+  // 예전 GPT 벽 장식은 왼쪽 벽 기준으로 그려져 있어 반대로 뒤집음. rightWallArt(오른쪽 벽 기준 그림)는 그대로
+  const mirror = item.type === "wall" && item.image && !item.parts && !item.rightWallArt ? !swapped(item) : swapped(item);
   if (!mirror) {
     ctx.drawImage(img, r.x, r.y, r.w, r.h);
     return;

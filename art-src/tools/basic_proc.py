@@ -9,7 +9,7 @@ neutral=(rgb.max(2)-rgb.min(2)<10)&(rgb.min(2)>222)
 # 바깥 테두리와 이어진 체커보드(회색·흰색) 부분만 배경으로
 lab,_=ndimage.label(neutral)
 edge=set(np.unique(np.concatenate([lab[0],lab[-1],lab[:,0],lab[:,-1]])))-{0}
-bg=np.isin(lab,list(edge))
+bg=np.isin(lab,list(edge))|(a[:,:,3]<128) # 진짜 투명 배경도
 fg=~bg
 fg=ndimage.binary_opening(fg,iterations=1)
 olab,n=ndimage.label(ndimage.binary_closing(fg,iterations=4))
