@@ -5231,24 +5231,40 @@ window.addEventListener("pagehide", () => { if (pipWin) pipWin.close(); });
 pipBtn.addEventListener("click", togglePip);
 byId("side-win-btn").addEventListener("click", openSideWindow);
 
-// ---- 앱으로 설치 (PC에서만 버튼을 보여 줌) ----
-// 크롬·엣지가 "설치할 수 있음"을 알려 주면 버튼을 켬. 휴대폰이거나 이미 앱으로 열었으면 숨김
-const installBtn = byId("install-btn");
+// ---- 앱으로 설치 ('내 정보' 안에서) ----
+// PC·안드로이드 크롬: 브라우저가 "설치할 수 있음"을 알려 주면 [설치] 버튼.
+// 아이폰: 버튼으로 설치할 수 없어서 사파리 '홈 화면에 추가' 방법을 안내. 이미 앱으로 열었으면 줄을 숨김
+const installBtn = byId("install-btn"), appRow = byId("pf-app"), appStatus = byId("pf-app-status");
 let installEvent = null;
-const isMobile = () => /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && !matchMedia("(pointer: fine)").matches);
-const isInstalledApp = () => matchMedia("(display-mode: standalone)").matches;
+const isIOS = () => /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const isInstalledApp = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+function updateInstallRow() {
+  if (isInstalledApp()) { appRow.hidden = true; return; }
+  if (installEvent) {
+    appRow.hidden = false; installBtn.hidden = false;
+    appStatus.textContent = "아이콘으로 바로 열 수 있어요";
+  } else if (isIOS()) {
+    appRow.hidden = false; installBtn.hidden = true;
+    appStatus.textContent = "사파리 아래 공유 버튼 → '홈 화면에 추가'";
+  } else {
+    appRow.hidden = true; // 설치할 수 없는 브라우저이거나 이미 설치함
+  }
+}
 window.addEventListener("beforeinstallprompt", (e) => {
-  e.preventDefault(); // 브라우저 기본 안내 대신 우리 버튼으로
+  e.preventDefault(); // 브라우저 기본 안내 대신 내 정보의 [설치]로
   installEvent = e;
-  installBtn.hidden = isMobile() || isInstalledApp();
+  updateInstallRow();
 });
 installBtn.addEventListener("click", async () => {
   if (!installEvent) return;
   installEvent.prompt();
   const { outcome } = await installEvent.userChoice;
-  if (outcome === "accepted") { installBtn.hidden = true; installEvent = null; }
+  if (outcome === "accepted") installEvent = null;
+  updateInstallRow();
 });
-window.addEventListener("appinstalled", () => { installBtn.hidden = true; installEvent = null; toast("앱으로 설치했어요. 바탕화면이나 시작 메뉴에서 열 수 있어요."); });
+window.addEventListener("appinstalled", () => { installEvent = null; updateInstallRow(); toast("앱으로 설치했어요. 홈 화면이나 시작 메뉴의 아이콘으로 열 수 있어요."); });
+byId("profile-btn").addEventListener("click", updateInstallRow);
+updateInstallRow();
 if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) navigator.serviceWorker.register("sw.js").catch(() => { /* 설치만 안 될 뿐 게임은 그대로 */ });
 updatePipButton();
 

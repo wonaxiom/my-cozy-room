@@ -26,9 +26,26 @@ const News = (() => {
       const h = document.createElement("b");
       h.textContent = sec.h;
       const ul = document.createElement("ul");
-      for (const t of sec.items || []) {
+      for (const it of sec.items || []) {
+        // 항목: 글자만 쓰거나, { t: 내용, how: 쓰는 법, img: 그림 주소(이 사이트 안) }
+        const item = typeof it === "string" ? { t: it } : it || {};
         const li = document.createElement("li");
-        li.textContent = t;
+        const text = document.createElement("span");
+        text.textContent = item.t || "";
+        li.append(text);
+        if (item.img && /^img\/[\w\/.-]+\.png$/.test(item.img)) {
+          const pic = document.createElement("img");
+          pic.src = item.img;
+          pic.alt = "";
+          pic.className = "news-pic";
+          li.append(pic);
+        }
+        if (item.how) {
+          const how = document.createElement("small");
+          how.className = "news-how";
+          how.textContent = item.how;
+          li.append(how);
+        }
         ul.append(li);
       }
       body.append(h, ul);

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>My Cozy Room</title>
   <!-- 파일 뒤의 ?v= 번호는 업데이트할 때마다 바꿉니다. (브라우저가 옛 파일을 쓰지 않도록) -->
-  <link rel="stylesheet" href="style.css?v=20261118-12">
+  <link rel="stylesheet" href="style.css?v=20261118-13">
   <!-- 화면 전환에 꼭 필요한 규칙 (디자인 파일을 늦게 받아도 화면이 섞이지 않게) -->
   <style>
     .screen { display: none; }
@@ -191,6 +191,11 @@
         <button id="pf-bg-reset" type="button" hidden>기본으로</button>
         <input id="pf-bg-file" type="file" accept="image/*" hidden>
       </div>
+      <div id="pf-app" class="pf-bg" hidden>
+        <span class="pf-gcal-name">앱으로 설치</span>
+        <span id="pf-app-status" class="pf-gcal-status">아이콘으로 바로 열 수 있어요</span>
+        <button id="install-btn" type="button">설치</button>
+      </div>
       <div id="pf-gcal" class="pf-gcal" hidden>
         <span class="pf-gcal-name">구글 캘린더</span>
         <span id="pf-gcal-status" class="pf-gcal-status"></span>
@@ -345,7 +350,6 @@
             <button id="edit-btn" type="button">꾸미기</button>
             <button id="side-btn" type="button" hidden>세로 보기</button>
             <button id="side-win-btn" type="button">세로 창</button>
-            <button id="install-btn" type="button" hidden>앱 설치</button>
             <button id="pip-btn" type="button" hidden>돌아가기</button>
           </div>
         </div>
@@ -411,21 +415,21 @@
   </main>
 
   <!-- 순서 중요: 데이터 → 방 → 저장 → 게임 → 집중 → 첫 화면 → 로그인 -->
-  <script src="data.js?v=20261118-12"></script>
-  <script src="rooms.js?v=20261118-12"></script>
-  <script src="save.js?v=20261118-12"></script>
-  <script src="hero-art.js?v=20261118-12"></script>
-  <script src="acc-art.js?v=20261118-12"></script>
-  <script src="pet-art.js?v=20261118-12"></script>
-  <script src="game.js?v=20261118-12"></script>
-  <script src="focus.js?v=20261118-12"></script>
-  <script src="side.js?v=20261118-12"></script>
-  <script src="start.js?v=20261118-12"></script>
-  <script src="friends.js?v=20261118-12"></script>
+  <script src="data.js?v=20261118-13"></script>
+  <script src="rooms.js?v=20261118-13"></script>
+  <script src="save.js?v=20261118-13"></script>
+  <script src="hero-art.js?v=20261118-13"></script>
+  <script src="acc-art.js?v=20261118-13"></script>
+  <script src="pet-art.js?v=20261118-13"></script>
+  <script src="game.js?v=20261118-13"></script>
+  <script src="focus.js?v=20261118-13"></script>
+  <script src="side.js?v=20261118-13"></script>
+  <script src="start.js?v=20261118-13"></script>
+  <script src="friends.js?v=20261118-13"></script>
   <!-- 구글 로그인 (Supabase) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-  <script src="cloud.js?v=20261118-12"></script>
-  <script src="gcal.js?v=20261118-12"></script>
-  <script src="news.js?v=20261118-12"></script>
+  <script src="cloud.js?v=20261118-13"></script>
+  <script src="gcal.js?v=20261118-13"></script>
+  <script src="news.js?v=20261118-13"></script>
 </body>
 </html>

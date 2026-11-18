@@ -1584,6 +1584,7 @@ body.pip.side-mode #shop-btn { display: none; }
 }
 
 .pf-bg button[hidden] { display: none; }
+.pf-bg[hidden] { display: none; }
 .pf-gcal-name { font-weight: 600; }
 .pf-gcal-status { flex: 1; color: var(--muted, #8a8178); font-size: 12px; }
 
@@ -1671,14 +1672,26 @@ body.pip.side-mode #shop-btn { display: none; }
 
 .news-body b { color: #3a3632; }
 .news-body ul { margin: 3px 0 10px; padding-left: 18px; }
+.news-body li { margin-bottom: 4px; }
+
+/* 쓰는 법 한 줄 (예: 상점 › 소품 › 반려동물) */
+.news-how { display: block; color: #9a8f84; font-size: 12px; }
+
+/* 새 가구 같은 작은 그림 */
+.news-pic {
+  display: block;
+  max-width: 96px;
+  max-height: 64px;
+  margin: 4px 0 2px;
+  image-rendering: pixelated;
+}
 
 /* 누르면 다시 볼 수 있는 알림 (업데이트 공지) */
 .notice-list li.link { cursor: pointer; }
 .notice-list li.link:hover span { text-decoration: underline; }
 
 /* 세로 창 버튼: 작은 창·세로 창 안과 휴대폰에서는 숨김 */
-body.pip #side-win-btn,
-body.pip #install-btn { display: none; }
+body.pip #side-win-btn { display: none; }
 
 @media (max-width: 560px) {
   #side-win-btn { display: none; }
