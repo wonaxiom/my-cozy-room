@@ -5230,6 +5230,26 @@ window.addEventListener("pagehide", () => { if (pipWin) pipWin.close(); });
 
 pipBtn.addEventListener("click", togglePip);
 byId("side-win-btn").addEventListener("click", openSideWindow);
+
+// ---- 앱으로 설치 (PC에서만 버튼을 보여 줌) ----
+// 크롬·엣지가 "설치할 수 있음"을 알려 주면 버튼을 켬. 휴대폰이거나 이미 앱으로 열었으면 숨김
+const installBtn = byId("install-btn");
+let installEvent = null;
+const isMobile = () => /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && !matchMedia("(pointer: fine)").matches);
+const isInstalledApp = () => matchMedia("(display-mode: standalone)").matches;
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault(); // 브라우저 기본 안내 대신 우리 버튼으로
+  installEvent = e;
+  installBtn.hidden = isMobile() || isInstalledApp();
+});
+installBtn.addEventListener("click", async () => {
+  if (!installEvent) return;
+  installEvent.prompt();
+  const { outcome } = await installEvent.userChoice;
+  if (outcome === "accepted") { installBtn.hidden = true; installEvent = null; }
+});
+window.addEventListener("appinstalled", () => { installBtn.hidden = true; installEvent = null; toast("앱으로 설치했어요. 바탕화면이나 시작 메뉴에서 열 수 있어요."); });
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) navigator.serviceWorker.register("sw.js").catch(() => { /* 설치만 안 될 뿐 게임은 그대로 */ });
 updatePipButton();
 
 // ---- 게임 루프 ---------------------------------------------------

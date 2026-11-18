@@ -1677,7 +1677,8 @@ body.pip.side-mode #shop-btn { display: none; }
 .notice-list li.link:hover span { text-decoration: underline; }
 
 /* 세로 창 버튼: 작은 창·세로 창 안과 휴대폰에서는 숨김 */
-body.pip #side-win-btn { display: none; }
+body.pip #side-win-btn,
+body.pip #install-btn { display: none; }
 
 @media (max-width: 560px) {
   #side-win-btn { display: none; }

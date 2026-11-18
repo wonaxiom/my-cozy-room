@@ -1,0 +1,16 @@
+{
+  "name": "My Cozy Room",
+  "short_name": "Cozy Room",
+  "description": "켜 두는 동안 코인이 모이는 아늑한 도트 방",
+  "lang": "ko",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f1e7d6",
+  "theme_color": "#2a2622",
+  "icons": [
+    { "src": "img/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "img/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
