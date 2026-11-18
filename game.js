@@ -3146,10 +3146,42 @@ function drawLying(b, p) {
 
 // 베개가 앞쪽(보는 쪽)인 그림 침대: 머리 꼭대기가 보는 쪽을 향하게, 잠든 머리를 거꾸로 돌려 몸이 뻗은 방향에 맞춤
 // (누워서 머리를 이쪽으로 두면 정수리가 앞, 얼굴은 거꾸로 보임. 몸은 이불 그림 속)
+// ver.세밀은 GPT 그림(lie-front-art.js: 정수리가 왼쪽 아래)을 쓰고, 정수리가 오른쪽이면 좌우로 뒤집음
+const lieFrontCache = new Map();
+function lieFrontCanvas(look, flip) {
+  const art = typeof LIE_FRONT_ART !== "undefined" && LIE_FRONT_ART.heads[look.hair];
+  if (!art) return null;
+  const colors = heroColors(look);
+  const key = [look.hair, colors.H, colors.S, flip].join("|");
+  if (lieFrontCache.has(key)) return lieFrontCache.get(key);
+  const w = Math.max(...art.rows.map((r) => r.length)), h = art.rows.length;
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  const g = c.getContext("2d");
+  const target = { hair: colors.H, skin: colors.S };
+  art.rows.forEach((row, y) => [...row].forEach((ch, x) => {
+    const pc = LIE_FRONT_ART.palette[ch];
+    if (!pc) return;
+    const [orig, part] = pc;
+    g.fillStyle = target[part] ? recolor(orig, LIE_FRONT_ART.base[part], target[part]) : orig;
+    g.fillRect(flip ? w - 1 - x : x, y, 1, 1);
+  }));
+  const out = { c, at: [flip ? w - art.at[0] : art.at[0], art.at[1]] };
+  lieFrontCache.set(key, out);
+  return out;
+}
+
 function drawHeadTowardViewer(b, p) {
   const f = footprint(b);
   const [px, py, pz] = pillowPos();
   const c0 = project(f.x + f.w / 2, f.y + f.d / 2, pz), c1 = project(px, py, pz);
+  if (useHeroArt()) {
+    const art = lieFrontCanvas(normLook(save.look), c1.x > c0.x);
+    if (art) {
+      ctx.drawImage(art.c, Math.round(p.x - art.at[0] / 3), Math.round(p.y - 2 - art.at[1] / 3), art.c.width / 3, art.c.height / 3);
+      return;
+    }
+  }
   const crown = Math.atan2(c1.y - c0.y, c1.x - c0.x); // 화면에서 정수리가 향할 방향
   const angle = crown + Math.PI / 2; // 똑바로 선 머리(정수리 위쪽)를 그 방향으로
   let h;

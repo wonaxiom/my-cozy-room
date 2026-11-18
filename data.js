@@ -1333,7 +1333,7 @@ Object.assign(FURNITURE, {
 
 // ---- 침대 반대 방향 그림 (돌리기 3·4번째 방향: 베개가 앞쪽) ----
 // ver.하찮 그림(imageSimpleBack)이 없으면 하찮에서는 두 방향 그림만 씀
-["bed", "futon", "mattress", "berth", "pinkBed", "canopyBed", "bunkBed", "bunkBedWhite"].forEach((id) => {
+["bed", "futon", "mattress", "berth", "pinkBed", "bunkBed", "bunkBedWhite"].forEach((id) => {
   FURNITURE[id].imageBack = `img/furn/${id}Back.png`;
 });
 
