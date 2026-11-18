@@ -5075,7 +5075,7 @@ function startVisit(friend, snap) {
   visiting = { id: friend.id, name: friend.name };
   save = visitSave(snap || {});
   save.look = normLook(save.look);
-  document.body.classList.add("visiting");
+  setVisitingClass(true);
   byId("visit-name").textContent = `${friend.name || "친구"}의 방`;
   byId("title").textContent = `${friend.name || "친구"}의 방 · 구경 중`;
   setRoom(save.roomId);
@@ -5084,13 +5084,19 @@ function startVisit(friend, snap) {
   toast(`${friend.name || "친구"}님 방에 놀러 왔어요. 노란 표시가 있는 캐릭터가 나예요.`);
 }
 
+// "친구 방 구경 중" 표시: 원래 창과 작은 창(위에 띄우기) 둘 다에 붙여야 '내 방으로' 줄이 보임
+function setVisitingClass(on) {
+  document.body.classList.toggle("visiting", on);
+  if (typeof pipWin !== "undefined" && pipWin) pipWin.document.body.classList.toggle("visiting", on);
+}
+
 function endVisit() {
   if (!visiting) return;
   save = ownSave;
   ownSave = null;
   visiting = null;
   Save.locked = false;
-  document.body.classList.remove("visiting");
+  setVisitingClass(false);
   const myName = save.profile && save.profile.name;
   byId("title").textContent = myName ? `${myName}의 방` : "My Cozy Room";
   setRoom(save.roomId);
@@ -5141,6 +5147,7 @@ async function togglePip() {
   pipWin.document.title = "My Cozy Room";
   pipWin.document.addEventListener("keydown", onKey);
   pipWin.document.body.classList.add("pip");
+  if (visiting) pipWin.document.body.classList.add("visiting"); // 구경 중에 작은 창을 열었을 때
   pipWin.document.body.append(app);
   placeholder.hidden = false;
   pipNote.textContent = "";

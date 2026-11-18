@@ -1357,6 +1357,9 @@ body.pip.side-mode .side {
   color: #e9e3da;
 }
 
+/* 세로 보기에서 친구 방 구경 중: '내 방으로' 줄을 늘 보이게 (마우스를 올리지 않아도) */
+body.pip.side-mode.visiting .visit-bar { opacity: 1; }
+
 /* 세로 보기에서는 방 바꾸기·꾸미기 버튼을 숨겨 자리를 아낌 */
 body.pip.side-mode .room-picker,
 body.pip.side-mode #edit-btn,
