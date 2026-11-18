@@ -3509,13 +3509,27 @@ function drawObjects() {
   drawOrder = [];
   // 옮기는 중인 가구(와 그 위의 물건)는 맨 마지막에 그려서 가려지지 않게 합니다.
   const lifted = drag && !drag.wall ? [drag.item, ...drag.carried.map((c) => c.o)] : [];
-  const list = objects.filter((item) => !lifted.includes(item)).map((item) => ({ fp: footprint(item), draw: () => {
+  const shown = objects.filter((item) => !lifted.includes(item));
+  // 받침 가구(테이블·수납장 등) 위에 올린 물건: 바닥 자리가 받침과 겹쳐 앞뒤를 가릴 수 없으므로
+  // 항상 받침을 그린 바로 다음에 그림 (그러지 않으면 가끔 상판에 가려짐)
+  const baseOf = new Map();
+  for (const it of shown) {
+    if (!(it.z > 0)) continue;
+    const base = shown.find((o) => o !== it && o.surface && Math.abs(it.z - (o.z + o.surface)) < 0.01 && centerOn(it, o));
+    if (base) baseOf.set(it, base);
+  }
+  const drawOne = (item) => {
     drawItem(item);
     drawOrder.push(item);
     if (item.sleep) drawSleeper();
     if (hero.seat === item && ownsRoom()) drawHero(); // 방석 위에 앉은 캐릭터
     if (pet.on === item && petVisible()) drawPet();   // 침대·캣타워 위의 반려동물
-  } }));
+    // 이 가구 위에 올린 물건 (뒤쪽부터)
+    const tops = shown.filter((o) => baseOf.get(o) === item)
+      .sort((a, b) => (footprint(a).x + footprint(a).y) - (footprint(b).x + footprint(b).y));
+    for (const t of tops) drawOne(t);
+  };
+  const list = shown.filter((item) => !baseOf.has(item)).map((item) => ({ fp: footprint(item), draw: () => drawOne(item) }));
   if (hero.mode !== "sleep" && !(hero.seat && items.includes(hero.seat)) && ownsRoom()) {
     list.push({ fp: { x: hero.x - 1.5, y: hero.y - 1.5, w: 3, d: 3 }, draw: drawHero });
   }
