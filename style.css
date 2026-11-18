@@ -1653,3 +1653,24 @@ body.pip.side-mode #shop-btn { display: none; }
 .notice-list li.new span { font-weight: 600; }
 .notice-list li.new span::before { color: #d0573f; content: "● "; }
 .notice-empty { justify-content: center !important; color: #9a9087; }
+
+/* 업데이트 공지 창 */
+.news-card { max-width: 420px; gap: 10px; }
+.news-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.news-title { margin: 0; font-size: 18px; }
+.news-day { color: #9a9087; font-size: 12px; }
+
+.news-body {
+  max-height: 60vh;
+  overflow-y: auto;
+  color: #6b625a;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.news-body b { color: #3a3632; }
+.news-body ul { margin: 3px 0 10px; padding-left: 18px; }
+
+/* 누르면 다시 볼 수 있는 알림 (업데이트 공지) */
+.notice-list li.link { cursor: pointer; }
+.notice-list li.link:hover span { text-decoration: underline; }

@@ -5023,7 +5023,9 @@ const bellBtn = byId("bell-btn"), bellBadge = byId("bell-badge"), noticePanel = 
 
 function notify(text, opts = {}) {
   save.notices = save.notices || [];
-  save.notices.unshift({ at: Date.now(), text, read: false });
+  const n = { at: Date.now(), text, read: false };
+  if (opts.news) n.news = opts.news; // 업데이트 공지: 누르면 공지 창을 다시 엶
+  save.notices.unshift(n);
   save.notices.length = Math.min(save.notices.length, NOTICE_MAX);
   Save.save(save);
   if (opts.toast !== false) toast(text);
@@ -5056,7 +5058,8 @@ function renderNotices() {
   }
   for (const n of list) {
     const li = document.createElement("li");
-    li.className = n.read ? "" : "new";
+    li.className = (n.read ? "" : "new") + (n.news ? " link" : "");
+    if (n.news && typeof News !== "undefined") li.addEventListener("click", () => News.open(n.news));
     const text = document.createElement("span");
     text.textContent = n.text;
     const at = document.createElement("small");

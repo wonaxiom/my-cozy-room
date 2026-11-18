@@ -208,5 +208,6 @@ const Cloud = (() => {
     loadProfile,
     isSignedIn: () => !!user,
     userId: () => (user ? user.id : null),
+    client: () => (user && ready ? client : null), // 로그인하고 맞춰진 뒤에만 (공지 불러오기 등)
   };
 })();
