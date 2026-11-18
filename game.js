@@ -2760,6 +2760,33 @@ function outerMap(look, rows, frame, gender, hair) {
   return set;
 }
 
+// GPT 옷 그림(outfit-art.js): 글자를 캐릭터 그림 palette에 합쳐 둠
+if (typeof OUTFIT_ART !== "undefined") Object.assign(HERO_ART.palette, OUTFIT_ART.palette);
+
+// 입은 아우터에 GPT 옷 그림이 있으면, 그 동작 그림의 턱 아래 몸통을 옷 층으로 바꾼 줄들을 돌려줌
+function outfitRows(rows, look, gender, hair, frame) {
+  const outer = look.outer && OUTERS.find((o) => o.id === look.outer);
+  const art = outer && outer.art && typeof OUTFIT_ART !== "undefined" && OUTFIT_ART.outfits[outer.art];
+  const lay = art && art[gender] && art[gender][frame];
+  const head = lay && heroArtHead(gender, hair, frame);
+  if (!head) return null;
+  const W = Math.max(...rows.map((r) => r.length));
+  const out = rows.map((r) => [...r]);
+  lay.rows.forEach((line, j) => [...line].forEach((ch, i) => {
+    if (ch === ".") return;
+    const x = head[0] + lay.x + i, y = head[1] + lay.y + j;
+    if (y < 0 || x < 0 || x >= W) return;
+    while (out.length <= y) out.push([]);
+    const row = out[y];
+    while (row.length < W) row.push(".");
+    if (ch === "_") { const p = HERO_ART.palette[row[x]]; if (!p || p[1] !== "hair") row[x] = "."; } // 옷이 덮지 않는 몸통 칸은 지움 (뒤 머리카락은 남김)
+    else row[x] = ch;
+  }));
+  out.base = OUTFIT_ART.base[outer.art];
+  out.outer = outer;
+  return out.map((r) => r.join(""));
+}
+
 function heroArtCanvas(name, lookIn, flip) {
   const look = normLook(lookIn);
   const gender = look.gender === "female" ? "female" : "male";
@@ -2770,7 +2797,9 @@ function heroArtCanvas(name, lookIn, flip) {
   const key = [gender, hair, frame, colors.H, colors.S, colors.C, colors.P, look.eyes, look.mouth, look.bottom, look.acc, look.outer, look.head, flip].join("|");
   if (heroArtCache.has(key)) return heroArtCache.get(key);
   if (heroArtCache.size > 200) heroArtCache.clear();
-  const rows = set[frame];
+  const dressed = outfitRows(set[frame], look, gender, hair, frame); // GPT 옷 그림을 입었으면 몸통을 바꾼 줄
+  const outfit = dressed && look.outer && OUTERS.find((o) => o.id === look.outer);
+  const rows = dressed || set[frame];
   const w = Math.max(...rows.map((r) => r.length)), h = rows.length;
   const c = document.createElement("canvas");
   c.width = w;
@@ -2781,8 +2810,9 @@ function heroArtCanvas(name, lookIn, flip) {
     g.fillStyle = color;
     g.fillRect(flip ? w - 1 - x : x, y, 1, 1);
   };
-  const outerAt = outerMap(look, rows, frame, gender, hair); // 아우터로 덮이는 칸 ("x,y" → 원래 부위)
-  const base = HERO_ART.genders[gender].base;
+  const outerAt = outfit ? null : outerMap(look, rows, frame, gender, hair); // (GPT 옷 그림이 없을 때) 아우터로 덮이는 칸
+  const base = outfit ? Object.assign({}, HERO_ART.genders[gender].base, OUTFIT_ART.base[outfit.art]) : HERO_ART.genders[gender].base;
+  if (outfit) target.outer = outfit.color;
   rows.forEach((row, y) => [...row].forEach((ch, x) => {
     const p = HERO_ART.palette[ch];
     if (!p) return;

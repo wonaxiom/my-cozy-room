@@ -484,11 +484,12 @@ const BOTTOMS = [
 // color: 기본 색, dark: 그늘·띠 색, light: 밝은 부분
 // 아우터 (상의 위에 걸침. 상점 '옷 › 아우터'에서 사고 하나만 입음)
 // kind: cardigan·jacket(긴소매, 앞이 열려 안의 상의가 보임), vest(소매 없음)
+// art: GPT 옷 그림 이름 (outfit-art.js). 있으면 그 그림으로 몸통을 바꾸고, 없으면 상의 위에 색만 칠함
 const OUTERS = [
   { id: "cardiganBeige", name: "카멜 가디건", price: 150, kind: "cardigan", color: "#c49a6c" },
   { id: "cardiganPink", name: "분홍 가디건", price: 150, kind: "cardigan", color: "#eab3c0" },
-  { id: "denimJacket", name: "청재킷", price: 200, kind: "jacket", color: "#6f8fb8" },
-  { id: "blackJacket", name: "검정 재킷", price: 220, kind: "jacket", color: "#3e3e46" },
+  { id: "denimJacket", name: "청재킷", price: 200, kind: "jacket", color: "#6f8fb8", art: "jacket" },
+  { id: "blackJacket", name: "검정 재킷", price: 220, kind: "jacket", color: "#3e3e46", art: "jacket" },
   { id: "knitVest", name: "니트 조끼", price: 120, kind: "vest", color: "#b9a37a" },
   { id: "paddingVest", name: "패딩 조끼", price: 180, kind: "vest", color: "#7d9c8a" },
 ];
