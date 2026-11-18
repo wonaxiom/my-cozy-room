@@ -3092,6 +3092,7 @@ function drawSleeper() {
   const p = project(...pillowPos());
   const b = bedItem();
   if (useHeroArt() ? drawLying(b, p) : drawLyingSimple(b, p)) return;
+  if (!b.parts) { drawHeadTowardViewer(b, p); return; }
   // 머리만 그린 뒤, 베개보다 앞(화면 아래)에 있는 잠자리 부분을 다시 그려 머리가 베개에 묻히게 함
   drawHeroFrame("sleep", Math.round(p.x), Math.round(p.y), false);
   drawBedFront(b);
@@ -3141,6 +3142,25 @@ function drawLying(b, p) {
   const lift = 3; // 머리 가운데가 베개 윗면보다 얼마나 위에 있는지 (칸)
   ctx.drawImage(c, Math.round(p.x - cx / 3), Math.round(p.y - lift - at[1] / 3), c.width / 3, c.height / 3);
   return true; // 이불은 덮지 않고 이불 위에 누움
+}
+
+// 베개가 앞쪽(보는 쪽)인 그림 침대: 머리 꼭대기가 보는 쪽을 향하게, 잠든 머리를 거꾸로 돌려 몸이 뻗은 방향에 맞춤
+// (누워서 머리를 이쪽으로 두면 정수리가 앞, 얼굴은 거꾸로 보임. 몸은 이불 그림 속)
+function drawHeadTowardViewer(b, p) {
+  const f = footprint(b);
+  const [px, py, pz] = pillowPos();
+  const c0 = project(f.x + f.w / 2, f.y + f.d / 2, pz), c1 = project(px, py, pz);
+  const crown = Math.atan2(c1.y - c0.y, c1.x - c0.x); // 화면에서 정수리가 향할 방향
+  const angle = crown + Math.PI / 2; // 똑바로 선 머리(정수리 위쪽)를 그 방향으로
+  let h;
+  if (useHeroArt()) h = heroArtCanvas("sleep", save.look, false).height / 3;
+  else if (normLook(save.look).head === "big") h = simpleHeroCanvas("sleep", save.look).c.height / RES;
+  else h = heroRows("sleep", save.look).length;
+  ctx.save();
+  ctx.translate(p.x, p.y - 2);
+  ctx.rotate(angle);
+  drawHeroFrame("sleep", 0, h / 2, false);
+  ctx.restore();
 }
 
 // 베개보다 확실히 앞에 있는 잠자리 상자들
