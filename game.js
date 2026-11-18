@@ -3146,19 +3146,20 @@ function drawLying(b, p) {
 
 // 베개가 앞쪽(보는 쪽)인 그림 침대: 머리 꼭대기가 보는 쪽을 향하게, 잠든 머리를 거꾸로 돌려 몸이 뻗은 방향에 맞춤
 // (누워서 머리를 이쪽으로 두면 정수리가 앞, 얼굴은 거꾸로 보임. 몸은 이불 그림 속)
-// ver.세밀은 GPT 그림(lie-front-art.js: 정수리가 왼쪽 아래)을 쓰고, 정수리가 오른쪽이면 좌우로 뒤집음
+// ver.세밀은 GPT 전신 그림(lie-front-art.js: 머리 오른쪽 아래, 발 왼쪽 위)을 쓰고, 머리가 왼쪽이면 좌우로 뒤집음
 const lieFrontCache = new Map();
 function lieFrontCanvas(look, flip) {
   const art = typeof LIE_FRONT_ART !== "undefined" && LIE_FRONT_ART.heads[look.hair];
   if (!art) return null;
   const colors = heroColors(look);
-  const key = [look.hair, colors.H, colors.S, flip].join("|");
+  const pants = findBy(BOTTOMS, look.bottom).type === "pants";
+  const key = [look.hair, colors.H, colors.S, colors.C, colors.P, pants, flip].join("|");
   if (lieFrontCache.has(key)) return lieFrontCache.get(key);
   const w = Math.max(...art.rows.map((r) => r.length)), h = art.rows.length;
   const c = document.createElement("canvas");
   c.width = w; c.height = h;
   const g = c.getContext("2d");
-  const target = { hair: colors.H, skin: colors.S };
+  const target = { hair: colors.H, skin: colors.S, leg: pants ? colors.P : colors.S, top: colors.C, bottom: colors.P }; // 긴 바지면 다리도 바지 색
   art.rows.forEach((row, y) => [...row].forEach((ch, x) => {
     const pc = LIE_FRONT_ART.palette[ch];
     if (!pc) return;
@@ -3171,14 +3172,36 @@ function lieFrontCanvas(look, flip) {
   return out;
 }
 
+// 뒤쪽 그림의 앞 머리판(data.js backFront)만 잘라 다시 그림. 돌려서 뒤집혔으면 다각형도 뒤집음
+function redrawBackFront(b) {
+  const img = itemImage(b);
+  if (!b.backFront || !backView(b) || !img) return;
+  const r = imageRect(b, img);
+  const mirror = swapped(b);
+  ctx.save();
+  ctx.beginPath();
+  b.backFront.forEach(([fx, fy], i) => {
+    const x = r.x + r.w * (mirror ? 1 - fx : fx), y = r.y + r.h * fy;
+    if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+  });
+  ctx.closePath();
+  ctx.clip();
+  drawMirrored(b, img, r);
+  ctx.restore();
+}
+
 function drawHeadTowardViewer(b, p) {
   const f = footprint(b);
   const [px, py, pz] = pillowPos();
   const c0 = project(f.x + f.w / 2, f.y + f.d / 2, pz), c1 = project(px, py, pz);
   if (useHeroArt()) {
-    const art = lieFrontCanvas(normLook(save.look), c1.x > c0.x);
+    const art = lieFrontCanvas(normLook(save.look), c1.x < c0.x);
     if (art) {
-      ctx.drawImage(art.c, Math.round(p.x - art.at[0] / 3), Math.round(p.y - 2 - art.at[1] / 3), art.c.width / 3, art.c.height / 3);
+      // 베개 자리에서 침대 안쪽(몸 쪽)으로 조금 들여 머리판 위로 머리가 보이게
+      const len = Math.hypot(c0.x - c1.x, c0.y - c1.y) || 1, IN = 3;
+      const hx = p.x + (c0.x - c1.x) / len * IN, hy = p.y - 3 + (c0.y - c1.y) / len * IN;
+      ctx.drawImage(art.c, Math.round(hx - art.at[0] / 3), Math.round(hy - art.at[1] / 3), art.c.width / 3, art.c.height / 3);
+      redrawBackFront(b);
       return;
     }
   }

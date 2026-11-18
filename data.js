@@ -1336,6 +1336,9 @@ Object.assign(FURNITURE, {
 ["bed", "futon", "mattress", "berth", "pinkBed", "bunkBed", "bunkBedWhite"].forEach((id) => {
   FURNITURE[id].imageBack = `img/furn/${id}Back.png`;
 });
+// 뒤쪽 그림에서 앞에 선 머리판 (0~1 비율 다각형). 누운 캐릭터 위에 다시 그려 머리가 머리판 뒤에 있게
+FURNITURE.bed.backFront = [[0.458, 0.526], [0.906, 0.244], [1, 0.27], [1, 1], [0.458, 1]];
+FURNITURE.pinkBed.backFront = [[0, 0.36], [0.104, 0.32], [0.458, 0.563], [0.458, 1], [0, 1]];
 
 // ---- 상점 세부 분류 ----------------------------------------------------
 // 가구는 스타일(style), 소품은 종류(kind)로 나눕니다. 상점 탭 아래 버튼으로 골라 볼 수 있어요.
