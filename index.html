@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>My Cozy Room</title>
   <!-- 파일 뒤의 ?v= 번호는 업데이트할 때마다 바꿉니다. (브라우저가 옛 파일을 쓰지 않도록) -->
-  <link rel="stylesheet" href="style.css?v=20261118-02">
+  <link rel="stylesheet" href="style.css?v=20261118-03">
   <!-- 화면 전환에 꼭 필요한 규칙 (디자인 파일을 늦게 받아도 화면이 섞이지 않게) -->
   <style>
     .screen { display: none; }
@@ -201,9 +201,22 @@
             <div class="hud-left">
               <span class="pill coin-pill"><i class="coin"></i><span id="coins">0</span><span id="coin-pop" class="coin-pop"></span></span>
               <button type="button" class="pill friends-pill" id="friends-pill" hidden>친구<span id="friends-badge" class="badge" hidden></span></button>
+              <button type="button" class="pill bell-pill" id="bell-btn" aria-label="알림">
+                <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M8 1.5a4 4 0 0 0-4 4v2.6L2.6 10.6a.6.6 0 0 0 .5.9h9.8a.6.6 0 0 0 .5-.9L12 8.1V5.5a4 4 0 0 0-4-4zM6.3 12.7a1.8 1.8 0 0 0 3.4 0z" fill="currentColor"/></svg>
+                <span id="bell-badge" class="badge" hidden></span>
+              </button>
             </div>
             <button type="button" class="pill timer-pill" id="timer-pill" hidden></button>
             <span class="pill" id="clock">--:--</span>
+          </div>
+
+          <!-- 알림 모아 보기 (벨 버튼) -->
+          <div id="notice-panel" class="notice-panel" hidden>
+            <div class="notice-head">
+              <strong>알림</strong>
+              <button id="notice-clear" type="button">모두 지우기</button>
+            </div>
+            <ul id="notice-list" class="notice-list"></ul>
           </div>
 
           <!-- 상점 -->
@@ -371,20 +384,20 @@
   </main>
 
   <!-- 순서 중요: 데이터 → 방 → 저장 → 게임 → 집중 → 첫 화면 → 로그인 -->
-  <script src="data.js?v=20261118-02"></script>
-  <script src="rooms.js?v=20261118-02"></script>
-  <script src="save.js?v=20261118-02"></script>
-  <script src="hero-art.js?v=20261118-02"></script>
-  <script src="acc-art.js?v=20261118-02"></script>
-  <script src="pet-art.js?v=20261118-02"></script>
-  <script src="game.js?v=20261118-02"></script>
-  <script src="focus.js?v=20261118-02"></script>
-  <script src="side.js?v=20261118-02"></script>
-  <script src="start.js?v=20261118-02"></script>
-  <script src="friends.js?v=20261118-02"></script>
+  <script src="data.js?v=20261118-03"></script>
+  <script src="rooms.js?v=20261118-03"></script>
+  <script src="save.js?v=20261118-03"></script>
+  <script src="hero-art.js?v=20261118-03"></script>
+  <script src="acc-art.js?v=20261118-03"></script>
+  <script src="pet-art.js?v=20261118-03"></script>
+  <script src="game.js?v=20261118-03"></script>
+  <script src="focus.js?v=20261118-03"></script>
+  <script src="side.js?v=20261118-03"></script>
+  <script src="start.js?v=20261118-03"></script>
+  <script src="friends.js?v=20261118-03"></script>
   <!-- 구글 로그인 (Supabase) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-  <script src="cloud.js?v=20261118-02"></script>
-  <script src="gcal.js?v=20261118-02"></script>
+  <script src="cloud.js?v=20261118-03"></script>
+  <script src="gcal.js?v=20261118-03"></script>
 </body>
 </html>

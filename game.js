@@ -4949,6 +4949,75 @@ if (params.has("coins")) {
 // ---- 알림 --------------------------------------------------------
 const toastEl = byId("toast");
 let toastTimer = null;
+// ---- 알림 모아 보기 ----
+// 친구가 놀러 옴, 선물·하트, 메시지, 친구 요청, 방명록 같은 소식을 기록해 두고 벨 버튼으로 다시 봄.
+// 계정 저장에 같이 저장되어 다른 기기에서도 보임 (최근 50개)
+const NOTICE_MAX = 50;
+const bellBtn = byId("bell-btn"), bellBadge = byId("bell-badge"), noticePanel = byId("notice-panel");
+
+function notify(text, opts = {}) {
+  save.notices = save.notices || [];
+  save.notices.unshift({ at: Date.now(), text, read: false });
+  save.notices.length = Math.min(save.notices.length, NOTICE_MAX);
+  Save.save(save);
+  if (opts.toast !== false) toast(text);
+  renderNotices();
+}
+
+// "방금", "5분 전", "3시간 전", "11/16"
+function agoText(at) {
+  const m = Math.floor((Date.now() - at) / 60000);
+  if (m < 1) return "방금";
+  if (m < 60) return `${m}분 전`;
+  if (m < 24 * 60) return `${Math.floor(m / 60)}시간 전`;
+  const d = new Date(at);
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+function renderNotices() {
+  const list = save.notices || [];
+  const unread = list.filter((n) => !n.read).length;
+  bellBadge.hidden = !unread;
+  bellBadge.textContent = unread > 99 ? "99+" : String(unread);
+  if (noticePanel.hidden) return;
+  const ul = byId("notice-list");
+  ul.innerHTML = "";
+  if (!list.length) {
+    const li = document.createElement("li");
+    li.className = "notice-empty";
+    li.textContent = "새 알림이 없어요.";
+    ul.append(li);
+  }
+  for (const n of list) {
+    const li = document.createElement("li");
+    li.className = n.read ? "" : "new";
+    const text = document.createElement("span");
+    text.textContent = n.text;
+    const at = document.createElement("small");
+    at.textContent = agoText(n.at);
+    li.append(text, at);
+    ul.append(li);
+  }
+  byId("notice-clear").hidden = !list.length;
+}
+
+function toggleNotices(open = noticePanel.hidden) {
+  noticePanel.hidden = !open;
+  bellBtn.classList.toggle("active", open);
+  if (!open) {
+    // 닫을 때 읽음 처리 (열어 둔 동안은 새 알림 표시가 남아 있게)
+    if ((save.notices || []).some((n) => !n.read)) { save.notices.forEach((n) => { n.read = true; }); Save.save(save); }
+  }
+  renderNotices();
+}
+
+bellBtn.addEventListener("click", (e) => { e.stopPropagation(); toggleNotices(); });
+byId("notice-clear").addEventListener("click", () => { save.notices = []; Save.save(save); renderNotices(); });
+noticePanel.addEventListener("click", (e) => e.stopPropagation());
+// 바깥을 누르면 닫힘 (작은 창으로 옮겨져도 동작하게 방 화면 기준)
+app.addEventListener("click", () => { if (!noticePanel.hidden) toggleNotices(false); });
+renderNotices();
+
 function toast(message) {
   toastEl.textContent = message;
   toastEl.classList.add("show");

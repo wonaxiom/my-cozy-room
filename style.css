@@ -1573,3 +1573,64 @@ body.pip.side-mode #shop-btn { display: none; }
 .bday-pic { width: 96px; height: auto; image-rendering: pixelated; }
 .bday-title { margin: 0; font-size: 20px; }
 .bday-text { margin: 0; color: #6b625a; font-size: 14px; line-height: 1.5; }
+
+/* 알림 벨 버튼과 알림 목록 */
+.bell-pill {
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.bell-pill.active { color: var(--text); background: #ffffff; }
+.bell-pill svg { flex: none; width: 13px; height: 13px; }
+.bell-pill .badge { margin-left: 0; }
+
+.notice-panel {
+  position: absolute;
+  top: 36px;
+  left: 8px;
+  z-index: 6;
+  width: min(300px, calc(100% - 16px));
+  max-height: 60%;
+  overflow: auto;
+  padding: 10px 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(58, 54, 50, 0.15);
+}
+
+.notice-panel[hidden] { display: none; }
+
+.notice-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.notice-head button { padding: 3px 8px; font-size: 11px; }
+.notice-head button[hidden] { display: none; }
+
+.notice-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+}
+
+.notice-list li {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  padding: 7px 0;
+  border-top: 1px solid #f1ece5;
+}
+
+.notice-list li span { line-height: 1.4; }
+.notice-list li small { flex: none; color: #9a9087; }
+.notice-list li.new span { font-weight: 600; }
+.notice-list li.new span::before { color: #d0573f; content: "● "; }
+.notice-empty { justify-content: center !important; color: #9a9087; }

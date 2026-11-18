@@ -122,7 +122,7 @@ const Friends = (() => {
     ch.on("presence", { event: "join" }, ({ newPresences }) => {
       for (const p of newPresences || []) {
         if (p.role !== "visitor" || p.id === me.id) continue;
-        toast(`${p.name}님이 놀러 왔어요.`);
+        notify(`${p.name}님이 놀러 왔어요.`);
         if (!visiting) send(ch, Object.assign({ kind: "hero" }, moveState(hero))); // 지금 내 캐릭터 위치
       }
     });
@@ -252,13 +252,26 @@ const Friends = (() => {
       const { data: snaps } = await db.from("room_snapshots").select("user_id, data, updated_at").in("user_id", ids);
       (snaps || []).forEach((s) => { st.snaps[s.user_id] = s; });
     }
-    const { data: unread } = await db.from("messages").select("sender_id").eq("receiver_id", me.id).is("read_at", null);
+    const { data: unread } = await db.from("messages").select("id, sender_id, body").eq("receiver_id", me.id).is("read_at", null);
     st.unread = {};
     (unread || []).forEach((m) => { st.unread[m.sender_id] = (st.unread[m.sender_id] || 0) + 1; });
-    const { data: guest } = await db.from("guestbook").select("id").eq("owner_id", me.id).eq("seen", false);
+    const { data: guest } = await db.from("guestbook").select("id, author_id").eq("owner_id", me.id).eq("seen", false);
     st.newGuest = (guest || []).length;
+    // 밀린 소식은 알림 목록에 조용히 한 번씩만 남김 (작은 알림은 띄우지 않음)
+    for (const r of incoming()) noticeOnce(`req:${r.id}`, `${nameOf(r.from_id)}님이 친구 요청을 보냈어요.`);
+    for (const g of guest || []) noticeOnce(`gb:${g.id}`, `${nameOf(g.author_id)}님이 방명록에 글을 남겼어요.`);
+    for (const m of unread || []) noticeOnce(`msg:${m.id}`, `${nameOf(m.sender_id)}님이 메시지를 보냈어요: ${(m.body || "").length > 30 ? m.body.slice(0, 30) + "…" : m.body || ""}`);
     updateBadge();
     if (!panel.hidden && ["list", "requests"].includes(view)) render();
+  }
+
+  // 같은 소식은 한 번만 기록 (기록한 소식 번호를 저장에 기억, 최근 300개)
+  function noticeOnce(key, text) {
+    save.noticeKeys = save.noticeKeys || [];
+    if (save.noticeKeys.includes(key)) return;
+    save.noticeKeys.push(key);
+    if (save.noticeKeys.length > 300) save.noticeKeys.splice(0, save.noticeKeys.length - 300);
+    notify(text, { toast: false });
   }
 
   const friends = () => st.rows.filter((r) => r.status === "accepted").map((r) => ({ id: other(r), row: r, name: nameOf(other(r)) }));
@@ -285,7 +298,7 @@ const Friends = (() => {
       Save.save(save);
       updateCoins(gained);
       const who = [...new Set(hearts.map((h) => nameOf(h.giver_id)))].join(", ");
-      toast(`${who}님이 하트를 남겼어요. ${gained}코인을 받았어요.`);
+      notify(`${who}님이 하트를 남겼어요. ${gained}코인을 받았어요.`);
     }
     const { data: gifts } = await db.from("gifts")
       .update({ claimed: true }).eq("to_id", me.id).eq("claimed", false).select("from_id, kind, item_id, amount");
@@ -293,11 +306,11 @@ const Friends = (() => {
       if (g.kind === "coins") {
         save.coins += g.amount;
         updateCoins(g.amount);
-        toast(`${nameOf(g.from_id)}님이 ${g.amount}코인을 선물했어요.`);
+        notify(`${nameOf(g.from_id)}님이 ${g.amount}코인을 선물했어요.`);
       } else if (FURNITURE[g.item_id]) {
         save.inventory[g.item_id] = (save.inventory[g.item_id] || 0) + 1;
         if (g.item_id === "birthdayCake") { showBirthday(nameOf(g.from_id)); continue; } // 생일 축하 창
-        toast(`${nameOf(g.from_id)}님이 ${FURNITURE[g.item_id].name}을(를) 선물했어요. 보관함을 확인해 보세요.`);
+        notify(`${nameOf(g.from_id)}님이 ${FURNITURE[g.item_id].name}을(를) 선물했어요. 보관함을 확인해 보세요.`);
       }
     }
     if (gifts && gifts.length) {
@@ -319,7 +332,7 @@ const Friends = (() => {
     pic.append(c);
     box.hidden = false;
     hero.heartT = 1.2; // 캐릭터 머리 위에도 하트
-    toast(`${from}님이 생일 케이크를 선물했어요.`);
+    notify(`${from}님이 생일 케이크를 선물했어요.`);
   }
   document.getElementById("bday-ok").addEventListener("click", () => { document.getElementById("bday").hidden = true; });
 
@@ -352,6 +365,7 @@ const Friends = (() => {
       st.unread[msg.sender_id] = (st.unread[msg.sender_id] || 0) + 1;
       updateBadge();
       toast(`${nameOf(msg.sender_id)}: ${msg.body.length > 30 ? msg.body.slice(0, 30) + "…" : msg.body}`);
+      noticeOnce(`msg:${msg.id}`, `${nameOf(msg.sender_id)}님이 메시지를 보냈어요: ${msg.body.length > 30 ? msg.body.slice(0, 30) + "…" : msg.body}`);
       if (!panel.hidden && view === "list") render();
     }
   }
