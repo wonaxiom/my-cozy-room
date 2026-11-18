@@ -201,5 +201,6 @@ const Side = (() => {
   return {
     // 작은 창이 열리거나 닫힐 때 (닫히면 세로 보기도 끔)
     pip: (open) => { btn.hidden = !open; if (!open && on) set(false); },
+    open: (win) => set(true, win), // 세로 창: 열자마자 세로 보기
   };
 })();

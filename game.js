@@ -5176,44 +5176,62 @@ async function togglePip() {
     pipNote.textContent = "이 브라우저는 '항상 위' 창을 지원하지 않아요. 최신 크롬이나 엣지에서 열어 주세요.";
     return;
   }
-
+  let win;
   try {
     // preferInitialWindowPlacement: 지난번 크기(예: 세로 보기로 길게 늘인 크기)를 기억하지 않고 기본 크기로 엶
-    pipWin = await documentPictureInPicture.requestWindow({ width: 380, height: Math.round(380 * H / W), preferInitialWindowPlacement: true });
+    win = await documentPictureInPicture.requestWindow({ width: 380, height: Math.round(380 * H / W), preferInitialWindowPlacement: true });
   } catch (err) {
     pipNote.textContent = "작은 창을 열지 못했어요. 브라우저 설정을 확인해 주세요.";
     return;
   }
+  moveAppTo(win);
+  // 위 옵션을 모르는 예전 브라우저용: 열자마자 기본 크기로 한 번 더 맞춤
+  try { if (win.innerHeight > Math.round(380 * H / W) + 80) win.resizeTo(380, Math.round(380 * H / W) + 40); } catch (e) { /* 크기를 못 바꾸면 그대로 */ }
+}
 
-  // 스타일을 작은 창으로 복사
+// 세로 창: '항상 위'가 아닌 보통 창으로 세로 보기를 엶 (다른 창 뒤로 갈 수 있음)
+function openSideWindow() {
+  if (pipWin) pipWin.close();
+  const w = 390, sc = window.screen;
+  const left = (sc.availLeft || 0) + sc.availWidth - w, top = sc.availTop || 0;
+  const win = window.open("", "cozy-side", `popup,width=${w},height=${sc.availHeight},left=${left},top=${top}`);
+  if (!win) { pipNote.textContent = "세로 창을 열지 못했어요. 브라우저의 팝업 차단을 풀어 주세요."; return; }
+  win.document.open();
+  win.document.write('<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body></body></html>');
+  win.document.close();
+  moveAppTo(win);
+  if (typeof Side !== "undefined") Side.open(win); // 바로 세로 보기로
+}
+
+// 방 화면(app)을 작은 창·세로 창으로 옮김 (닫히면 원래 자리로)
+function moveAppTo(win) {
+  pipWin = win;
+  // 스타일을 새 창으로 복사
   for (const sheet of document.styleSheets) {
     try {
-      const style = pipWin.document.createElement("style");
+      const style = win.document.createElement("style");
       style.textContent = [...sheet.cssRules].map((r) => r.cssText).join("\n");
-      pipWin.document.head.appendChild(style);
+      win.document.head.appendChild(style);
     } catch (e) {
-      const link = pipWin.document.createElement("link");
+      const link = win.document.createElement("link");
       link.rel = "stylesheet";
       link.href = sheet.href;
-      pipWin.document.head.appendChild(link);
+      win.document.head.appendChild(link);
     }
   }
-
-  pipWin.document.title = "My Cozy Room";
-  pipWin.document.addEventListener("keydown", onKey);
-  pipWin.document.body.classList.add("pip");
-  if (visiting) pipWin.document.body.classList.add("visiting"); // 구경 중에 작은 창을 열었을 때
-  pipWin.document.body.append(app);
+  win.document.title = "My Cozy Room";
+  win.document.addEventListener("keydown", onKey);
+  win.document.body.classList.add("pip");
+  if (visiting) win.document.body.classList.add("visiting"); // 구경 중에 창을 열었을 때
+  win.document.body.append(app);
   placeholder.hidden = false;
   pipNote.textContent = "";
   updatePipButton();
   if (typeof Side !== "undefined") Side.pip(true); // 세로 보기 버튼 보이기
-  // 위 옵션을 모르는 예전 브라우저용: 열자마자 기본 크기로 한 번 더 맞춤
-  try { if (pipWin.innerHeight > Math.round(380 * H / W) + 80) pipWin.resizeTo(380, Math.round(380 * H / W) + 40); } catch (e) { /* 크기를 못 바꾸면 그대로 */ }
   startLoop();
-
-  // 작은 창이 닫히면 원래 자리로 돌아오기
-  pipWin.addEventListener("pagehide", () => {
+  // 창이 닫히면 원래 자리로 돌아오기
+  win.addEventListener("pagehide", () => {
+    if (pipWin !== win) return;
     if (typeof Side !== "undefined") Side.pip(false);
     appHome.prepend(app);
     placeholder.hidden = true;
@@ -5222,8 +5240,11 @@ async function togglePip() {
     startLoop();
   });
 }
+// 원래 탭을 닫으면 세로 창도 닫음
+window.addEventListener("pagehide", () => { if (pipWin) pipWin.close(); });
 
 pipBtn.addEventListener("click", togglePip);
+byId("side-win-btn").addEventListener("click", openSideWindow);
 // 항상 위 작은 창을 못 여는 브라우저(휴대폰 등)에서는 버튼을 숨김
 if (!("documentPictureInPicture" in window)) pipBtn.hidden = true;
 
@@ -5333,3 +5354,8 @@ function startLoop() {
 }
 
 startLoop();
+// 창이 다른 창 뒤에 가려지면 브라우저가 화면 갱신을 멈출 수 있음: 1초 넘게 멈추면 대신 한 번씩 계산
+setInterval(() => {
+  const t = performance.now();
+  if (t - lastTick > 1500) { tick(Math.min(0.1, (t - lastTick) / 1000)); lastTick = t; }
+}, 1000);

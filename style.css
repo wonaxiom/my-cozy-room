@@ -1366,7 +1366,8 @@ body.pip.side-mode .room-picker,
 body.pip.side-mode #edit-btn,
 body.pip.side-mode #shop-btn { display: none; }
 
-.side-clock { padding: 4px 4px 0; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45); } /* 밝은 배경 사진 위에서도 읽히게 */
+/* 시계도 다른 칸처럼 어두운 카드에 (밝은 낮 배경·사진 위에서도 읽히게) */
+.side-clock { padding: 8px 10px; background: #3a3530; border-radius: 10px; }
 
 .side-time {
   font-size: 40px;
@@ -1674,3 +1675,10 @@ body.pip.side-mode #shop-btn { display: none; }
 /* 누르면 다시 볼 수 있는 알림 (업데이트 공지) */
 .notice-list li.link { cursor: pointer; }
 .notice-list li.link:hover span { text-decoration: underline; }
+
+/* 세로 창 버튼: 작은 창·세로 창 안과 휴대폰에서는 숨김 */
+body.pip #side-win-btn { display: none; }
+
+@media (max-width: 560px) {
+  #side-win-btn { display: none; }
+}
