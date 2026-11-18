@@ -3199,8 +3199,8 @@ function drawHeadTowardViewer(b, p) {
     const art = lieFrontCanvas(normLook(save.look), c1.x < c0.x);
     if (art) {
       // 베개 자리에서 침대 안쪽(몸 쪽)으로 조금 들여 머리판 위로 머리가 보이게
-      const len = Math.hypot(c0.x - c1.x, c0.y - c1.y) || 1, IN = 3;
-      const hx = p.x + (c0.x - c1.x) / len * IN, hy = p.y - 3 + (c0.y - c1.y) / len * IN;
+      const len = Math.hypot(c0.x - c1.x, c0.y - c1.y) || 1, IN = 1;
+      const hx = p.x + (c0.x - c1.x) / len * IN, hy = p.y - 4.5 + (c0.y - c1.y) / len * IN;
       ctx.drawImage(art.c, Math.round(hx - art.at[0] / 3), Math.round(hy - art.at[1] / 3), art.c.width / 3, art.c.height / 3);
       redrawBackFront(b);
       return;
