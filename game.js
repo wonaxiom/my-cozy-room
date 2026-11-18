@@ -2352,6 +2352,8 @@ function heroRows(name, lookIn = save.look) {
     put(3, 1, "X");
   }
 
+  // 아우터 (ver.하찮): 몸통 양옆, 긴소매면 어깨까지
+  const outerDef = look.outer && OUTERS.find((o) => o.id === look.outer);
   // 옷
   if (!headOnly) {
     const top = findBy(TOPS, look.top);
@@ -2361,6 +2363,10 @@ function heroRows(name, lookIn = save.look) {
     const bottom = findBy(BOTTOMS, look.bottom);
     if (bottom.type === "shorts") rows[12] = rows[12].map((ch) => (ch === "P" ? "S" : ch));
     if (bottom.type === "skirt") rows[12] = ".PPPPPPPP.".split("");
+    if (outerDef) {
+      for (let r = 7; r <= 10; r++) for (const c of [2, 7]) if (rows[r][c] === "C" || rows[r][c] === "D") put(r, c, "J");
+      if (outerDef.kind !== "vest") for (const c of [1, 8]) if (rows[8][c] === ".") put(8, c, "J"); // 어깨에서 내려오는 소매
+    }
   }
 
   const out = rows.map((r) => r.join(""));
@@ -2384,6 +2390,7 @@ function heroColors(lookIn = save.look) {
     G: "#8c7462",   // 안경테
     L: "#cfe5f2",   // 안경 렌즈
     K: "#1f1f24",
+    J: (OUTERS.find((o) => o.id === look.outer) || { color: "#000" }).color, // 아우터
     X: acc ? acc.color : "#000",   // 장신구
     Y: acc ? acc.dark : "#000",
     M: "#c76b6b",
@@ -2713,6 +2720,46 @@ function heroArtSet(gender, hair) {
 }
 const SWITCH_BOX_X = 46; // ver.세밀 "switch" 그림에서 스위치 상자가 시작하는 칸
 
+// 아우터가 덮는 칸 찾기 (ver.세밀): 몸통 옷은 가운데 열린 줄(안의 상의)만 빼고, 긴소매면 어깨에서 손목까지 팔도
+function outerMap(look, rows, frame, gender, hair) {
+  const outer = look.outer && OUTERS.find((o) => o.id === look.outer);
+  if (!outer || frame === "sleep" || frame === "lie") return null;
+  const partAt = (x, y) => { const p = HERO_ART.palette[(rows[y] || "")[x]]; return p ? p[1] : null; };
+  const set = new Set();
+  set.color = outer.color;
+  const back = frame === "back" || frame === "chairBack";
+  const open = outer.kind === "jacket" ? 0.12 : outer.kind === "cardigan" ? 0.18 : 0.22; // 열린 앞섶 너비 (비율)
+  // 몸통: 줄마다 상의 칸의 가운데를 열어 둠 (뒷모습은 모두 덮음)
+  const tops = [];
+  rows.forEach((row, y) => {
+    let x0 = -1, x1 = -1;
+    for (let x = 0; x < row.length; x++) if (partAt(x, y) === "top") { if (x0 < 0) x0 = x; x1 = x; tops.push([x, y]); }
+    if (x0 < 0) return;
+    const mid = (x0 + x1) / 2 + (x1 - x0) * 0.12, half = Math.max(1, (x1 - x0) * open / 2); // 3/4 앞모습이라 가운데를 조금 오른쪽으로
+    for (let x = x0; x <= x1; x++) if (partAt(x, y) === "top" && (back || Math.abs(x - mid) > half)) set.add(x + "," + y);
+  });
+  if (outer.kind === "vest") return set;
+  // 긴소매: 상의에 닿아 있는 피부(팔) 덩어리를 상의에서부터 따라가며 칠함. 끝 3칸(손)은 남김
+  const head = heroArtHead(gender, hair, frame);
+  const chin = head ? head[1] + 25 : 0;
+  const isArm = (x, y) => y > chin && partAt(x, y) === "skin";
+  const dist = new Map(), q = [];
+  for (const [x, y] of tops) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    const k = (x + dx) + "," + (y + dy);
+    if (isArm(x + dx, y + dy) && !dist.has(k)) { dist.set(k, 1); q.push([x + dx, y + dy]); }
+  }
+  for (let i = 0; i < q.length; i++) {
+    const [x, y] = q[i], d = dist.get(x + "," + y);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const k = (x + dx) + "," + (y + dy);
+      if (isArm(x + dx, y + dy) && !dist.has(k)) { dist.set(k, d + 1); q.push([x + dx, y + dy]); }
+    }
+  }
+  const far = Math.max(0, ...dist.values());
+  for (const [k, d] of dist) if (d <= far - 3) set.add(k);
+  return set;
+}
+
 function heroArtCanvas(name, lookIn, flip) {
   const look = normLook(lookIn);
   const gender = look.gender === "female" ? "female" : "male";
@@ -2720,7 +2767,7 @@ function heroArtCanvas(name, lookIn, flip) {
   const set = heroArtSet(gender, hair);
   const frame = set[name] ? name : "idle";
   const colors = heroColors(look);
-  const key = [gender, hair, frame, colors.H, colors.S, colors.C, colors.P, look.eyes, look.mouth, look.bottom, look.acc, look.head, flip].join("|");
+  const key = [gender, hair, frame, colors.H, colors.S, colors.C, colors.P, look.eyes, look.mouth, look.bottom, look.acc, look.outer, look.head, flip].join("|");
   if (heroArtCache.has(key)) return heroArtCache.get(key);
   if (heroArtCache.size > 200) heroArtCache.clear();
   const rows = set[frame];
@@ -2734,13 +2781,16 @@ function heroArtCanvas(name, lookIn, flip) {
     g.fillStyle = color;
     g.fillRect(flip ? w - 1 - x : x, y, 1, 1);
   };
+  const outerAt = outerMap(look, rows, frame, gender, hair); // 아우터로 덮이는 칸 ("x,y" → 원래 부위)
+  const base = HERO_ART.genders[gender].base;
   rows.forEach((row, y) => [...row].forEach((ch, x) => {
     const p = HERO_ART.palette[ch];
     if (!p) return;
     const [orig, part] = p;
     // 손 뻗는 그림(불 켜고 끄기·축음기)은 손에 든 스위치 상자를 빼고 그림 (손끝보다 바깥 칸)
     if (frame === "switch" && x >= SWITCH_BOX_X && part !== "skin") return;
-    px(x, y, target[part] ? recolor(orig, HERO_ART.genders[gender].base[part] || orig, target[part]) : orig);
+    if (outerAt && outerAt.has(x + "," + y)) { px(x, y, recolor(orig, base[part] || orig, outerAt.color)); return; }
+    px(x, y, target[part] ? recolor(orig, base[part] || orig, target[part]) : orig);
   }));
   if (!(frame === "lie" && findBy(BOTTOMS, look.bottom).type === "skirt")) drawBottomArt(look, rows, w, h, px, colors, HERO_ART.genders[gender].base); // 누우면 치마는 이불 속
   drawFaceArt(look, rows, frame, gender, px, colors);
@@ -4731,8 +4781,29 @@ function renderLook() {
   // 상의 · 하의 · 액세서리 · 아우터로 나눠 봄
   subTabs("look", [{ id: "top", name: "상의" }, { id: "bottom", name: "하의" }, { id: "acc", name: "액세서리" }, { id: "outer", name: "아우터" }]);
   const sub = shopSub.look;
+  // 아우터: 하나만 입을 수 있고, 다시 누르면 벗음
   if (sub === "outer") {
-    sectionTitle("아우터는 곧 나올 예정이에요.");
+    for (const item of OUTERS) {
+      const look = Object.assign({}, save.look, { outer: item.id });
+      const owned = save.outfits.includes(item.id);
+      const on = save.look.outer === item.id;
+      let btn;
+      if (!owned) {
+        btn = makeButton("구매", () => confirmBuy(item.name, item.price, makeHeroPreview(look), () => {
+          if (save.coins < item.price) return;
+          save.coins -= item.price;
+          save.outfits.push(item.id);
+          updateCoins();
+          setLook({ outer: item.id });
+          toast(`${withObject(item.name)} 샀어요.`);
+        }));
+        btn.dataset.price = item.price;
+      } else {
+        btn = makeButton(on ? "벗기" : "입기", () => setLook({ outer: on ? null : item.id }));
+      }
+      shopList.append(makeCard(makeHeroPreview(look), item.name,
+        priceHtml(item.price) + (owned ? (on ? "<span>입는 중</span>" : "<span>보유</span>") : ""), btn));
+    }
     return;
   }
   for (const [list, key] of [[TOPS, "top"], [BOTTOMS, "bottom"]]) {

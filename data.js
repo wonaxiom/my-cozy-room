@@ -482,6 +482,17 @@ const BOTTOMS = [
 // 고른 도시의 좌표로 날씨를 받아옵니다. 도시를 추가하려면 이름과 위도(lat)·경도(lon)를 적으세요.
 // 장신구 (상점 '옷' 탭에서 사고, 시작 설정·캐릭터 변경에서 골라 씀)
 // color: 기본 색, dark: 그늘·띠 색, light: 밝은 부분
+// 아우터 (상의 위에 걸침. 상점 '옷 › 아우터'에서 사고 하나만 입음)
+// kind: cardigan·jacket(긴소매, 앞이 열려 안의 상의가 보임), vest(소매 없음)
+const OUTERS = [
+  { id: "cardiganBeige", name: "카멜 가디건", price: 150, kind: "cardigan", color: "#c49a6c" },
+  { id: "cardiganPink", name: "분홍 가디건", price: 150, kind: "cardigan", color: "#eab3c0" },
+  { id: "denimJacket", name: "청재킷", price: 200, kind: "jacket", color: "#6f8fb8" },
+  { id: "blackJacket", name: "검정 재킷", price: 220, kind: "jacket", color: "#3e3e46" },
+  { id: "knitVest", name: "니트 조끼", price: 120, kind: "vest", color: "#b9a37a" },
+  { id: "paddingVest", name: "패딩 조끼", price: 180, kind: "vest", color: "#7d9c8a" },
+];
+
 const ACCESSORIES = [
   { id: "cap", name: "야구 모자", price: 120, color: "#d9534f", dark: "#a83c39", light: "#ee8a86" },
   { id: "beanie", name: "비니", price: 120, color: "#e0b84f", dark: "#b8913a", light: "#f2d27e" },
