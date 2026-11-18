@@ -2915,6 +2915,7 @@ function drawHero() {
     ctx.restore();
   } else {
     drawHeroFrame(frame, p.x, p.y - jump, flip);
+    if (onChair) drawSeatFront(hero.seat); // 팔걸이·방석 앞쪽이 몸을 살짝 가림
   }
   if (rock) ctx.restore();
   if (!useHeroArt() && hero.mode === "read") drawActivityIcon(p);
@@ -2935,8 +2936,34 @@ function rockAround(item, angle) {
 }
 
 // 의자 등받이(앉는 면보다 높고, 앉는 사람보다 화면 앞쪽에 있는 상자)만 다시 그림
+// 그림 가구의 일부(그림 안 칸들, 0~1 비율 [x0, y0, x1, y1])만 잘라 다시 그림. 돌려서 뒤집히면 칸도 뒤집음
+function redrawImageParts(item, rects) {
+  const img = itemImage(item);
+  if (!rects || !img) return;
+  const r = imageRect(item, img);
+  const mirror = swapped(item);
+  ctx.save();
+  ctx.beginPath();
+  for (const [fx0, fy0, fx1, fy1] of rects) {
+    const x0 = r.x + r.w * (mirror ? 1 - fx1 : fx0), x1 = r.x + r.w * (mirror ? 1 - fx0 : fx1);
+    ctx.rect(x0, r.y + r.h * fy0, x1 - x0, r.h * (fy1 - fy0));
+  }
+  ctx.clip();
+  drawMirrored(item, img, r);
+  ctx.restore();
+}
+
+// 앞을 보고 앉은 캐릭터 위로 가까운 팔걸이·방석 앞쪽을 다시 그려, 의자 "안에" 앉은 것처럼 (data.js frontClip)
+function drawSeatFront(item) {
+  if (!item.parts) redrawImageParts(item, item.frontClip);
+}
+
 function drawSeatBack(item) {
-  if (!item.parts) return; // 그림 가구는 상자로 다시 그릴 수 없음
+  if (!item.parts) {
+    // 그림 의자: data.js의 backClip(등받이 칸)만 캐릭터 위에 다시 그림
+    if (item.backClip) redrawImageParts(item, [item.backClip]);
+    return;
+  }
   const v = seatDir(item);
   const f = footprint(item);
   const cx = f.w / 2 + (f.x - item.x), cy = f.d / 2 + (f.y - item.y);
