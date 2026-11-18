@@ -1179,6 +1179,14 @@ button.danger {
   font-size: 12px;
 }
 
+/* 친구 창이 좁을 때(세로 보기, 휴대폰): 이름 줄 아래로 버튼을 내림 */
+#friends-body { container-type: inline-size; }
+
+@container (max-width: 420px) {
+  .friend-row { flex-wrap: wrap; row-gap: 6px; }
+  .friend-actions { flex: 1 0 100%; justify-content: flex-start; padding-left: 46px; }
+}
+
 .sub-head {
   display: flex;
   align-items: center;

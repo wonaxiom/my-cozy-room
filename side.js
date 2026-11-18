@@ -10,7 +10,7 @@ const Side = (() => {
   const panel = $("side");
   const btn = $("side-btn");
   const WEEK = ["일", "월", "화", "수", "목", "금", "토"];
-  const SIDE_SIZE = { width: 300 }; // 세로 보기 창 너비 (높이는 화면 높이에 꽉 맞춤)
+  const SIDE_SIZE = { width: 390 }; // 세로 보기 창 너비 (높이는 화면 높이에 꽉 맞춤)
   let on = false;
   let lastDay = "";
   let sel = "";      // 고른 날짜 ("2026-11-20"). 비어 있으면 오늘
