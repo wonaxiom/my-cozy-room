@@ -19,7 +19,7 @@ def strip_small(a,n=25):
                 if len(pts)<n:
                     for py,px in pts: a[py,px]=0
     return a
-FR=['idle','blink','breathe','wave1','wave2']+[f'walk{i}' for i in range(1,9)]+['sitChair','sitFloor','water','switch','type','read','snack','back','chairSit','chairType','chairBack','stretch1','stretch2']
+FR=['idle','blink','breathe','wave1','wave2']+[f'walk{i}' for i in range(1,9)]+['sitChair','sitFloor','water','switch','type','read','snack','back','chairSit','chairType','chairBack','stretch1','stretch2','waterStand','readStand']
 def head_offset(ref, refchin, a):
     """ref(서기)의 머리가 a에서 어디 있는지: 머리 부분 색 비교로 찾기"""
     t=ref[:refchin].astype(int); tm=t[:,:,3]>0

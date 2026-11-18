@@ -51,7 +51,7 @@ def label_base(a,f,chin,oy,eyeb=None,ox=0):
                         for py,px in pts: L[py,px]='leg'
     return L
 def build(pre):
-    frames=[strip_small(load(B+f'{pre}_{i:02d}.png')) for i in range(26)]
+    frames=[strip_small(load(B+f'{pre}_{i:02d}.png')) for i in range(28)]
     idle=frames[0]; ii=headinfo(idle); back=frames[20]; bi=headinfo(back)
     xs=[x for y in range(10) for x in range(idle.shape[1]) if idle[y,x,3]]; hc=(min(xs)+max(xs)+1)/2
     xs=[x for y in range(10) for x in range(back.shape[1]) if back[y,x,3]]; hcb=(min(xs)+max(xs)+1)/2

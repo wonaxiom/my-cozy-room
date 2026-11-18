@@ -2858,6 +2858,8 @@ function drawHero() {
     // 의자가 있으면 의자에 앉아 타자, 없으면 바닥에서 노트북
     // (ver.세밀의 타자 그림은 무릎에 노트북을 들고 있어서, 책상 앞 의자에서는 앉은 그림을 씀)
     frame = hero.seat ? (useHeroArt() ? "sitChair" : "type") : "work";
+  } else if (hero.mode === "read" && !hero.seat) {
+    frame = "readStand"; // 책장 앞에서는 서서 책 읽기 (방석 위에서는 앉아서)
   } else if (hero.mode === "read" || hero.mode === "snack") {
     frame = hero.mode; // ver.세밀: 앉아서 책·간식 (ver.하찮은 가만히 그림)
   } else if (hero.mode === "sitChair") {
@@ -2879,7 +2881,7 @@ function drawHero() {
   } else if (hero.mode === "lamp") {
     frame = "switch"; // 손을 뻗어 스위치 누르기
   } else if (hero.mode === "water") {
-    frame = "water"; // 물뿌리개로 물 주기
+    frame = "waterStand"; // 서서 물뿌리개로 물 주기
   } else if (hero.blinkT < 0) {
     frame = "blink";
   } else if (Math.floor(time / 0.9) % 2) {
