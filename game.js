@@ -5400,16 +5400,22 @@ const installBtn = byId("install-btn"), appRow = byId("pf-app"), appStatus = byI
 let installEvent = null;
 const isIOS = () => /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 const isInstalledApp = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+// 줄은 늘 보이게 하고, 설치할 수 없을 때는 이유를 글로 안내 (버튼이 사라져 헷갈리지 않게)
 function updateInstallRow() {
-  if (isInstalledApp()) { appRow.hidden = true; return; }
-  if (installEvent) {
+  appRow.hidden = false;
+  if (isInstalledApp()) {
+    installBtn.hidden = true;
+    appStatus.textContent = "지금 앱으로 열려 있어요";
+  } else if (installEvent) {
     appRow.hidden = false; installBtn.hidden = false;
     appStatus.textContent = "아이콘으로 바로 열 수 있어요";
   } else if (isIOS()) {
     appRow.hidden = false; installBtn.hidden = true;
     appStatus.textContent = "사파리 아래 공유 버튼 → '홈 화면에 추가'";
   } else {
-    appRow.hidden = true; // 설치할 수 없는 브라우저이거나 이미 설치함
+    // 이미 설치했으면 크롬은 설치 신호를 다시 주지 않음. 설치를 지원하지 않는 브라우저도 마찬가지
+    installBtn.hidden = true;
+    appStatus.textContent = "이미 설치했거나, 설치를 지원하지 않는 브라우저예요";
   }
 }
 window.addEventListener("beforeinstallprompt", (e) => {
