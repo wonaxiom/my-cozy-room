@@ -779,7 +779,8 @@ const Friends = (() => {
   }
 
   // ---- 버튼 연결 ----
-  pill.addEventListener("click", () => (panel.hidden ? open(visiting ? "visitbook" : "list") : close()));
+  // 위쪽 [친구]는 언제나 내 친구 목록 (친구 방 방명록은 아래 [방명록] 버튼으로)
+  pill.addEventListener("click", () => (panel.hidden || view === "visitbook" ? open("list") : close()));
   $("friends-close").addEventListener("click", close);
   panel.querySelectorAll("#friends-tabs .tab").forEach((t) => t.addEventListener("click", () => show(t.dataset.view)));
   $("visit-heart").addEventListener("click", giveHeart);
