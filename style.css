@@ -1344,7 +1344,8 @@ body.pip .visit-title strong { color: #f4efe8; }
 /* ---- 세로 보기 (항상 위 작은 창, 화면 오른쪽에 길게) ---- */
 .side { display: none; }
 
-body.pip.side-mode .stage { flex: 0 0 auto; height: 200px; }
+/* 방 그림은 위쪽 코인·시계 줄 아래 남은 공간의 가운데에 */
+body.pip.side-mode .stage { flex: 0 0 auto; box-sizing: border-box; height: 232px; padding-top: 32px; }
 
 body.pip.side-mode .side {
   display: flex;
@@ -1365,7 +1366,7 @@ body.pip.side-mode .room-picker,
 body.pip.side-mode #edit-btn,
 body.pip.side-mode #shop-btn { display: none; }
 
-.side-clock { padding: 4px 4px 0; }
+.side-clock { padding: 4px 4px 0; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45); } /* 밝은 배경 사진 위에서도 읽히게 */
 
 .side-time {
   font-size: 40px;
@@ -1567,6 +1568,21 @@ body.pip.side-mode #shop-btn { display: none; }
 }
 
 .pf-gcal[hidden] { display: none; }
+
+/* 내 정보: 배경 사진 */
+.pf-bg {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.pf-bg button[hidden] { display: none; }
 .pf-gcal-name { font-weight: 600; }
 .pf-gcal-status { flex: 1; color: var(--muted, #8a8178); font-size: 12px; }
 
