@@ -1331,6 +1331,12 @@ Object.assign(FURNITURE, {
   trunk: { name: "가죽 트렁크", category: "prop", price: 90, kind: "goods", size: [9, 12, 8], image: "img/furn/trunk.png", imageSimple: "img/furn/s/trunk.png", surface: 8, hires: true },
 });
 
+// ---- 침대 반대 방향 그림 (돌리기 3·4번째 방향: 베개가 앞쪽) ----
+// ver.하찮 그림(imageSimpleBack)이 없으면 하찮에서는 두 방향 그림만 씀
+["bed", "futon", "mattress", "berth", "pinkBed", "canopyBed", "bunkBed", "bunkBedWhite"].forEach((id) => {
+  FURNITURE[id].imageBack = `img/furn/${id}Back.png`;
+});
+
 // ---- 상점 세부 분류 ----------------------------------------------------
 // 가구는 스타일(style), 소품은 종류(kind)로 나눕니다. 상점 탭 아래 버튼으로 골라 볼 수 있어요.
 // 새 가구를 추가할 때는 가구에 style: "antique"처럼 직접 적거나, 아래 표에 이름(id)을 넣으면 됩니다.

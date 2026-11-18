@@ -527,7 +527,7 @@ function backView(item) {
 
 // 다음 방향: 뒤쪽 그림이 없는 그림 가구는 두 방향(원래·뒤집기)만 오감
 function nextRot(item) {
-  const four = item.parts || item.imageBack || !item.image;
+  const four = item.parts || !item.image || !!backSrc(item);
   return (rotOf(item) + 1) % (four ? 4 : 2);
 }
 
