@@ -3629,7 +3629,7 @@ function hereOwner() {
 }
 
 function walkerVisible(w) {
-  return w.place === hereOwner() && (visiting || w.roomId === room.id);
+  return w.place === hereOwner() && (!w.roomId || w.roomId === room.id); // 같은 방에 있는 사람만
 }
 
 function placeWalker(w) {
@@ -5370,11 +5370,14 @@ window.addEventListener("pagehide", earn);
 // 구경하는 동안에는 저장·코인·타이머가 멈추고, 돌아오면 내 데이터로 되돌아갑니다.
 function visitSave(snap) {
   const roomId = ROOMS.some((r) => r.id === snap.roomId) ? snap.roomId : "studio";
+  // 친구가 가진 방 전부 (예전 정보에는 지금 방만 있음)
+  const rooms = Object.assign({}, snap.rooms || {}, { [roomId]: { layout: snap.layout, styles: snap.styles } });
+  const ids = ROOMS.map((r) => r.id).filter((id) => rooms[id]);
   return Object.assign(Save.defaults(), {
     roomId,
-    ownedRooms: [roomId],
-    layouts: { [roomId]: Array.isArray(snap.layout) ? snap.layout : [] },
-    roomStyles: { [roomId]: snap.styles || {} },
+    ownedRooms: ids,
+    layouts: Object.fromEntries(ids.map((id) => [id, Array.isArray(rooms[id].layout) ? rooms[id].layout : []])),
+    roomStyles: Object.fromEntries(ids.map((id) => [id, rooms[id].styles || {}])),
     lampOn: snap.lampOn !== false,
     look: snap.look || {},
     pet: snap.pet || null,
@@ -5382,7 +5385,7 @@ function visitSave(snap) {
     profile: { name: snap.name || "", city: snap.city || null },
     timer: snap.timer || { length: 25, mode: null, endAt: 0, remain: 0 },
     profileDone: true,
-    decorDone: { [roomId]: true }, // 친구 방은 친구가 꾸민 그대로
+    decorDone: Object.fromEntries(ids.map((id) => [id, true])), // 친구 방은 친구가 꾸민 그대로
   });
 }
 
@@ -5392,16 +5395,42 @@ function startVisit(friend, snap) {
   closeShop();
   if (typeof Focus !== "undefined") Focus.close();
   Save.locked = true; // 구경하는 동안 내 저장 데이터를 건드리지 않게
-  visiting = { id: friend.id, name: friend.name };
   save = visitSave(snap || {});
+  visiting = { id: friend.id, name: friend.name, home: save.roomId }; // home: 친구가 지금 있는 방
   save.look = normLook(save.look);
   setVisitingClass(true);
   byId("visit-name").textContent = `${friend.name || "친구"}의 방`;
   byId("title").textContent = `${friend.name || "친구"}의 방 · 구경 중`;
   setRoom(save.roomId);
   placeGuest();
+  renderVisitRooms();
   refreshWeather(true);
   toast(`${friend.name || "친구"}님 방에 놀러 왔어요. 노란 표시가 있는 캐릭터가 나예요.`);
+}
+
+// 친구가 방을 여러 개 가졌으면 방 이름 버튼으로 옮겨 다니며 구경
+function renderVisitRooms() {
+  const box = byId("visit-rooms");
+  box.innerHTML = "";
+  const list = ROOMS.filter((r) => save.ownedRooms.includes(r.id));
+  box.hidden = list.length < 2;
+  for (const r of list) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "visit-room" + (r.id === room.id ? " active" : "");
+    b.textContent = r.name;
+    b.addEventListener("click", () => visitRoom(r.id));
+    box.append(b);
+  }
+}
+
+function visitRoom(id) {
+  if (!visiting || id === room.id) return;
+  save.roomId = id;
+  setRoom(id);
+  placeGuest();
+  renderVisitRooms();
+  if (typeof Friends !== "undefined" && Friends.changeAwayRoom) Friends.changeAwayRoom(id);
 }
 
 // "친구 방 구경 중" 표시: 원래 창과 작은 창(위에 띄우기) 둘 다에 붙여야 '내 방으로' 줄이 보임

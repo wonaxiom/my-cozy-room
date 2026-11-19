@@ -1324,7 +1324,13 @@ button.danger {
   font-size: 14px;
 }
 
-body.visiting .visit-bar { display: flex; }
+body.visiting .visit-bar { display: flex; flex-wrap: wrap; }
+
+/* 친구 방 구경: 방 고르기 (방이 2개 이상일 때) */
+.visit-rooms { display: flex; flex-wrap: wrap; gap: 4px; }
+.visit-rooms[hidden] { display: none; }
+.visit-bar .visit-room { padding: 4px 10px; font-size: 12px; border-radius: 999px; }
+.visit-bar .visit-room.active { color: #ffffff; background: var(--text); border-color: var(--text); }
 
 body.visiting .toolbar,
 body.visiting .coin-pill,

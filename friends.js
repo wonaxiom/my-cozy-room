@@ -139,6 +139,7 @@ const Friends = (() => {
   }
 
   // 친구 방: 방 주인이 접속해 있으면 주인 캐릭터의 실제 움직임을 따라가고, 다른 방문자도 보여줌
+  let ownerOnline = false;
   function joinAway(friend, roomId) {
     leaveAway();
     if (!db.channel) return;
@@ -155,7 +156,7 @@ const Friends = (() => {
     });
     ch.on("broadcast", { event: "move" }, ({ payload }) => {
       if (!payload) return;
-      if (payload.kind === "hero") applyMove(hero, payload);
+      if (payload.kind === "hero") { if (heroLive()) applyMove(hero, payload); }
       else if (payload.kind === "guest" && payload.id !== me.id) moveWalker(payload.id, payload);
     });
     ch.subscribe((status) => {
@@ -167,8 +168,20 @@ const Friends = (() => {
     setOwnerOnline(false);
   }
 
+  // 친구 캐릭터의 실제 움직임은 친구가 지금 있는 방(처음 들어온 방)을 볼 때만 따라감
+  const heroLive = () => ownerOnline && visiting && room.id === visiting.home;
+
+  // 구경 중 다른 방으로: 내 위치(방)를 다시 알리고, 다른 방문자는 같은 방에 있는 사람만 보임
+  function changeAwayRoom(roomId) {
+    setHeroRemote(heroLive());
+    if (!awayCh) return;
+    awayCh.track({ role: "visitor", id: me.id, name: myName(), look: mySave().look, roomId });
+    send(awayCh, Object.assign({ kind: "guest", id: me.id }, moveState(guest)));
+  }
+
   function setOwnerOnline(on) {
-    setHeroRemote(on);
+    ownerOnline = on;
+    setHeroRemote(heroLive());
     if (!visiting) return;
     $("visit-status").textContent = on ? `${visiting.name}님이 방에 있어요` : `${visiting.name}님은 지금 자리에 없어요`;
   }
@@ -234,6 +247,8 @@ const Friends = (() => {
       roomId: room.id,
       layout: save.layouts[room.id] || room.layout,
       styles: save.roomStyles[room.id] || {},
+      // 가진 방 전부 (친구가 놀러 와서 다른 방도 구경할 수 있게)
+      rooms: Object.fromEntries(ROOMS.filter(owned).map((r) => [r.id, { layout: save.layouts[r.id] || r.layout, styles: save.roomStyles[r.id] || {} }])),
       lampOn: save.lampOn,
       timer: t.mode === "focus" && t.endAt ? { length: t.length, mode: "focus", endAt: t.endAt, remain: 0 } : null,
     };
@@ -793,5 +808,5 @@ const Friends = (() => {
     if (!panel.hidden && view !== "chat") render();
   }
 
-  return { start, stop, publish, refresh, claim, open, close, redraw, showBirthday, myId: () => (me ? me.id : null) };
+  return { start, stop, publish, changeAwayRoom, refresh, claim, open, close, redraw, showBirthday, myId: () => (me ? me.id : null) };
 })();
