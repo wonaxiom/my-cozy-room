@@ -1332,9 +1332,10 @@ Object.assign(FURNITURE, {
 });
 
 // ---- 침대 반대 방향 그림 (돌리기 3·4번째 방향: 베개가 앞쪽) ----
-// ver.하찮 그림(imageSimpleBack)이 없으면 하찮에서는 두 방향 그림만 씀
-["bed", "futon", "mattress", "berth", "pinkBed", "bunkBed", "bunkBedWhite"].forEach((id) => {
+// ver.하찮은 imageSimpleBack. (캐노피 침대는 돌린 그림이 맞지 않아 두 방향만)
+["bed", "futon", "mattress", "berth", "lowBed", "pinkBed", "bunkBed", "bunkBedWhite"].forEach((id) => {
   FURNITURE[id].imageBack = `img/furn/${id}Back.png`;
+  FURNITURE[id].imageSimpleBack = `img/furn/s/${id}Back.png`;
 });
 // 뒤쪽 그림에서 앞에 선 머리판 (0~1 비율 다각형). 누운 캐릭터 위에 다시 그려 머리가 머리판 뒤에 있게
 FURNITURE.bed.backFront = [[0.458, 0.526], [0.906, 0.244], [1, 0.27], [1, 1], [0.458, 1]];
@@ -1342,7 +1343,9 @@ FURNITURE.pinkBed.backFront = [[0, 0.36], [0.104, 0.32], [0.458, 0.563], [0.458,
 
 // ---- 의자 반대 방향 그림 (돌리기 3·4번째 방향) ----
 FURNITURE.chair.imageBack = "img/furn/chairBack.png";         // 앞을 보고 앉음 (등받이가 뒤)
+FURNITURE.chair.imageSimpleBack = "img/furn/s/chairBack.png";
 FURNITURE.rockingChair.imageBack = "img/furn/rockingChairBack.png"; // 뒷모습으로 앉음
+FURNITURE.rockingChair.imageSimpleBack = "img/furn/s/rockingChairBack.png";
 FURNITURE.rockingChair.backClipBack = [0, 0, 0.6, 0.7];        // 뒤쪽 그림에서 앞에 선 등받이 칸 (앉은 몸을 가림)
 
 // ---- 상점 세부 분류 ----------------------------------------------------
@@ -1402,6 +1405,7 @@ for (const [id, list] of Object.entries(COLOR_VARIANTS)) {
       imageSimple: base.imageSimple && base.imageSimple.replace(/\.png$/, `_${c}.png`),
     });
     if (base.imageBack) v.imageBack = base.imageBack.replace(/\.png$/, `_${c}.png`);
+    if (base.imageSimpleBack) v.imageSimpleBack = base.imageSimpleBack.replace(/\.png$/, `_${c}.png`);
     FURNITURE[`${id}_${c}`] = v;
   }
 }

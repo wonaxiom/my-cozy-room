@@ -1,1 +1,6 @@
 .DS_Store
+
+# 테스트 스크립트가 만든 화면 캡처 (게임에서 안 씀)
+/undefined/
+/stretch*-*.png
+/yawn-*.png

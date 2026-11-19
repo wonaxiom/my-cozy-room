@@ -62,4 +62,4 @@ if __name__ == '__main__':
     root = sys.argv[1] if len(sys.argv) > 1 else 'img/furn'
     for kind, files in FILES.items():
         for f in files:
-            print(kind, f, variants(kind, f'{root}/{f}.png', root, f), variants(kind, f'{root}/s/{f}.png', f'{root}/s', f) if f != 'bedBack' else '')
+            print(kind, f, variants(kind, f'{root}/{f}.png', root, f), variants(kind, f'{root}/s/{f}.png', f'{root}/s', f))

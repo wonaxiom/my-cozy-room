@@ -3210,6 +3210,21 @@ function drawHeadTowardViewer(b, p) {
       return;
     }
   }
+  // ver.하찮: 눈 감고 선 그림을 통째로 돌려, 머리는 베개(앞쪽)에 두고 몸은 침대 안쪽으로 눕힘 (뒤쪽 베개일 때와 같은 방식)
+  if (!useHeroArt() && !readyImage(CHARACTER_SHEET && CHARACTER_SHEET.image)) {
+    const look = Object.assign({}, normLook(save.look));
+    if (["cap", "beanie", "strawHat"].includes(look.acc)) look.acc = null; // 잘 때는 모자를 벗음
+    const { c, headRows } = simpleHeroCanvas("blink", look);
+    const w = c.width / RES, h = c.height / RES;
+    const extra = heroRows("blink", look).length - CHARACTER.blink.length;
+    const headY = headRows ? (extra + 3.5) * (RES + 1) / RES : extra + 3.5;
+    ctx.save();
+    ctx.translate(p.x, p.y - 2);
+    ctx.rotate(Math.atan2(c0.y - c1.y, c0.x - c1.x) - Math.PI / 2); // 그림의 아래(발)를 침대 안쪽으로
+    ctx.drawImage(c, -w / 2, -headY, w, h);
+    ctx.restore();
+    return;
+  }
   const crown = Math.atan2(c1.y - c0.y, c1.x - c0.x); // 화면에서 정수리가 향할 방향
   const angle = crown + Math.PI / 2; // 똑바로 선 머리(정수리 위쪽)를 그 방향으로
   let h;
