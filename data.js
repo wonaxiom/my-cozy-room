@@ -1340,6 +1340,11 @@ Object.assign(FURNITURE, {
 FURNITURE.bed.backFront = [[0.458, 0.526], [0.906, 0.244], [1, 0.27], [1, 1], [0.458, 1]];
 FURNITURE.pinkBed.backFront = [[0, 0.36], [0.104, 0.32], [0.458, 0.563], [0.458, 1], [0, 1]];
 
+// ---- 의자 반대 방향 그림 (돌리기 3·4번째 방향) ----
+FURNITURE.chair.imageBack = "img/furn/chairBack.png";         // 앞을 보고 앉음 (등받이가 뒤)
+FURNITURE.rockingChair.imageBack = "img/furn/rockingChairBack.png"; // 뒷모습으로 앉음
+FURNITURE.rockingChair.backClipBack = [0, 0, 0.6, 0.7];        // 뒤쪽 그림에서 앞에 선 등받이 칸 (앉은 몸을 가림)
+
 // ---- 상점 세부 분류 ----------------------------------------------------
 // 가구는 스타일(style), 소품은 종류(kind)로 나눕니다. 상점 탭 아래 버튼으로 골라 볼 수 있어요.
 // 새 가구를 추가할 때는 가구에 style: "antique"처럼 직접 적거나, 아래 표에 이름(id)을 넣으면 됩니다.
