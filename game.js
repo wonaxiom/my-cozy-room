@@ -2038,7 +2038,10 @@ function seatDir(item) {
   const back = item.seat && item.seat.back;
   if (!back) return null;
   let [vx, vy] = { "+x": [-1, 0], "-x": [1, 0], "+y": [0, -1], "-y": [0, 1] }[back] || [1, 0]; // 등받이 반대 방향
-  if (item.image && !item.parts) { if (swapped(item)) [vx, vy] = [vy, vx]; } // 그림 가구: 좌우로 뒤집기만
+  if (item.image && !item.parts) { // 그림 가구: 뒤쪽 그림이면 반대로 돌고, 좌우로 뒤집기만
+    if (backView(item)) [vx, vy] = [-vx, -vy];
+    if (swapped(item)) [vx, vy] = [vy, vx];
+  }
   else for (let r = rotOf(item); r > 0; r--) [vx, vy] = [-vy, vx];
   return [vx, vy];
 }
@@ -3056,13 +3059,14 @@ function redrawImageParts(item, rects) {
 
 // 앞을 보고 앉은 캐릭터 위로 가까운 팔걸이·방석 앞쪽을 다시 그려, 의자 "안에" 앉은 것처럼 (data.js frontClip)
 function drawSeatFront(item) {
-  if (!item.parts) redrawImageParts(item, item.frontClip);
+  if (!item.parts) redrawImageParts(item, backView(item) ? item.frontClipBack : item.frontClip); // 뒤쪽 그림은 그 그림 기준 칸
 }
 
 function drawSeatBack(item) {
   if (!item.parts) {
     // 그림 의자: data.js의 backClip(등받이 칸)만 캐릭터 위에 다시 그림
-    if (item.backClip) redrawImageParts(item, [item.backClip]);
+    const clip = backView(item) ? item.backClipBack : item.backClip;
+    if (clip) redrawImageParts(item, [clip]);
     return;
   }
   const v = seatDir(item);
