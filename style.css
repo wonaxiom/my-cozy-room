@@ -721,6 +721,27 @@ button:disabled {
   transform: translate(-50%, 0);
 }
 
+/* 새 버전 알림: 방 위쪽 가운데 */
+.update-bar {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 6px 6px 12px;
+  font-size: 12px;
+  white-space: nowrap;
+  background: #ffffff;
+  border: 1px solid #e6dfd5;
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  transform: translateX(-50%);
+}
+.update-bar[hidden] { display: none; }
+.update-bar button, .update-bar button.primary { padding: 3px 10px; font-size: 12px; line-height: 1.4; border-radius: 999px; }
+
 .room-picker {
   display: flex;
   align-items: center;

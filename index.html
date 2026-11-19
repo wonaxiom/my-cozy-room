@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>My Cozy Room</title>
   <!-- 파일 뒤의 ?v= 번호는 업데이트할 때마다 바꿉니다. (브라우저가 옛 파일을 쓰지 않도록) -->
-  <link rel="stylesheet" href="style.css?v=20261119-1">
+  <link rel="stylesheet" href="style.css?v=20261119-2">
   <!-- 화면 전환에 꼭 필요한 규칙 (디자인 파일을 늦게 받아도 화면이 섞이지 않게) -->
   <style>
     .screen { display: none; }
@@ -330,6 +330,13 @@
 
           <div id="toast" class="toast"></div>
 
+          <!-- 새 버전 알림 (창을 오래 열어 두었을 때) -->
+          <div id="update-bar" class="update-bar" hidden>
+            <span>새 버전이 있어요</span>
+            <button id="update-reload" class="primary" type="button">새로고침</button>
+            <button id="update-later" type="button">나중에</button>
+          </div>
+
           <!-- 구매 확인 (실수로 사지 않게) -->
           <div id="confirm" class="confirm" hidden>
             <div class="confirm-box" role="dialog" aria-modal="true" aria-labelledby="confirm-text">
@@ -436,23 +443,23 @@
   </main>
 
   <!-- 순서 중요: 데이터 → 방 → 저장 → 게임 → 집중 → 첫 화면 → 로그인 -->
-  <script src="data.js?v=20261119-1"></script>
-  <script src="rooms.js?v=20261119-1"></script>
-  <script src="save.js?v=20261119-1"></script>
-  <script src="hero-art.js?v=20261119-1"></script>
-  <script src="acc-art.js?v=20261119-1"></script>
-  <script src="pet-art.js?v=20261119-1"></script>
-  <script src="outfit-art.js?v=20261119-1"></script>
-  <script src="lie-front-art.js?v=20261119-1"></script>
-  <script src="game.js?v=20261119-1"></script>
-  <script src="focus.js?v=20261119-1"></script>
-  <script src="side.js?v=20261119-1"></script>
-  <script src="start.js?v=20261119-1"></script>
-  <script src="friends.js?v=20261119-1"></script>
+  <script src="data.js?v=20261119-2"></script>
+  <script src="rooms.js?v=20261119-2"></script>
+  <script src="save.js?v=20261119-2"></script>
+  <script src="hero-art.js?v=20261119-2"></script>
+  <script src="acc-art.js?v=20261119-2"></script>
+  <script src="pet-art.js?v=20261119-2"></script>
+  <script src="outfit-art.js?v=20261119-2"></script>
+  <script src="lie-front-art.js?v=20261119-2"></script>
+  <script src="game.js?v=20261119-2"></script>
+  <script src="focus.js?v=20261119-2"></script>
+  <script src="side.js?v=20261119-2"></script>
+  <script src="start.js?v=20261119-2"></script>
+  <script src="friends.js?v=20261119-2"></script>
   <!-- 구글 로그인 (Supabase) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-  <script src="cloud.js?v=20261119-1"></script>
-  <script src="gcal.js?v=20261119-1"></script>
-  <script src="news.js?v=20261119-1"></script>
+  <script src="cloud.js?v=20261119-2"></script>
+  <script src="gcal.js?v=20261119-2"></script>
+  <script src="news.js?v=20261119-2"></script>
 </body>
 </html>

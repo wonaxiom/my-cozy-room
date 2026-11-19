@@ -5577,6 +5577,30 @@ updateInstallRow();
 if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) navigator.serviceWorker.register("sw.js").catch(() => { /* 설치만 안 될 뿐 게임은 그대로 */ });
 updatePipButton();
 
+// ---- 새 버전 알림 ----------------------------------------------------
+// 창을 오래 열어 두면 예전 코드로 계속 돌아서 새 기능이 늦게 들어옴.
+// 10분마다(그리고 다시 창을 볼 때) 사이트의 index.html을 받아 게임 버전(game.js?v=)이 바뀌었는지 보고 새로고침을 권함
+const updateBar = byId("update-bar");
+const myVersion = ((document.querySelector('script[src*="game.js?v="]') || {}).src || "").split("v=")[1] || "";
+let skipVersion = "", lastVersionCheck = 0;
+async function checkVersion() {
+  if (!/^https?:$/.test(location.protocol) || !myVersion || Date.now() - lastVersionCheck < 60 * 1000) return;
+  lastVersionCheck = Date.now();
+  try {
+    const text = await (await fetch(`index.html?check=${Date.now()}`, { cache: "no-store" })).text();
+    const m = text.match(/game\.js\?v=([\w-]+)/);
+    if (m && m[1] !== myVersion && m[1] !== skipVersion) { updateBar.dataset.v = m[1]; updateBar.hidden = false; }
+  } catch (e) { /* 다음에 다시 */ }
+}
+byId("update-reload").addEventListener("click", () => {
+  if (!visiting) Save.save(save); // 내 방이면 지금 상태를 저장하고
+  location.reload();
+});
+byId("update-later").addEventListener("click", () => { skipVersion = updateBar.dataset.v || ""; updateBar.hidden = true; }); // 이 버전은 다시 묻지 않음
+setInterval(checkVersion, 10 * 60 * 1000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVersion(); });
+setTimeout(checkVersion, 30 * 1000);
+
 // ---- 게임 루프 ---------------------------------------------------
 let lastTick = performance.now();
 let loopToken = 0;
