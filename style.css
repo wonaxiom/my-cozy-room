@@ -1421,6 +1421,8 @@ body.pip .visit-title strong { color: #f4efe8; }
 
 /* 방 그림은 위쪽 코인·시계 줄 아래 남은 공간의 가운데에 */
 body.pip.side-mode .stage { flex: 0 0 auto; box-sizing: border-box; height: 232px; padding-top: 32px; }
+body.pip.side-mode.side-banner .stage { height: 252px; padding-top: 70px; } /* 현수막 날: 방을 현수막 아래로 */
+body.pip.side-mode.side-banner .side-sky { height: 252px; }
 
 body.pip.side-mode .side {
   display: flex;

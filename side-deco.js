@@ -15,6 +15,7 @@ const SideDeco = (() => {
     cloud1: [54, 26], cloud2: [30, 18], cloud3: [16, 11], sparkS: [9, 9], sparkL: [15, 16], rainCloud1: [38, 21], rainCloud2: [24, 15],
     drop: [7, 9], snowS: [10, 11], snowL: [16, 18], moon: [18, 19], star: [7, 7],
     // 12월
+    xmasBanner: [230, 22], xstarS: [10, 10], xstarL: [19, 20],
     gifts: [43, 42], snowman: [28, 40], candleA: [26, 38], candleB: [26, 38], xcatA: [49, 35], xcatB: [49, 35], lightsA: [112, 18], lightsB: [112, 18],
   };
   let lastKey = "";
@@ -33,21 +34,22 @@ const SideDeco = (() => {
   // 같은 자리에서 정해진 순서로 (매번 같은 배치가 되게)
   const seq = (i, n) => ((i * 37) % n) / n;
 
-  function renderSky(weather, night) {
+  function renderSky(weather, night, banner) {
     sky.innerHTML = "";
+    const low = banner ? 44 : 0; // 현수막 날은 구름·달을 현수막 아래로
     const add = (...els) => sky.append(...els);
     const wet = weather === "rain" || weather === "storm";
     const snow = weather === "snow";
     const grey = wet || snow || weather === "cloudy";
     // 구름: 맑으면 크림색, 흐리면 회색이 섞임. 밤에 맑으면 구름 대신 달과 별
     if (night && !grey) {
-      add(pic("moon", { left: "8%", top: "40px" }, "bob"));
+      add(pic("moon", { left: "8%", top: `${40 + low}px` }, "bob"));
       [[18, 44], [80, 40], [92, 100], [4, 128], [90, 162], [8, 182]].forEach(([x, y], i) =>
         add(pic(i % 3 ? "star" : "sparkS", { left: `${x}%`, top: `${y}px`, animationDelay: `${i * 0.6}s` }, "twinkle")));
     } else {
-      add(pic(grey ? "rainCloud1" : "cloud1", { left: "-4%", top: "36px" }, "drift"));
-      add(pic(grey ? "rainCloud2" : "cloud2", { right: "2%", top: "44px", animationDelay: "-3s" }, "drift"));
-      add(pic(weather === "cloudy" ? "rainCloud2" : "cloud3", { right: "24%", top: "30px", animationDelay: "-6s" }, "drift slow"));
+      add(pic(grey ? "rainCloud1" : "cloud1", { left: "-4%", top: `${36 + low}px` }, "drift"));
+      add(pic(grey ? "rainCloud2" : "cloud2", { right: "2%", top: `${44 + low}px`, animationDelay: "-3s" }, "drift"));
+      if (!banner) add(pic(weather === "cloudy" ? "rainCloud2" : "cloud3", { right: "24%", top: "30px", animationDelay: "-6s" }, "drift slow"));
       if (!grey) [[6, 96], [90, 112], [10, 160], [88, 180]].forEach(([x, y], i) =>
         add(pic(i % 2 ? "sparkS" : "sparkL", { left: `${x}%`, top: `${y}px`, animationDelay: `${i * 0.7}s` }, "twinkle")));
     }
@@ -90,16 +92,38 @@ const SideDeco = (() => {
     );
   }
 
+  // 기념일 현수막: 방 위쪽 가운데 (방 지붕에 닿지 않게 그날은 방을 조금 내림)
+  function renderBanner(name) {
+    const root = sky.ownerDocument.body;
+    root.classList.toggle("side-banner", !!name);
+    if (!name) return;
+    const [w] = SIZE[name];
+    const width = Math.min(300, w * DOT);
+    sky.append(pic(name, { left: "50%", top: "38px", width: `${width}px`, height: "auto", marginLeft: `${-width / 2}px` }, "banner"));
+    [[3, 28, "xstarS"], [93, 26, "xstarS"], [16, 66, "xstarL"], [80, 64, "xstarL"]].forEach(([x, y, n], i) =>
+      sky.append(pic(n, { left: `${x}%`, top: `${y}px`, animationDelay: `${i * 0.5}s` }, "twinkle")));
+  }
+
+  // 오늘 띄울 현수막 (12월 24~26일: 메리 크리스마스)
+  function bannerToday(d) {
+    const day = params.has("day") ? Number(params.get("day")) : d.getDate(); // ?day= 는 확인용
+    if (d.getMonth() === 11 && day >= 24 && day <= 26) return "xmasBanner";
+    return null;
+  }
+
   // 날씨·밤낮·달이 바뀔 때만 다시 그림
   function update() {
     if (!document.body.classList.contains("side-mode") && !(typeof pipWin !== "undefined" && pipWin && pipWin.document.body.classList.contains("side-mode"))) return;
     const weather = typeof storm !== "undefined" && storm ? "storm" : weatherNow();
     const night = currentPhase === "night" || currentPhase === "evening";
-    const december = now().getMonth() === 11;
-    const key = [weather, night, december].join("|");
+    const d = now();
+    const december = d.getMonth() === 11;
+    const banner = bannerToday(d);
+    const key = [weather, night, december, banner].join("|");
     if (key === lastKey) return;
     lastKey = key;
-    renderSky(weather, night);
+    renderSky(weather, night, banner);
+    renderBanner(banner);
     renderShelf(night, december);
   }
 
