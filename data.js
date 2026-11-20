@@ -279,6 +279,20 @@ const CHARACTER = {
     "...PPPP...",
     "...FFFF...",
   ],
+  // ---- 앉은 자세 (GPT 그림을 도트로 옮김, 머리 7줄은 서 있을 때와 같음) ----
+  // Q = 정강이 (긴 바지면 바지 색, 반바지·치마면 맨다리), R = 책, Z·z = 쿠키
+  chairSit: ["...HHHH...", "..HHHHHH..", ".HHHHHHHH.", ".HSSSSSSH.", ".HSESSESH.", ".HBSSSSBH.", "..SSSSSS..",
+    "...CCCC...", "..CCCCCC..", "..SSCCSS..", "..PPPPPP..", "..QQQQQQ..", "...FFFF..."],
+  chairBack: ["...HHHH...", "..HHHHHH..", ".HHHHHHHH.", ".HSSSSSSH.", ".HSESSESH.", ".HBSSSSBH.", "..SSSSSS..",
+    "...CCCC...", "..CCCCCC..", "..SCCCCS..", "..PPPPPP..", "..QQQQQQ..", "...FFFF..."],
+  chairType: ["...HHHH...", "..HHHHHH..", ".HHHHHHHH.", ".HSSSSSSH.", ".HSESSESH.", ".HBSSSSBH.", "..SSSSSS..",
+    "...CCCC...", "..SSCCSS..", "..CCCCCC..", "..PPPPPP..", "..QQQQQQ..", "...FFFF..."],
+  sitFloor: ["...HHHH...", "..HHHHHH..", ".HHHHHHHH.", ".HSSSSSSH.", ".HSESSESH.", ".HBSSSSBH.", "..SSSSSS..",
+    "...CCCC...", "..CCCCCC..", "..CCCCCC..", ".SPPPPPPS.", "..QQQQQQ..", "...FFFF..."],
+  read: ["...HHHH...", "..HHHHHH..", ".HHHHHHHH.", ".HSSSSSSH.", ".HSESSESH.", ".HBSSSSBH.", "..SSSSSS..",
+    "..CCCCCC..", "..RRRRRR..", "..SRRRRS..", "..PPPPPP..", "..QQQQQQ..", "...FFFF..."],
+  snack: ["...HHHH...", "..HHHHHH..", ".HHHHHHHH.", ".HSSSSSSH.", ".HSESSESH.", ".HBSSSSBH.", "..SSSSSS..",
+    "...CCCC...", "..SZzZZS..", "..CCCCCC..", "..PPPPPP..", "..QQQQQQ..", "...FFFF..."],
   // 잘 때 (베개 위 얼굴만)
   sleep: [
     "...HHHH...",
@@ -290,6 +304,9 @@ const CHARACTER = {
     "..SSSSSS..",
   ],
 };
+
+CHARACTER.sitChair = CHARACTER.sitFloor; // 방석·소파처럼 낮은 자리에 앉기
+CHARACTER.type = CHARACTER.chairType;    // 방석에 앉아 타자
 
 // ---- 캐릭터 그림 파일 (선택) --------------------------------------
 // 캐릭터를 그림 파일로 바꾸고 싶을 때 사용합니다. null이면 위의 글자 그림을 씁니다.

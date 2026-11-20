@@ -2316,7 +2316,8 @@ function heroRows(name, lookIn = save.look) {
   const base = CHARACTER[name] || CHARACTER.idle;
   const headOnly = name === "sleep";
   const closed = name === "blink" || name === "sleep";
-  const back = name === "back"; // 뒷모습: 얼굴 대신 뒤통수 (창밖·냉장고 안을 볼 때)
+  const back = name === "back" || name === "chairBack"; // 뒷모습: 얼굴 대신 뒤통수 (창밖·냉장고 안을 볼 때, 의자에 등지고 앉을 때)
+  const sitting = ["chairSit", "chairBack", "chairType", "sitFloor", "sitChair", "type", "read", "snack"].includes(name); // 앉은 자세 (다리 줄이 다름)
   // 원래 그림의 머리카락·눈·볼은 지우고 맨얼굴에서 시작
   const rows = base.map((r) => r.replace(/[HEB]/g, "S").split(""));
   const put = (r, c, ch) => { if (rows[r] && c >= 0 && c < rows[r].length) rows[r][c] = ch; };
@@ -2382,8 +2383,13 @@ function heroRows(name, lookIn = save.look) {
     if (top.style === "hood") { put(7, 2, "C"); put(7, 7, "C"); }
     if (top.style === "collar") { put(7, 3, "W"); put(7, 6, "W"); }
     const bottom = findBy(BOTTOMS, look.bottom);
-    if (bottom.type === "shorts") rows[12] = rows[12].map((ch) => (ch === "P" ? "S" : ch));
-    if (bottom.type === "skirt") rows[12] = ".PPPPPPPP.".split("");
+    if (sitting) { // 앉으면 정강이(Q)만: 긴 바지는 바지 색, 반바지·치마는 맨다리
+      const shin = bottom.type === "shorts" || bottom.type === "skirt" ? "S" : "P";
+      rows.forEach((r, i) => { rows[i] = r.map((ch) => (ch === "Q" ? shin : ch)); });
+    } else {
+      if (bottom.type === "shorts") rows[12] = rows[12].map((ch) => (ch === "P" ? "S" : ch));
+      if (bottom.type === "skirt") rows[12] = ".PPPPPPPP.".split("");
+    }
     if (outerDef) {
       for (let r = 7; r <= 10; r++) for (const c of [2, 7]) if (rows[r][c] === "C" || rows[r][c] === "D") put(r, c, "J");
       if (outerDef.kind !== "vest") for (const c of [1, 8]) if (rows[8][c] === ".") put(8, c, "J"); // 어깨에서 내려오는 소매
@@ -2416,6 +2422,10 @@ function heroColors(lookIn = save.look) {
     Y: acc ? acc.dark : "#000",
     M: "#c76b6b",
     O: "#8a3b3b",
+    R: "#9a6b4b",   // 책
+    Z: "#e3b878",   // 쿠키
+    z: "#6b4430",   // 쿠키 초코칩
+    Q: findBy(BOTTOMS, look.bottom).color, // (정강이: 위에서 바지·피부로 바뀜)
   };
 }
 
@@ -2948,7 +2958,7 @@ function drawHero() {
 
   let frame = "idle";
   // ver.세밀: 의자(높이가 있는 자리)에 앉으면 다리를 내리고 앉은 그림. 발이 바닥에 닿게 그림
-  const onChair = useHeroArt() && hero.seat && hero.seat.seat && hero.seat.seat.z >= 3 && (hero.mode === "sitChair" || hero.mode === "work");
+  const onChair = hero.seat && hero.seat.seat && hero.seat.seat.z >= 3 && (hero.mode === "sitChair" || hero.mode === "work");
   if (onChair) {
     frame = seatAway(hero.seat) ? "chairBack" : hero.mode === "work" ? "chairType" : "chairSit";
   } else if (hero.mode === "walk" || hero.mode === "toBed" || hero.mode === "toWork" || hero.mode === "toUse") {
@@ -2990,7 +3000,9 @@ function drawHero() {
   }
 
   const piano = hero.mode === "piano" && useHeroArt();
-  const p = onChair ? (() => { const q = project(hero.x, hero.y, hero.seat.z); return { x: Math.round(q.x), y: Math.round(q.y) }; })()
+  // ver.하찮은 다리가 짧아서 엉덩이를 앉는 면에 맞추고 발은 살짝 떠 있게 (그림 맨 아래 3줄이 다리)
+  const p = onChair && !useHeroArt() ? (() => { const q = heroScreen(); return { x: q.x, y: q.y + 3 }; })()
+    : onChair ? (() => { const q = project(hero.x, hero.y, hero.seat.z); return { x: Math.round(q.x), y: Math.round(q.y) }; })()
     : piano ? (() => { const q = project(hero.x, hero.y, PIANO_SEAT); return { x: Math.round(q.x), y: Math.round(q.y) }; })()
     : heroScreen();
   const flip = hero.dir < 0;
@@ -3022,7 +3034,7 @@ function drawHero() {
     if (onChair) drawSeatFront(hero.seat); // 팔걸이·방석 앞쪽이 몸을 살짝 가림
   }
   if (rock) ctx.restore();
-  if (!useHeroArt() && hero.mode === "read") drawActivityIcon(p);
+  if (!useHeroArt() && hero.mode === "read" && !CHARACTER[frame]) drawActivityIcon(p); // 앉아서 읽을 때는 손에 든 책으로
 }
 
 // 흔들의자: 앉아 있는 동안 앞뒤로 살짝 흔들림 (각도, 라디안)
