@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>My Cozy Room</title>
   <!-- 파일 뒤의 ?v= 번호는 업데이트할 때마다 바꿉니다. (브라우저가 옛 파일을 쓰지 않도록) -->
-  <link rel="stylesheet" href="style.css?v=20261120-18">
+  <link rel="stylesheet" href="style.css?v=20261120-19">
   <!-- 화면 전환에 꼭 필요한 규칙 (디자인 파일을 늦게 받아도 화면이 섞이지 않게) -->
   <style>
     .screen { display: none; }
@@ -144,6 +144,31 @@
   </section>
 
   <!-- 업데이트 공지 (매일 아침 전날 바뀐 점) -->
+  <!-- 개발 요청: 누구나 익명으로 보내고, 게임 주인은 요청함에서 모아 보고 처리 표시 -->
+  <div id="req" class="modal" hidden>
+    <div class="modal-card req-card">
+      <div class="news-head">
+        <h3 id="req-title" class="news-title">개발 요청</h3>
+        <button id="req-close" type="button" aria-label="닫기">닫기</button>
+      </div>
+      <div id="req-write" class="req-write">
+        <p class="req-note">바라는 기능이나 불편한 점을 적어 주세요. 이름 없이(익명으로) 개발자에게 전달돼요.</p>
+        <textarea id="req-text" maxlength="1000" rows="5" placeholder="예: 방을 더 넓게 쓰고 싶어요"></textarea>
+        <div class="ob-actions">
+          <span id="req-count" class="req-count">0 / 1000</span>
+          <button id="req-send" class="primary" type="button">보내기</button>
+        </div>
+      </div>
+      <div id="req-inbox" class="req-inbox" hidden>
+        <div class="req-tabs">
+          <button id="req-tab-open" class="subtab active" type="button">처리 전</button>
+          <button id="req-tab-done" class="subtab" type="button">처리함</button>
+        </div>
+        <ul id="req-list" class="req-list"></ul>
+      </div>
+    </div>
+  </div>
+
   <div id="news" class="modal" hidden>
     <div class="modal-card news-card">
       <div class="news-head">
@@ -439,30 +464,31 @@
       <p id="pip-placeholder" class="placeholder" hidden>방이 세로 창으로 나가 있어요. 세로 창을 닫으면 여기로 돌아옵니다.</p>
     </div>
 
-    <p class="gate-links page-links"><a href="privacy.html">개인정보처리방침</a> · <a href="terms.html">서비스 약관</a></p>
+    <p class="gate-links page-links"><a href="#" id="req-link">개발 요청<span id="req-badge" class="badge" hidden></span></a> · <a href="privacy.html">개인정보처리방침</a> · <a href="terms.html">서비스 약관</a></p>
     <p class="hint">켜두는 동안 1분에 2코인이 모여요. 꺼져 있을 때도 최대 3시간치까지 쌓여요.</p>
     <p id="pip-note" class="note"></p>
   </main>
 
   <!-- 순서 중요: 데이터 → 방 → 저장 → 게임 → 집중 → 첫 화면 → 로그인 -->
-  <script src="data.js?v=20261120-18"></script>
-  <script src="rooms.js?v=20261120-18"></script>
-  <script src="save.js?v=20261120-18"></script>
-  <script src="hero-art.js?v=20261120-18"></script>
-  <script src="acc-art.js?v=20261120-18"></script>
-  <script src="pet-art.js?v=20261120-18"></script>
-  <script src="outfit-art.js?v=20261120-18"></script>
-  <script src="lie-front-art.js?v=20261120-18"></script>
-  <script src="game.js?v=20261120-18"></script>
-  <script src="focus.js?v=20261120-18"></script>
-  <script src="side.js?v=20261120-18"></script>
-  <script src="side-deco.js?v=20261120-18"></script>
-  <script src="start.js?v=20261120-18"></script>
-  <script src="friends.js?v=20261120-18"></script>
+  <script src="data.js?v=20261120-19"></script>
+  <script src="rooms.js?v=20261120-19"></script>
+  <script src="save.js?v=20261120-19"></script>
+  <script src="hero-art.js?v=20261120-19"></script>
+  <script src="acc-art.js?v=20261120-19"></script>
+  <script src="pet-art.js?v=20261120-19"></script>
+  <script src="outfit-art.js?v=20261120-19"></script>
+  <script src="lie-front-art.js?v=20261120-19"></script>
+  <script src="game.js?v=20261120-19"></script>
+  <script src="focus.js?v=20261120-19"></script>
+  <script src="side.js?v=20261120-19"></script>
+  <script src="side-deco.js?v=20261120-19"></script>
+  <script src="start.js?v=20261120-19"></script>
+  <script src="friends.js?v=20261120-19"></script>
   <!-- 구글 로그인 (Supabase) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-  <script src="cloud.js?v=20261120-18"></script>
-  <script src="gcal.js?v=20261120-18"></script>
-  <script src="news.js?v=20261120-18"></script>
+  <script src="cloud.js?v=20261120-19"></script>
+  <script src="gcal.js?v=20261120-19"></script>
+  <script src="news.js?v=20261120-19"></script>
+  <script src="requests.js?v=20261120-19"></script>
 </body>
 </html>

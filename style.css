@@ -1844,3 +1844,24 @@ body.pip #side-win-btn { display: none; }
 @media (max-width: 560px) {
   #side-win-btn { display: none; }
 }
+
+/* ---- 개발 요청 ---- */
+.req-card { max-width: 440px; }
+.req-note { margin: 0; color: var(--sub); font-size: 13px; }
+.req-write textarea { width: 100%; box-sizing: border-box; padding: 8px 10px; font: inherit; font-size: 14px; resize: vertical;
+  border: 1px solid #e6dfd5; border-radius: 8px; background: #fffdf9; }
+.req-write { display: flex; flex-direction: column; gap: 10px; }
+.req-write[hidden], .req-inbox[hidden] { display: none; }
+.req-write .ob-actions { align-items: center; }
+.req-count { margin-right: auto; color: var(--sub); font-size: 12px; }
+.req-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+.req-list { max-height: 55vh; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
+.req-list li { display: flex; gap: 10px; padding: 10px 2px; border-bottom: 1px solid #efe9e1; }
+.req-list li:last-child { border-bottom: none; }
+.req-list input { flex: 0 0 auto; width: 18px; height: 18px; margin-top: 2px; accent-color: #7b5236; }
+.req-list .req-body { flex: 1; min-width: 0; white-space: pre-wrap; word-break: break-word; font-size: 14px; }
+.req-list .req-meta { display: block; margin-top: 3px; color: var(--sub); font-size: 11px; }
+.req-list .req-new { margin-left: 4px; color: #c0392b; font-weight: 700; }
+.req-list li.done .req-body { color: var(--sub); text-decoration: line-through; }
+.req-empty { color: var(--sub); font-size: 13px; text-align: center; padding: 16px 0; }
+#req-link .badge { background: #c0392b; border-radius: 8px; }
