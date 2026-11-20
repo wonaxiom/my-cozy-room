@@ -1349,7 +1349,7 @@ Object.assign(FURNITURE, {
 });
 
 // ---- 침대 반대 방향 그림 (돌리기 3·4번째 방향: 베개가 앞쪽) ----
-// ver.하찮은 imageSimpleBack. (캐노피 침대는 돌린 그림이 맞지 않아 두 방향만)
+// ver.하찮은 imageSimpleBack. (캐노피 침대는 아래 엔티크 가구와 함께 따로 넣음)
 ["bed", "futon", "mattress", "berth", "lowBed", "pinkBed", "bunkBed", "bunkBedWhite"].forEach((id) => {
   FURNITURE[id].imageBack = `img/furn/${id}Back.png`;
   FURNITURE[id].imageSimpleBack = `img/furn/s/${id}Back.png`;
@@ -1365,6 +1365,10 @@ FURNITURE.pinkBed.backFront = [[0, 0.36], [0.104, 0.32], [0.458, 0.563], [0.458,
 });
 // 수납 가구 9종: 반대 방향은 나무 뒷판이 보임 (앞면은 벽 쪽)
 ["cabinet", "chest", "bookcase", "tallBookcase", "bookChest", "glassCabinet", "sideboard", "fridge", "wardrobe"].forEach((id) => {
+  FURNITURE[id].imageBack = `img/furn/${id}Back.png`;
+});
+// 엔티크 가구 4종과 캐노피 침대 (캐노피는 세 번째 시도에서 베개가 맞게 옴)
+["fireplace", "vanity", "grandfatherClock", "piano", "canopyBed"].forEach((id) => {
   FURNITURE[id].imageBack = `img/furn/${id}Back.png`;
 });
 Object.assign(FURNITURE.armchair, { backClipBack: [0, 0, 1, 0.62] });
