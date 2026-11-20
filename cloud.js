@@ -125,7 +125,7 @@ const Cloud = (() => {
     setStatus("저장 중…");
     const { error } = await client.from("game_saves").upsert({
       user_id: user.id,
-      data: save,
+      data: cleanForServer(save), // 깨진 글자가 있으면 지우고 올림
       updated_at: new Date().toISOString(),
     });
     if (error) {

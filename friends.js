@@ -252,7 +252,7 @@ const Friends = (() => {
       lampOn: save.lampOn,
       timer: t.mode === "focus" && t.endAt ? { length: t.length, mode: "focus", endAt: t.endAt, remain: 0 } : null,
     };
-    await db.from("room_snapshots").upsert({ user_id: me.id, data });
+    await db.from("room_snapshots").upsert({ user_id: me.id, data: cleanForServer(data) });
   }
 
   // ---- 데이터 불러오기 ----
@@ -634,7 +634,7 @@ const Friends = (() => {
         e.preventDefault();
         const text = input.value.trim();
         if (!text || !visiting) return;
-        const { error } = await db.from("guestbook").insert({ owner_id: visiting.id, author_id: me.id, body: text });
+        const { error } = await db.from("guestbook").insert({ owner_id: visiting.id, author_id: me.id, body: cleanText(text) });
         if (error) return toast("남기지 못했어요. 잠시 후 다시 시도해 주세요.");
         input.value = "";
         toast("방명록을 남겼어요.");
@@ -766,7 +766,7 @@ const Friends = (() => {
       if (!text) return;
       input.value = "";
       const { data, error } = await db.from("messages")
-        .insert({ sender_id: me.id, receiver_id: target.id, body: text }).select("id, sender_id, receiver_id, body, created_at");
+        .insert({ sender_id: me.id, receiver_id: target.id, body: cleanText(text) }).select("id, sender_id, receiver_id, body, created_at");
       if (error) {
         input.value = text;
         return toast("보내지 못했어요. 친구 관계를 확인하거나 잠시 후 다시 시도해 주세요.");

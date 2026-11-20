@@ -4,6 +4,15 @@
 // 구글 로그인 중이면 cloud.js가 계정에도 함께 저장합니다.
 // =============================================================
 
+// 서버에 올리기 전에 글자를 정리: 반쪽만 남은 이모지(짝 없는 서로게이트)와 NUL 글자는 서버가 JSON으로 읽지 못해
+// 저장 전체가 실패하므로 지움 (휴대폰 키보드에서 이모지를 지우다 반쪽이 남는 경우가 있음)
+function cleanText(t) {
+  return String(t).replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(^|[^\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "$1").replace(/\u0000/g, "");
+}
+function cleanForServer(obj) {
+  return JSON.parse(JSON.stringify(obj, (k, v) => (typeof v === "string" ? cleanText(v) : v)));
+}
+
 const Save = {
   // 테스트용: 주소에 ?slot=a 를 붙이면 따로 저장합니다. (한 브라우저에서 두 사람을 시험할 때)
   KEY: "cozyroom-save-v2" + (new URLSearchParams(location.search).get("slot") ? "-" + new URLSearchParams(location.search).get("slot") : ""),
