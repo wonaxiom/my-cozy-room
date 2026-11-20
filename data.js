@@ -1331,7 +1331,6 @@ Object.assign(FURNITURE, {
 
 // ---- 엔티크 가구 (GPT 그림) ----
 Object.assign(FURNITURE, {
-  canopyBed: { name: "캐노피 침대", category: "furniture", price: 360, style: "antique", size: [24, 16, 30], image: "img/furn/canopyBed.png", imageSimple: "img/furn/s/canopyBed.png", hires: true, sleep: { side: [12, 20], pillow: [19, 8, 8] } },
   chesterfield: { name: "체스터필드 소파", category: "furniture", price: 280, style: "antique", size: [10, 22, 12], image: "img/furn/chesterfield.png", imageSimple: "img/furn/s/chesterfield.png", hires: true, seat: { z: 6, back: "-y" }, use: "chair" },
   rockingChair: { name: "흔들의자", category: "furniture", price: 170, style: "antique", size: [9, 9, 16], image: "img/furn/rockingChair.png", imageSimple: "img/furn/s/rockingChair.png", hires: true, rock: true, seat: { z: 6, back: "-y" }, use: "chair" },
   teaTable: { name: "티테이블", category: "furniture", price: 150, style: "antique", size: [10, 10, 12], image: "img/furn/teaTable.png", imageSimple: "img/furn/s/teaTable.png", surface: 12, hires: true, use: "snack" },
@@ -1367,13 +1366,8 @@ FURNITURE.pinkBed.backFront = [[0, 0.36], [0.104, 0.32], [0.458, 0.563], [0.458,
 ["cabinet", "chest", "bookcase", "tallBookcase", "bookChest", "glassCabinet", "sideboard", "fridge", "wardrobe"].forEach((id) => {
   FURNITURE[id].imageBack = `img/furn/${id}Back.png`;
 });
-// 엔티크 가구 4종과 캐노피 침대
-// 캐노피 뒤쪽 그림은 머리판·베개가 왼쪽 아래(앞쪽 긴 변)에 있어서, 그 그림 기준 베개·서는 자리를 따로 적음
-FURNITURE.canopyBed.sleepBack = { pillow: [9, 15, 6], side: [6, 20] };
-// 누운 몸 위로 다시 그릴 칸: 지붕(위쪽)과 가운데 앞 기둥 (0~1 비율 [x0, y0, x1, y1])
-FURNITURE.canopyBed.sleepCover = [[0, 0, 1, 0.43], [0.44, 0.3, 0.57, 1]];
-FURNITURE.canopyBed.sleepCoverBack = [[0, 0, 1, 0.43], [0.44, 0.3, 0.57, 1]];
-["fireplace", "vanity", "grandfatherClock", "piano", "canopyBed"].forEach((id) => {
+// 엔티크 가구 4종
+["fireplace", "vanity", "grandfatherClock", "piano"].forEach((id) => {
   FURNITURE[id].imageBack = `img/furn/${id}Back.png`;
 });
 Object.assign(FURNITURE.armchair, { backClipBack: [0, 0, 1, 0.62] });
@@ -1395,6 +1389,10 @@ FURNITURE.chair.imageSimpleBack = "img/furn/s/chairBack.png";
 FURNITURE.rockingChair.imageBack = "img/furn/rockingChairBack.png"; // 뒷모습으로 앉음
 FURNITURE.rockingChair.imageSimpleBack = "img/furn/s/rockingChairBack.png";
 FURNITURE.rockingChair.backClipBack = [0, 0, 0.6, 0.7];        // 뒤쪽 그림에서 앞에 선 등받이 칸 (앉은 몸을 가림)
+
+// ---- 판매를 그만둔 가구 (가진 사람에게는 산 값을 코인으로 돌려줌, game.js retireItems) ----
+// 캐노피 침대: 돌린 그림이 맞지 않아 나중에 다시 만들 예정 (그림은 art-src/canopy_archive)
+const RETIRED_ITEMS = { canopyBed: { name: "캐노피 침대", price: 360 } };
 
 // ---- 상점 세부 분류 ----------------------------------------------------
 // 가구는 스타일(style), 소품은 종류(kind)로 나눕니다. 상점 탭 아래 버튼으로 골라 볼 수 있어요.

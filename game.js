@@ -4582,6 +4582,28 @@ function splitOldDesks() {
 }
 splitOldDesks();
 
+// 판매를 그만둔 가구(data.js RETIRED_ITEMS)를 보관함·모든 방에서 빼고 산 값을 돌려줌
+function retireItems() {
+  const back = [];
+  for (const [id, r] of Object.entries(RETIRED_ITEMS)) {
+    let n = (save.inventory || {})[id] || 0;
+    if (save.inventory) delete save.inventory[id];
+    for (const key of Object.keys(save.layouts || {})) {
+      const list = save.layouts[key] || [];
+      const keep = list.filter((p) => p.id !== id);
+      n += list.length - keep.length;
+      save.layouts[key] = keep;
+    }
+    if (n) { save.coins += r.price * n; back.push(`${r.name} ${n}개`); }
+  }
+  if (!back.length) return;
+  Save.save(save);
+  const total = back.join(", ");
+  // 알림 함수는 아래에서 만들어지므로 다 불러온 뒤에 남김
+  setTimeout(() => notify(`${total}의 판매가 끝나서 산 값만큼 코인을 돌려드렸어요.`), 0);
+}
+retireItems();
+
 // 처음 시작할 방 (주소에 ?room=이 있으면 그 방)
 setRoom(params.get("room") || save.roomId);
 
