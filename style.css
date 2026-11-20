@@ -1456,7 +1456,7 @@ body.pip.side-mode .side-shelf {
   height: 84px;
   margin: -4px -12px 0;
   pointer-events: none;
-  background: url("img/side/shelf.png") repeat-x left bottom / 201px 19.5px; /* 나무 선반 띠 (도트 1.5배) */
+  background: url("img/side/shelfTile.png") repeat-x left bottom / 183px 19.5px; /* 나무 선반 띠 (이음매 없이 이어지게 끝을 자른 그림, 도트 1.5배) */
   image-rendering: pixelated;
 }
 
@@ -1464,10 +1464,13 @@ body.pip.side-mode .side-shelf {
 .room-deco { position: absolute; inset: 0; overflow: hidden; pointer-events: none; border-radius: 6px; }
 body.side-mode .room-deco { display: none; }
 .room-deco .deco { position: absolute; image-rendering: pixelated; }
-.room-shelf { position: absolute; bottom: 0; display: flex; align-items: flex-end; gap: 1%; padding: 0 2% var(--strip-lift, 6px);
-  background: url("img/side/shelf.png") repeat-x left bottom / var(--strip-w, 160px) var(--strip-h, 15px); image-rendering: pixelated; }
-.room-shelf.xmas { background-image: url("img/side/snowShelf.png"); background-size: var(--snow-w, 256px) var(--snow-h, 19px); }
-.room-shelf.left { left: 0; border-top-right-radius: 4px; }
+/* 선반 띠는 방 그림 아래쪽을 가로질러 쭉 이어짐 (방 앞 꼭짓점보다 아래라 방을 가리지 않음) */
+.room-deco { --strip-w: 160px; --strip-h: 15px; --snow-w: 256px; --snow-h: 19px; --strip-lift: 6px; }
+.room-strip { position: absolute; right: 0; bottom: 0; left: 0; height: var(--strip-h);
+  background: url("img/side/shelfTile.png") repeat-x left bottom / var(--strip-w) var(--strip-h); image-rendering: pixelated; }
+.room-strip.xmas { height: var(--snow-h); background-image: url("img/side/snowShelfTile.png"); background-size: var(--snow-w) var(--snow-h); }
+.room-shelf { position: absolute; bottom: 0; display: flex; align-items: flex-end; gap: 1%; padding: 0 2% var(--strip-lift); }
+.room-shelf.left { left: 0; }
 .room-shelf.right { right: 0; }
 .room-shelf .deco, .room-shelf .pair { position: relative; flex: 0 0 auto; }
 .room-shelf .pair .deco { position: absolute; left: 0; bottom: 0; }
@@ -1491,7 +1494,7 @@ body.side-mode .room-deco { display: none; }
 .deco.blink-b { animation: decoBreatheB 1.4s steps(1) infinite; }
 .deco.flicker-a { animation: decoBreatheA 0.7s steps(1) infinite; }
 .deco.flicker-b { animation: decoBreatheB 0.7s steps(1) infinite; }
-body.pip.side-mode .side-shelf.xmas { background-image: url("img/side/snowShelf.png"); background-size: 321px 24px; } /* 눈 쌓인 선반 (도트 1.5배) */
+body.pip.side-mode .side-shelf.xmas { background-image: url("img/side/snowShelfTile.png"); background-size: 304.5px 24px; } /* 눈 쌓인 선반 (도트 1.5배) */
 @keyframes decoDrift { from { transform: translateX(-6px); } to { transform: translateX(6px); } }
 @keyframes decoTwinkle { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
 @keyframes decoBob { from { transform: translateY(-2px); } to { transform: translateY(2px); } }

@@ -195,14 +195,13 @@ const SideDeco = (() => {
       left = [lantern, rpic("books", dot, {})];
       right = [pair("catA", "catB", dot, "breathe-a", "breathe-b"), rpic("plant", dot, {})];
     }
-    for (const [el, list] of [[shelfL, left], [shelfR, right]]) {
-      el.innerHTML = "";
-      el.append(...list);
-      el.classList.toggle("xmas", december);
-      el.style.setProperty("--strip-w", `${134 * dot}px`); el.style.setProperty("--strip-h", `${13 * dot}px`);
-      el.style.setProperty("--snow-w", `${214 * dot}px`); el.style.setProperty("--snow-h", `${16 * dot}px`);
-      el.style.setProperty("--strip-lift", `${8 * dot}px`);
-    }
+    for (const [el, list] of [[shelfL, left], [shelfR, right]]) { el.innerHTML = ""; el.append(...list); }
+    // 선반 띠 크기 (도트에 맞춤), 12월에는 눈 쌓인 띠
+    const deco = roomSky.parentElement;
+    deco.style.setProperty("--strip-w", `${122 * dot}px`); deco.style.setProperty("--strip-h", `${13 * dot}px`);
+    deco.style.setProperty("--snow-w", `${203 * dot}px`); deco.style.setProperty("--snow-h", `${16 * dot}px`);
+    deco.style.setProperty("--strip-lift", `${8 * dot}px`);
+    $("room-strip").classList.toggle("xmas", december);
   }
 
   // 날씨·밤낮·달이 바뀔 때만 다시 그림
