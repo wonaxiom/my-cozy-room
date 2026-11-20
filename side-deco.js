@@ -14,6 +14,8 @@ const SideDeco = (() => {
     lanternOn: [29, 39], lanternOff: [29, 39], books: [37, 29], catA: [50, 32], catB: [50, 32], plant: [38, 50], tree: [41, 50],
     cloud1: [54, 26], cloud2: [30, 18], cloud3: [16, 11], sparkS: [9, 9], sparkL: [15, 16], rainCloud1: [38, 21], rainCloud2: [24, 15],
     drop: [7, 9], snowS: [10, 11], snowL: [16, 18], moon: [18, 19], star: [7, 7],
+    // 12월
+    gifts: [43, 42], snowman: [28, 40], candleA: [26, 38], candleB: [26, 38], xcatA: [49, 35], xcatB: [49, 35], lightsA: [112, 18], lightsB: [112, 18],
   };
   let lastKey = "";
 
@@ -61,12 +63,30 @@ const SideDeco = (() => {
 
   function renderShelf(night, december) {
     shelf.innerHTML = "";
+    shelf.classList.toggle("xmas", december); // 12월: 눈 쌓인 선반 띠
+    if (!december) {
+      shelf.append(
+        pic(night ? "lanternOn" : "lanternOff", { left: "14px", bottom: "14px" }, night ? "glow" : ""),
+        pic("books", { left: "62px", bottom: "14px" }),
+        pic("catA", { right: "70px", bottom: "12px" }, "breathe-a"),
+        pic("catB", { right: "70px", bottom: "12px" }, "breathe-b"),
+        pic("plant", { right: "10px", bottom: "14px" }),
+      );
+      return;
+    }
+    // 12월: 꼬마전구 줄(반짝임)을 뒤에 걸고, 등불·선물·촛불(흔들림)·눈사람·산타 모자 고양이·트리
+    for (const left of ["-6px", "162px"]) {
+      shelf.append(pic("lightsA", { left, top: "-10px" }, "blink-a"), pic("lightsB", { left, top: "-10px" }, "blink-b"));
+    }
     shelf.append(
-      pic(night ? "lanternOn" : "lanternOff", { left: "14px", bottom: "14px" }, night ? "glow" : ""),
-      pic("books", { left: "62px", bottom: "14px" }),
-      pic("catA", { right: december ? "74px" : "70px", bottom: "12px" }, "breathe-a"),
-      pic("catB", { right: december ? "74px" : "70px", bottom: "12px" }, "breathe-b"),
-      pic(december ? "tree" : "plant", { right: "10px", bottom: "14px" }),
+      pic(night ? "lanternOn" : "lanternOff", { left: "8px", bottom: "14px" }, night ? "glow" : ""),
+      pic("gifts", { left: "50px", bottom: "13px" }),
+      pic("candleA", { left: "116px", bottom: "13px" }, "flicker-a"),
+      pic("candleB", { left: "116px", bottom: "13px" }, "flicker-b"),
+      pic("snowman", { left: "156px", bottom: "13px" }),
+      pic("xcatA", { right: "66px", bottom: "11px" }, "breathe-a"),
+      pic("xcatB", { right: "66px", bottom: "11px" }, "breathe-b"),
+      pic("tree", { right: "6px", bottom: "13px" }),
     );
   }
 
