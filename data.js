@@ -1367,7 +1367,12 @@ FURNITURE.pinkBed.backFront = [[0, 0.36], [0.104, 0.32], [0.458, 0.563], [0.458,
 ["cabinet", "chest", "bookcase", "tallBookcase", "bookChest", "glassCabinet", "sideboard", "fridge", "wardrobe"].forEach((id) => {
   FURNITURE[id].imageBack = `img/furn/${id}Back.png`;
 });
-// 엔티크 가구 4종과 캐노피 침대 (캐노피는 세 번째 시도에서 베개가 맞게 옴)
+// 엔티크 가구 4종과 캐노피 침대
+// 캐노피 뒤쪽 그림은 머리판·베개가 왼쪽 아래(앞쪽 긴 변)에 있어서, 그 그림 기준 베개·서는 자리를 따로 적음
+FURNITURE.canopyBed.sleepBack = { pillow: [9, 15, 6], side: [6, 20] };
+// 누운 몸 위로 다시 그릴 칸: 지붕(위쪽)과 가운데 앞 기둥 (0~1 비율 [x0, y0, x1, y1])
+FURNITURE.canopyBed.sleepCover = [[0, 0, 1, 0.43], [0.44, 0.3, 0.57, 1]];
+FURNITURE.canopyBed.sleepCoverBack = [[0, 0, 1, 0.43], [0.44, 0.3, 0.57, 1]];
 ["fireplace", "vanity", "grandfatherClock", "piano", "canopyBed"].forEach((id) => {
   FURNITURE[id].imageBack = `img/furn/${id}Back.png`;
 });

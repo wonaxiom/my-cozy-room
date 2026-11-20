@@ -1867,16 +1867,22 @@ function bedItem() {
   return items.find((f) => f.sleep);
 }
 
+// 잠자리 자리 (베개·서는 곳). 뒤쪽 그림에 베개 자리를 따로 적어 두었으면(sleepBack) 그 그림 기준으로
+function sleepPoint(b, key) {
+  if (backView(b) && b.sleepBack && b.sleepBack[key]) return turned(b, b.sleepBack[key]);
+  return turnedPoint(b, b.sleep[key]);
+}
+
 function pillowPos() {
   const b = bedItem();
-  const [px, py, pz] = turnedPoint(b, b.sleep.pillow);
+  const [px, py, pz] = sleepPoint(b, "pillow");
   return [b.x + px, b.y + py, b.z + pz];
 }
 
 // 잠들기 전 서는 자리 (막혀 있으면 잠자리 주변의 빈 곳)
 function bedSide() {
   const b = bedItem();
-  return spotNear(b, turnedPoint(b, b.sleep.side));
+  return spotNear(b, sleepPoint(b, "side"));
 }
 
 // 가구 옆에 설 자리 (정해 둔 자리가 막혀 있으면 가구 주변의 빈 곳)
@@ -3112,17 +3118,23 @@ function drawSleeper() {
   if (hero.mode !== "sleep") return;
   const p = project(...pillowPos());
   const b = bedItem();
-  if (useHeroArt() ? drawLying(b, p) : drawLyingSimple(b, p)) return;
-  if (!b.parts) { drawHeadTowardViewer(b, p); return; }
+  if (useHeroArt() ? drawLying(b, p) : drawLyingSimple(b, p)) { coverSleeper(b); return; }
+  if (!b.parts) { drawHeadTowardViewer(b, p); coverSleeper(b); return; }
   // 머리만 그린 뒤, 베개보다 앞(화면 아래)에 있는 잠자리 부분을 다시 그려 머리가 베개에 묻히게 함
   drawHeroFrame("sleep", Math.round(p.x), Math.round(p.y), false);
   drawBedFront(b);
 }
 
+// 캐노피 지붕·앞 기둥처럼 누운 몸보다 앞에 있는 부분을 다시 그림 (data.js sleepCover, 뒤쪽 그림은 sleepCoverBack)
+function coverSleeper(b) {
+  if (b.parts) return;
+  redrawImageParts(b, backView(b) ? b.sleepCoverBack : b.sleepCover);
+}
+
 // 누울 방향: 베개에서 가구 가운데 쪽. x로 누우면 오른쪽 아래, y로 누우면 왼쪽 아래(그림을 뒤집음)
 // 베개가 앞쪽(화면 아래)이면 누운 그림이 없어서 null
 function lyingFlip(b) {
-  const [px, py] = turnedPoint(b, b.sleep.pillow);
+  const [px, py] = sleepPoint(b, "pillow");
   const { W, D } = baseSpan(b);
   const [w, d] = swapped(b) ? [D, W] : [W, D];
   const alongX = Math.abs(px - w / 2) > Math.abs(py - d / 2);
