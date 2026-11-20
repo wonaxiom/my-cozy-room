@@ -1446,12 +1446,38 @@ body.pip.side-mode .side-sky {
   pointer-events: none;
 }
 body.pip.side-mode .side-shelf {
+  position: sticky;   /* 할 일이 길어져 스크롤해도 창 맨 아래에 늘 보임 */
+  bottom: 0;
+  z-index: 1;
   display: block;
   flex: 0 0 auto;
   height: 84px;
   margin: -4px -12px 0;
   pointer-events: none;
+  background: url("img/side/shelf.png") repeat-x left bottom / 201px 19.5px; /* 나무 선반 띠 (도트 1.5배) */
+  image-rendering: pixelated;
 }
+
+/* 장식 그림과 움직임 */
+.side-sky .deco, .side-shelf .deco { position: absolute; image-rendering: pixelated; }
+.deco.drift { animation: decoDrift 9s ease-in-out infinite alternate; }
+.deco.drift.slow { animation-duration: 13s; }
+.deco.twinkle { animation: decoTwinkle 2.4s ease-in-out infinite; }
+.deco.bob { animation: decoBob 4s ease-in-out infinite alternate; }
+.deco.fall { animation: decoFall 1.2s linear infinite; }
+.deco.fall.snowy { animation: decoSnow 5s linear infinite; }
+.deco.glow { filter: drop-shadow(0 0 6px rgba(255, 200, 110, 0.9)); animation: decoGlow 1.8s ease-in-out infinite alternate; }
+.deco.breathe-a { animation: decoBreatheA 3.2s steps(1) infinite; }
+.deco.breathe-b { animation: decoBreatheB 3.2s steps(1) infinite; }
+@keyframes decoDrift { from { transform: translateX(-6px); } to { transform: translateX(6px); } }
+@keyframes decoTwinkle { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+@keyframes decoBob { from { transform: translateY(-2px); } to { transform: translateY(2px); } }
+@keyframes decoFall { from { transform: translateY(0); opacity: 0.9; } to { transform: translateY(160px); opacity: 0; } }
+@keyframes decoSnow { 0% { transform: translate(0, 0); opacity: 1; } 50% { transform: translate(6px, 80px); } 100% { transform: translate(-4px, 160px); opacity: 0; } }
+@keyframes decoGlow { from { filter: drop-shadow(0 0 4px rgba(255, 200, 110, 0.6)); } to { filter: drop-shadow(0 0 9px rgba(255, 200, 110, 1)); } }
+@keyframes decoBreatheA { 0% { opacity: 1; } 50% { opacity: 0; } }
+@keyframes decoBreatheB { 0% { opacity: 0; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .side-sky .deco, .side-shelf .deco { animation: none; } .deco.breathe-b { opacity: 0; } }
 
 /* 세로 보기에서 친구 방 구경 중: '내 방으로' 줄을 늘 보이게 (마우스를 올리지 않아도) */
 body.pip.side-mode.visiting .visit-bar { opacity: 1; }
@@ -1595,7 +1621,7 @@ body.pip.side-mode #shop-btn { display: none; }
   font-size: 12px;
 }
 
-.side-todos { flex: 1 0 auto; }
+.side-todos { flex: 1 1 auto; min-height: 110px; overflow-y: auto; } /* 남는 높이만 차지하고, 맨 아래 선반 장식이 늘 보이게 */
 
 .side-todo-list {
   margin: 0 0 6px;

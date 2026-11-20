@@ -184,6 +184,7 @@ const Side = (() => {
     panel.hidden = !on;
     btn.textContent = on ? "방 보기" : "세로 보기";
     if (on) { lastDay = ""; renderClock(); renderTimer(); renderTodos(); }
+    if (on && typeof SideDeco !== "undefined") SideDeco.reset(); // 하늘·선반 장식
     if (win && win.resizeTo) {
       try {
         if (on) {
