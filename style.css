@@ -1426,11 +1426,31 @@ body.pip.side-mode .side {
   display: flex;
   flex: 1 1 0;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   min-height: 0;
-  padding: 8px;
+  padding: 8px 12px 0;
   overflow-y: auto;
-  color: #e9e3da;
+  color: #efe7dc;
+}
+
+/* 세로 보기 장식 자리: 위쪽 하늘(구름·별·비·눈)과 맨 아래 선반(등불·책·고양이·화분). 그림은 side-deco.js가 채움 */
+.side-sky, .side-shelf { display: none; }
+body.pip.side-mode .side-sky {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 2;              /* 방 그림 위에 겹치되, 장식은 방을 가리지 않는 가장자리에만 둠 */
+  display: block;
+  height: 232px;
+  pointer-events: none;
+}
+body.pip.side-mode .side-shelf {
+  display: block;
+  flex: 0 0 auto;
+  height: 84px;
+  margin: -4px -12px 0;
+  pointer-events: none;
 }
 
 /* 세로 보기에서 친구 방 구경 중: '내 방으로' 줄을 늘 보이게 (마우스를 올리지 않아도) */
@@ -1442,7 +1462,7 @@ body.pip.side-mode #edit-btn,
 body.pip.side-mode #shop-btn { display: none; }
 
 /* 시계도 다른 칸처럼 어두운 카드에 (밝은 낮 배경·사진 위에서도 읽히게) */
-.side-clock { padding: 8px 10px; background: #3a3530; border-radius: 10px; }
+.side-clock { padding: 10px 14px; background: #3b332e; border-radius: 14px; box-shadow: 0 2px 6px rgba(70, 45, 25, 0.25); }
 
 .side-time {
   font-size: 40px;
@@ -1454,9 +1474,10 @@ body.pip.side-mode #shop-btn { display: none; }
 .side-date { color: #cfc7bd; font-size: 12px; }
 
 .side-card {
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: #3a3530;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: #3b332e;
+  box-shadow: 0 2px 6px rgba(70, 45, 25, 0.25);
 }
 
 .side-title {
