@@ -16,6 +16,9 @@ const SideDeco = (() => {
     drop: [7, 9], snowS: [10, 11], snowL: [16, 18], moon: [18, 19], star: [7, 7],
     // 12월
     xmasBanner: [230, 22], xstarS: [10, 10], xstarL: [19, 20],
+    // 새해 (1월)
+    nyBanner: [171, 23], pouch: [34, 33], tteokguk: [37, 39], kite: [40, 41], sheep: [38, 34], nycatA: [48, 30], nycatB: [48, 30],
+    sunrise: [47, 27], fireworkA: [40, 30], fireworkB: [40, 30],
     gifts: [43, 42], snowman: [28, 40], candleA: [26, 38], candleB: [26, 38], xcatA: [49, 35], xcatB: [49, 35], lightsA: [112, 18], lightsB: [112, 18],
   };
   let lastKey = "";
@@ -47,7 +50,7 @@ const SideDeco = (() => {
       [[18, 44], [80, 40], [92, 100], [4, 128], [90, 162], [8, 182]].forEach(([x, y], i) =>
         add(pic(i % 3 ? "star" : "sparkS", { left: `${x}%`, top: `${y}px`, animationDelay: `${i * 0.6}s` }, "twinkle")));
     } else {
-      add(pic(grey ? "rainCloud1" : "cloud1", { left: "-4%", top: `${36 + low}px` }, "drift"));
+      if (banner !== "nyBanner") add(pic(grey ? "rainCloud1" : "cloud1", { left: "-4%", top: `${36 + low}px` }, "drift")); // 새해 첫 사흘은 그 자리에 해돋이
       add(pic(grey ? "rainCloud2" : "cloud2", { right: "2%", top: `${44 + low}px`, animationDelay: "-3s" }, "drift"));
       if (!banner) add(pic(weather === "cloudy" ? "rainCloud2" : "cloud3", { right: "24%", top: "30px", animationDelay: "-6s" }, "drift slow"));
       if (!grey) [[6, 96], [90, 112], [10, 160], [88, 180]].forEach(([x, y], i) =>
@@ -63,9 +66,22 @@ const SideDeco = (() => {
     }
   }
 
-  function renderShelf(night, december) {
+  function renderShelf(night, december, newYear) {
     shelf.innerHTML = "";
     shelf.classList.toggle("xmas", december); // 12월: 눈 쌓인 선반 띠
+    if (newYear) {
+      // 1월 1~15일: 등불·떡국·복주머니·아기 양·복주머니 안은 고양이·방패연
+      shelf.append(
+        pic(night ? "lanternOn" : "lanternOff", { left: "8px", bottom: "14px" }, night ? "glow" : ""),
+        pic("tteokguk", { left: "52px", bottom: "13px" }),
+        pic("pouch", { left: "108px", bottom: "13px" }),
+        pic("sheep", { right: "136px", bottom: "13px" }),
+        pic("nycatA", { right: "64px", bottom: "12px" }, "breathe-a"),
+        pic("nycatB", { right: "64px", bottom: "12px" }, "breathe-b"),
+        pic("kite", { right: "0", bottom: "18px" }, "bob"),
+      );
+      return;
+    }
     if (!december) {
       shelf.append(
         pic(night ? "lanternOn" : "lanternOff", { left: "14px", bottom: "14px" }, night ? "glow" : ""),
@@ -93,21 +109,34 @@ const SideDeco = (() => {
   }
 
   // 기념일 현수막: 방 위쪽 가운데 (방 지붕에 닿지 않게 그날은 방을 조금 내림)
-  function renderBanner(name) {
+  function renderBanner(name, night) {
     const root = sky.ownerDocument.body;
     root.classList.toggle("side-banner", !!name);
     if (!name) return;
     const [w] = SIZE[name];
     const width = Math.min(300, w * DOT);
     sky.append(pic(name, { left: "50%", top: "38px", width: `${width}px`, height: "auto", marginLeft: `${-width / 2}px` }, "banner"));
+    if (name === "nyBanner") {
+      // 새해: 낮에는 왼쪽에 해돋이, 오른쪽(밤에는 양쪽)에 터지는 폭죽
+      if (!night) sky.append(pic("sunrise", { left: "3%", top: "92px" }));
+      const spots = night ? [[78, 82], [4, 150]] : [[76, 128]];
+      spots.forEach(([x, y], i) => sky.append(
+        pic("fireworkA", { left: `${x}%`, top: `${y}px`, animationDelay: `${i * 0.8}s` }, "pop-a"),
+        pic("fireworkB", { left: `${x}%`, top: `${y}px`, animationDelay: `${i * 0.8}s` }, "pop-b")));
+      return;
+    }
     [[3, 28, "xstarS"], [93, 26, "xstarS"], [16, 66, "xstarL"], [80, 64, "xstarL"]].forEach(([x, y, n], i) =>
       sky.append(pic(n, { left: `${x}%`, top: `${y}px`, animationDelay: `${i * 0.5}s` }, "twinkle")));
   }
 
-  // 오늘 띄울 현수막 (12월 24~26일: 메리 크리스마스)
+  // 확인용: 주소에 ?day= 가 있으면 그 날짜로
+  const dayOf = (d) => (params.has("day") ? Number(params.get("day")) : d.getDate());
+
+  // 오늘 띄울 현수막 (12월 24~26일: 메리 크리스마스, 1월 1~3일: 새해)
   function bannerToday(d) {
-    const day = params.has("day") ? Number(params.get("day")) : d.getDate(); // ?day= 는 확인용
+    const day = dayOf(d);
     if (d.getMonth() === 11 && day >= 24 && day <= 26) return "xmasBanner";
+    if (d.getMonth() === 0 && day <= 3) return "nyBanner";
     return null;
   }
 
@@ -118,13 +147,14 @@ const SideDeco = (() => {
     const night = currentPhase === "night" || currentPhase === "evening";
     const d = now();
     const december = d.getMonth() === 11;
+    const newYear = d.getMonth() === 0 && dayOf(d) <= 15; // 새해 장식은 1월 15일까지
     const banner = bannerToday(d);
-    const key = [weather, night, december, banner].join("|");
+    const key = [weather, night, december, newYear, banner].join("|");
     if (key === lastKey) return;
     lastKey = key;
     renderSky(weather, night, banner);
-    renderBanner(banner);
-    renderShelf(night, december);
+    renderBanner(banner, night);
+    renderShelf(night, december, newYear);
   }
 
   setInterval(update, 5000);

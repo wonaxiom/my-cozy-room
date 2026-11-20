@@ -1471,6 +1471,10 @@ body.pip.side-mode .side-shelf {
 .deco.glow { filter: drop-shadow(0 0 6px rgba(255, 200, 110, 0.9)); animation: decoGlow 1.8s ease-in-out infinite alternate; }
 .deco.breathe-a { animation: decoBreatheA 3.2s steps(1) infinite; }
 .deco.breathe-b { animation: decoBreatheB 3.2s steps(1) infinite; }
+.deco.pop-a { animation: decoPopA 2.4s ease-out infinite; }
+.deco.pop-b { animation: decoPopB 2.4s ease-out infinite; }
+@keyframes decoPopA { 0% { opacity: 0; } 10%, 35% { opacity: 1; } 45%, 100% { opacity: 0; } }
+@keyframes decoPopB { 0%, 35% { opacity: 0; transform: scale(0.8); } 45% { opacity: 1; transform: scale(1); } 80% { opacity: 0.6; } 100% { opacity: 0; transform: scale(1.1); } }
 .deco.blink-a { animation: decoBreatheA 1.4s steps(1) infinite; }
 .deco.blink-b { animation: decoBreatheB 1.4s steps(1) infinite; }
 .deco.flicker-a { animation: decoBreatheA 0.7s steps(1) infinite; }
@@ -1484,7 +1488,7 @@ body.pip.side-mode .side-shelf.xmas { background-image: url("img/side/snowShelf.
 @keyframes decoGlow { from { filter: drop-shadow(0 0 4px rgba(255, 200, 110, 0.6)); } to { filter: drop-shadow(0 0 9px rgba(255, 200, 110, 1)); } }
 @keyframes decoBreatheA { 0% { opacity: 1; } 50% { opacity: 0; } }
 @keyframes decoBreatheB { 0% { opacity: 0; } 50% { opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .side-sky .deco, .side-shelf .deco { animation: none; } .deco.breathe-b, .deco.blink-b, .deco.flicker-b { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .side-sky .deco, .side-shelf .deco { animation: none; } .deco.breathe-b, .deco.blink-b, .deco.flicker-b, .deco.pop-a { opacity: 0; } }
 
 /* 세로 보기에서 친구 방 구경 중: '내 방으로' 줄을 늘 보이게 (마우스를 올리지 않아도) */
 body.pip.side-mode.visiting .visit-bar { opacity: 1; }
