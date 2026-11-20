@@ -1460,6 +1460,18 @@ body.pip.side-mode .side-shelf {
   image-rendering: pixelated;
 }
 
+/* 보통 화면 방 둘레 장식: 방 그림 위에 겹치되 방이 없는 네 모서리에만 (세로 보기에서는 세로용 장식을 씀) */
+.room-deco { position: absolute; inset: 0; overflow: hidden; pointer-events: none; border-radius: 6px; }
+body.side-mode .room-deco { display: none; }
+.room-deco .deco { position: absolute; image-rendering: pixelated; }
+.room-shelf { position: absolute; bottom: 0; display: flex; align-items: flex-end; gap: 1%; padding: 0 2% var(--strip-lift, 6px);
+  background: url("img/side/shelf.png") repeat-x left bottom / var(--strip-w, 160px) var(--strip-h, 15px); image-rendering: pixelated; }
+.room-shelf.xmas { background-image: url("img/side/snowShelf.png"); background-size: var(--snow-w, 256px) var(--snow-h, 19px); }
+.room-shelf.left { left: 0; border-top-right-radius: 4px; }
+.room-shelf.right { right: 0; }
+.room-shelf .deco, .room-shelf .pair { position: relative; flex: 0 0 auto; }
+.room-shelf .pair .deco { position: absolute; left: 0; bottom: 0; }
+
 /* 장식 그림과 움직임 */
 .side-sky .deco, .side-shelf .deco { position: absolute; image-rendering: pixelated; }
 .deco.drift { animation: decoDrift 9s ease-in-out infinite alternate; }

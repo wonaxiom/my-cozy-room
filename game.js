@@ -5259,57 +5259,8 @@ if (params.has("coins")) {
 // ---- 알림 --------------------------------------------------------
 const toastEl = byId("toast");
 let toastTimer = null;
-// ---- 배경 사진 (내 정보에서 고름, 이 기기 브라우저에만 저장) ----
-const BG_KEY = "cozyroom-bg-photo";
-let bgPhoto = null;
-function loadBgPhoto() {
-  let url = null;
-  try { url = localStorage.getItem(BG_KEY); } catch (e) { /* 저장소를 못 쓰면 기본 배경 */ }
-  bgPhoto = null;
-  if (url) { bgPhoto = new Image(); bgPhoto.src = url; }
-  const st = byId("pf-bg-status");
-  st.textContent = url ? "내 사진" : "기본 (시간에 따라 바뀜)";
-  byId("pf-bg-reset").hidden = !url;
-}
-// 사진을 칸에 꽉 차게 (가운데 기준으로 잘라서)
-function drawCover(c, img, w, h) {
-  const s = Math.max(w / img.naturalWidth, h / img.naturalHeight);
-  const dw = img.naturalWidth * s, dh = img.naturalHeight * s;
-  c.imageSmoothingEnabled = true;
-  c.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
-  c.imageSmoothingEnabled = false;
-}
-byId("pf-bg-pick").addEventListener("click", () => byId("pf-bg-file").click());
-byId("pf-bg-file").addEventListener("change", (e) => {
-  const file = e.target.files && e.target.files[0];
-  e.target.value = "";
-  if (!file) return;
-  const img = new Image();
-  img.onload = () => {
-    // 긴 쪽 1600픽셀까지 줄여 JPEG로 저장 (브라우저 저장 공간을 아끼려고)
-    const s = Math.min(1, 1600 / Math.max(img.width, img.height));
-    const c = document.createElement("canvas");
-    c.width = Math.round(img.width * s);
-    c.height = Math.round(img.height * s);
-    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-    URL.revokeObjectURL(img.src);
-    try {
-      localStorage.setItem(BG_KEY, c.toDataURL("image/jpeg", 0.85));
-      toast("배경 사진을 바꿨어요.");
-    } catch (err) {
-      toast("사진이 너무 커서 저장하지 못했어요. 더 작은 사진을 골라 주세요.");
-    }
-    loadBgPhoto();
-  };
-  img.onerror = () => toast("사진을 열지 못했어요.");
-  img.src = URL.createObjectURL(file);
-});
-byId("pf-bg-reset").addEventListener("click", () => {
-  try { localStorage.removeItem(BG_KEY); } catch (e) { /* 이미 없음 */ }
-  loadBgPhoto();
-  toast("기본 배경으로 돌아왔어요.");
-});
-loadBgPhoto();
+// 예전에 고른 배경 사진(기능을 뺌)은 이 기기 저장 공간에서 지움
+try { localStorage.removeItem("cozyroom-bg-photo"); } catch (e) { /* 저장소를 못 쓰면 그대로 */ }
 
 // ---- 알림 모아 보기 ----
 // 친구가 놀러 옴, 선물·하트, 메시지, 친구 요청, 방명록 같은 소식을 기록해 두고 벨 버튼으로 다시 봄.
@@ -5670,27 +5621,12 @@ function tick(dt) {
   drawEffects();
   drawLightning(dt);
 
-  // 배경색도 시간에 따라 조금씩 바뀝니다. (내가 고른 배경 사진이 있으면 사진)
+  // 배경색도 시간에 따라 조금씩 바뀝니다.
   const bg = mixColor(PALETTE.bgDay, PALETTE.bgNight, DARKNESS[phase] * 2);
-  const photo = bgPhoto && bgPhoto.complete && bgPhoto.naturalWidth ? bgPhoto : null;
-  if (photo && pipWin) {
-    // 작은 창: 창 전체 배경이 사진 (방 그림 칸은 비워 두어 사진이 비쳐 보이게)
-    vctx.clearRect(0, 0, view.width, view.height);
-  } else if (photo) {
-    drawCover(vctx, photo, view.width, view.height);
-  } else {
-    vctx.fillStyle = bg;
-    vctx.fillRect(0, 0, view.width, view.height);
-  }
-  if (photo && DARKNESS[phase] > 0 && !pipWin) {
-    vctx.fillStyle = `rgba(20, 18, 30, ${DARKNESS[phase] * 0.5})`; // 밤에는 사진도 살짝 어둡게
-    vctx.fillRect(0, 0, view.width, view.height);
-  }
-  // 작은 창에서 남는 공간도 방 배경색(또는 사진)으로 (빈 띠가 보이지 않게)
-  if (pipWin) {
-    const want = photo ? `linear-gradient(rgba(20, 18, 30, ${DARKNESS[phase] * 0.5}), rgba(20, 18, 30, ${DARKNESS[phase] * 0.5})), url("${photo.src}") center / cover no-repeat ${bg}` : bg;
-    if (pipWin.document.body.dataset.bg !== want) { pipWin.document.body.dataset.bg = want; pipWin.document.body.style.background = want; }
-  }
+  vctx.fillStyle = bg;
+  vctx.fillRect(0, 0, view.width, view.height);
+  // 작은 창에서 남는 공간도 방 배경색으로 (빈 띠가 보이지 않게)
+  if (pipWin && pipWin.document.body.dataset.bg !== bg) { pipWin.document.body.dataset.bg = bg; pipWin.document.body.style.background = bg; }
   vctx.imageSmoothingEnabled = false;
   vctx.drawImage(buf, 0, 0, view.width, view.height);
 

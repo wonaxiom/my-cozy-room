@@ -140,15 +140,84 @@ const SideDeco = (() => {
     return null;
   }
 
+  // ---- 보통 화면: 방 그림 네 모서리 ----
+  // 크기는 방 그림 너비에 맞춰 (컴퓨터 약 1.2배, 휴대폰 약 0.9배), 위치는 그림 칸의 %로
+  const roomSky = $("room-sky"), shelfL = $("room-shelf-l"), shelfR = $("room-shelf-r");
+  let roomKey = "";
+
+  function rpic(name, dot, style, cls = "") {
+    const [w, h] = SIZE[name];
+    return pic(name, Object.assign({ width: `${w * dot}px`, height: `${h * dot}px` }, style), cls);
+  }
+  // 숨 쉬는 고양이처럼 두 장을 번갈아 보이는 그림 (같은 자리에 겹침)
+  function pair(a, b, dot, ca, cb) {
+    const box = document.createElement("span");
+    box.className = "pair";
+    const [w, h] = SIZE[a];
+    Object.assign(box.style, { width: `${w * dot}px`, height: `${h * dot}px` });
+    box.append(rpic(a, dot, {}, ca), rpic(b, dot, {}, cb));
+    return box;
+  }
+
+  function renderRoom(weather, night, december, newYear) {
+    const dot = Math.max(0.7, roomSky.parentElement.clientWidth / 400);
+    roomSky.innerHTML = "";
+    const add = (...els) => roomSky.append(...els);
+    const wet = weather === "rain" || weather === "storm";
+    const snow = weather === "snow";
+    const grey = wet || snow || weather === "cloudy";
+    if (night && !grey) {
+      add(rpic("moon", dot, { left: "4%", top: "13%" }, "bob"));
+      [[3, 34], [13, 48], [92, 30], [86, 46], [95, 62]].forEach(([x, y], i) =>
+        add(rpic(i % 2 ? "star" : "sparkS", dot, { left: `${x}%`, top: `${y}%`, animationDelay: `${i * 0.6}s` }, "twinkle")));
+    } else {
+      add(rpic(grey ? "rainCloud1" : "cloud1", dot, { left: "-3%", top: "11%" }, "drift"));
+      add(rpic(grey ? "rainCloud2" : "cloud2", dot, { right: "1%", top: "13%", animationDelay: "-3s" }, "drift"));
+      if (!grey) [[4, 36], [93, 38], [10, 54]].forEach(([x, y], i) =>
+        add(rpic(i % 2 ? "sparkS" : "sparkL", dot, { left: `${x}%`, top: `${y}%`, animationDelay: `${i * 0.7}s` }, "twinkle")));
+    }
+    if (wet || snow) {
+      for (let i = 0; i < 8; i++) {
+        const left = i % 2 ? 1 + seq(i, 8) * 11 : 88 + seq(i, 8) * 10;
+        add(rpic(wet ? "drop" : i % 3 ? "snowS" : "snowL", dot, { left: `${left}%`, top: "20%", animationDelay: `${-seq(i + 3, 8) * (wet ? 1.2 : 5)}s` }, wet ? "fall" : "fall snowy"));
+      }
+    }
+    // 아래 선반 두 무리: 왼쪽 등불(밤에 켜짐)과 소품, 오른쪽 고양이와 화분 (12월·새해에는 바뀜)
+    const lantern = rpic(night ? "lanternOn" : "lanternOff", dot, {}, night ? "glow" : "");
+    let left, right;
+    if (newYear) {
+      left = [lantern, rpic("tteokguk", dot, {}), rpic("pouch", dot, {})];
+      right = [pair("nycatA", "nycatB", dot, "breathe-a", "breathe-b"), rpic("kite", dot, {}, "bob")];
+    } else if (december) {
+      left = [lantern, rpic("gifts", dot, {}), pair("candleA", "candleB", dot, "flicker-a", "flicker-b")];
+      right = [pair("xcatA", "xcatB", dot, "breathe-a", "breathe-b"), rpic("tree", dot, {})];
+    } else {
+      left = [lantern, rpic("books", dot, {})];
+      right = [pair("catA", "catB", dot, "breathe-a", "breathe-b"), rpic("plant", dot, {})];
+    }
+    for (const [el, list] of [[shelfL, left], [shelfR, right]]) {
+      el.innerHTML = "";
+      el.append(...list);
+      el.classList.toggle("xmas", december);
+      el.style.setProperty("--strip-w", `${134 * dot}px`); el.style.setProperty("--strip-h", `${13 * dot}px`);
+      el.style.setProperty("--snow-w", `${214 * dot}px`); el.style.setProperty("--snow-h", `${16 * dot}px`);
+      el.style.setProperty("--strip-lift", `${8 * dot}px`);
+    }
+  }
+
   // 날씨·밤낮·달이 바뀔 때만 다시 그림
   function update() {
-    if (!document.body.classList.contains("side-mode") && !(typeof pipWin !== "undefined" && pipWin && pipWin.document.body.classList.contains("side-mode"))) return;
     const weather = typeof storm !== "undefined" && storm ? "storm" : weatherNow();
     const night = currentPhase === "night" || currentPhase === "evening";
     const d = now();
     const december = d.getMonth() === 11;
     const newYear = d.getMonth() === 0 && dayOf(d) <= 15; // 새해 장식은 1월 15일까지
     const banner = bannerToday(d);
+    // 보통 화면 장식 (방 그림 크기가 바뀌어도 다시 그림)
+    const rk = [weather, night, december, newYear, roomSky.parentElement.clientWidth].join("|");
+    if (rk !== roomKey) { roomKey = rk; renderRoom(weather, night, december, newYear); }
+    const sideOn = document.body.classList.contains("side-mode") || (typeof pipWin !== "undefined" && pipWin && pipWin.document.body.classList.contains("side-mode"));
+    if (!sideOn) return;
     const key = [weather, night, december, newYear, banner].join("|");
     if (key === lastKey) return;
     lastKey = key;
@@ -158,5 +227,7 @@ const SideDeco = (() => {
   }
 
   setInterval(update, 5000);
+  window.addEventListener("resize", update);
+  setTimeout(update, 300); // 처음 열 때
   return { update, reset: () => { lastKey = ""; update(); } };
 })();
