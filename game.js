@@ -2053,9 +2053,12 @@ function seatAway(item) {
 }
 
 // 그림 가구의 앞면 앞자리 (그림은 앞면이 왼쪽 아래(+y)를 봄. 뒤집으면 오른쪽 아래(+x))
+// 뒤쪽 그림(3·4번째 방향)이면 앞면이 반대(벽 쪽)를 보므로 그쪽에 섬
 function frontSpot(item, gap, along = 0.5) {
   const f = footprint(item);
-  return swapped(item) ? { x: f.x + f.w + gap, y: f.y + f.d * along } : { x: f.x + f.w * along, y: f.y + f.d + gap };
+  const back = backView(item);
+  if (swapped(item)) return { x: back ? f.x - gap : f.x + f.w + gap, y: f.y + f.d * along };
+  return { x: f.x + f.w * along, y: back ? f.y - gap : f.y + f.d + gap };
 }
 
 // 가구 앞에 설 자리 (벽 장식은 벽에서 조금 떨어진 곳, 방석은 그 위)
@@ -2076,7 +2079,8 @@ function useSpot(item, act) {
   if (item.imageOpen) {
     // 문이 열리는 가구(냉장고): 문이 달린 앞쪽에 섬 (그림을 뒤집으면 앞쪽도 바뀜)
     // 문 반대쪽(손잡이 쪽)으로 조금 비켜 서서, 열린 문과 냉장고 안이 보이게 함
-    const spot = swapped(item) ? { x: f.x + f.w * 0.8, y: f.y + f.d + 4 } : { x: f.x + f.w + 4, y: f.y + f.d * 0.8 };
+    const back = backView(item); // 뒤쪽 그림이면 문이 반대쪽
+    const spot = swapped(item) ? { x: f.x + f.w * 0.8, y: back ? f.y - 4 : f.y + f.d + 4 } : { x: back ? f.x - 4 : f.x + f.w + 4, y: f.y + f.d * 0.8 };
     return isFree(spot.x, spot.y) ? spot : null;
   }
   const sides = [

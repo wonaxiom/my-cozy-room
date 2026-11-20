@@ -1363,6 +1363,10 @@ FURNITURE.pinkBed.backFront = [[0, 0.36], [0.104, 0.32], [0.458, 0.563], [0.458,
 ["armchair", "sofa", "chesterfield", "fabricChair", "officeChair", "trainSeat", "rolltopDesk"].forEach((id) => {
   FURNITURE[id].imageBack = `img/furn/${id}Back.png`;
 });
+// 수납 가구 9종: 반대 방향은 나무 뒷판이 보임 (앞면은 벽 쪽)
+["cabinet", "chest", "bookcase", "tallBookcase", "bookChest", "glassCabinet", "sideboard", "fridge", "wardrobe"].forEach((id) => {
+  FURNITURE[id].imageBack = `img/furn/${id}Back.png`;
+});
 Object.assign(FURNITURE.armchair, { backClipBack: [0, 0, 1, 0.62] });
 Object.assign(FURNITURE.sofa, { backClipBack: [0, 0, 1, 0.62] });
 Object.assign(FURNITURE.chesterfield, { backClipBack: [0, 0, 1, 0.62] });
