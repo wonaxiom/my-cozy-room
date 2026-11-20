@@ -1358,6 +1358,12 @@ Object.assign(FURNITURE, {
 FURNITURE.bed.backFront = [[0.458, 0.526], [0.906, 0.244], [1, 0.27], [1, 1], [0.458, 1]];
 FURNITURE.pinkBed.backFront = [[0, 0.36], [0.104, 0.32], [0.458, 0.563], [0.458, 1], [0, 1]];
 
+// ---- 앞뒤 모양이 같은 탁자: 반대 방향도 같은 그림 (돌리면 앉아서 일하는 자리가 반대편으로 바뀜) ----
+["desk", "windowTable", "woodTable", "lowTable", "kotatsu"].forEach((id) => {
+  FURNITURE[id].imageBack = FURNITURE[id].image;
+  FURNITURE[id].imageSimpleBack = FURNITURE[id].imageSimple;
+});
+
 // ---- 의자 반대 방향 그림 (돌리기 3·4번째 방향) ----
 FURNITURE.chair.imageBack = "img/furn/chairBack.png";         // 앞을 보고 앉음 (등받이가 뒤)
 FURNITURE.chair.imageSimpleBack = "img/furn/s/chairBack.png";
