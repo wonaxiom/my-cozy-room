@@ -142,9 +142,11 @@ const Start = (() => {
         row.append(label, sw);
         groups.append(row);
       }
-      // 장신구: 없음 + 가지고 있는 것
-      const accs = [{ id: null, name: "없음" }].concat(ACCESSORIES.filter((a) => save.outfits.includes(a.id)));
-      chips($("ob-acc"), accs, "acc");
+      // 장신구: 자리(머리·얼굴·목)마다 없음 + 가지고 있는 것
+      for (const slot of ACC_SLOTS) {
+        const owned = ACCESSORIES.filter((a) => (a.slot || "head") === slot.id && save.outfits.includes(a.id));
+        chips($("ob-" + slot.key), [{ id: null, name: "없음" }].concat(owned), slot.key);
+      }
       // 아우터: 없음 + 가지고 있는 것
       const outers = [{ id: null, name: "없음" }].concat(OUTERS.filter((o) => save.outfits.includes(o.id)));
       chips($("ob-outer"), outers, "outer");

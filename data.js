@@ -511,13 +511,36 @@ const OUTERS = [
   { id: "paddingVest", name: "패딩 조끼", price: 180, kind: "vest", color: "#7d9c8a" },
 ];
 
+// slot: 쓰는 자리. head(머리, 기본) / face(얼굴) / neck(목). 자리마다 하나씩 함께 쓸 수 있음
+// hat: 머리를 덮는 모자 (잘 때 벗음), season: "xmas"면 크리스마스 기간에만 상점에 보임 (산 것은 계속 씀)
+// neck의 art: ver.세밀 그림 이름 (acc-art.js의 neck), 그림 색을 color로 바꿔 칠함
 const ACCESSORIES = [
-  { id: "cap", name: "야구 모자", price: 120, color: "#d9534f", dark: "#a83c39", light: "#ee8a86" },
-  { id: "beanie", name: "비니", price: 120, color: "#e0b84f", dark: "#b8913a", light: "#f2d27e" },
-  { id: "strawHat", name: "밀짚모자", price: 150, color: "#e8c983", dark: "#c0453b", light: "#f5e0a8" },
+  { id: "cap", name: "야구 모자", price: 120, hat: true, color: "#d9534f", dark: "#a83c39", light: "#ee8a86" },
+  { id: "beanie", name: "비니", price: 120, hat: true, color: "#e0b84f", dark: "#b8913a", light: "#f2d27e" },
+  { id: "strawHat", name: "밀짚모자", price: 150, hat: true, color: "#e8c983", dark: "#c0453b", light: "#f5e0a8" },
   { id: "headband", name: "헤어밴드", price: 80, color: "#f29bb5", dark: "#d06f8f", light: "#fbc3d4" },
   { id: "ribbon", name: "리본", price: 80, color: "#e05a6a", dark: "#b23f4e", light: "#f08c98" },
   { id: "hairpin", name: "머리핀", price: 60, color: "#f4cf5b", dark: "#c9a238", light: "#fff0a8" },
+  { id: "santaHat", name: "산타 모자", price: 150, hat: true, season: "xmas", color: "#d9534f", dark: "#fbf8f1" },
+  { id: "pomBeanie", name: "방울 털모자", price: 140, hat: true, color: "#efe3c8", dark: "#d8c9a6" },
+  { id: "earmuffs", name: "귀마개", price: 120, color: "#f7f1e8", dark: "#8a5a3c" },
+  { id: "catEars", name: "고양이 귀 머리띠", price: 100, color: "#4a4448", dark: "#f2a7b8" },
+  { id: "bunnyEars", name: "토끼 귀 머리띠", price: 100, color: "#fbf8f1", dark: "#f2a7b8" },
+  { id: "bearEars", name: "곰 귀 머리띠", price: 100, color: "#8a5a3c", dark: "#6b4430" },
+  { id: "roundGlasses", name: "동그란 안경", price: 100, slot: "face", color: "#b07c28", dark: "#b07c28" },
+  { id: "bandage", name: "볼 반창고", price: 40, slot: "face", color: "#f0b27a", dark: "#c98a5a" },
+  { id: "mask", name: "마스크", price: 60, slot: "face", color: "#f4f2ee", dark: "#d6d2cc" },
+  { id: "scarfRed", name: "빨간 목도리", price: 120, slot: "neck", art: "scarf", color: "#c9524a", dark: "#9e3a34" },
+  { id: "scarfCream", name: "크림 목도리", price: 120, slot: "neck", art: "scarf", color: "#eadcbe", dark: "#c9b98f" },
+  { id: "scarfGreen", name: "초록 목도리", price: 120, slot: "neck", art: "scarf", color: "#5f8f6a", dark: "#46704f" },
+  { id: "scarfNavy", name: "남색 목도리", price: 120, slot: "neck", art: "scarf", color: "#4f5f86", dark: "#3a4766" },
+];
+
+// 장신구를 쓰는 자리 (look에 저장하는 이름: 머리는 예전처럼 acc)
+const ACC_SLOTS = [
+  { id: "head", key: "acc", name: "머리" },
+  { id: "face", key: "face", name: "얼굴" },
+  { id: "neck", key: "neck", name: "목" },
 ];
 
 const CITIES = [
