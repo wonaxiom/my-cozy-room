@@ -5410,7 +5410,8 @@ const COINS_PER_MINUTE = 2;      // 1분에 받는 코인
 function santaSetCount(look = save.look) {
   return SANTA_SET.filter((id) => [look.acc, look.face, look.neck, look.outer].includes(id)).length;
 }
-function santaSetOn(look = save.look) { return santaSetCount(look) >= SANTA_SET_MIN; }
+// 보너스는 크리스마스 상점 기간(11월~1월, isXmasSeason)에만
+function santaSetOn(look = save.look) { return isXmasSeason() && santaSetCount(look) >= SANTA_SET_MIN; }
 // 1분에 받는 코인 (산타 세트를 입으면 더 받음)
 function coinsPerMinute() {
   return COINS_PER_MINUTE + (santaSetOn() ? SANTA_SET_BONUS : 0);

@@ -539,7 +539,7 @@ const ACCESSORIES = [
   { id: "xmasScarf", name: "크리스마스 목도리", price: 150, slot: "neck", art: "xmasScarf", season: "xmas", color: "#b8322e", dark: "#f7f5f2" },
 ];
 
-// 산타 세트: 이 중 SANTA_SET_MIN개 이상 입으면 1분에 코인 +SANTA_SET_BONUS
+// 산타 세트: 이 중 SANTA_SET_MIN개 이상 입으면 1분에 코인 +SANTA_SET_BONUS (크리스마스 상점 기간인 11월~1월에만)
 const SANTA_SET = ["santaHat", "santaBeard", "santaSuit", "xmasScarf"];
 const SANTA_SET_MIN = 3;
 const SANTA_SET_BONUS = 1;
