@@ -1361,18 +1361,22 @@ FURNITURE.pinkBed.backFront = [[0, 0.36], [0.104, 0.32], [0.458, 0.563], [0.458,
 // backClipBack: 뒤쪽 그림에서 앞에 선 등받이 칸 (뒷모습으로 앉은 몸을 가림)
 ["armchair", "sofa", "chesterfield", "fabricChair", "officeChair", "trainSeat", "rolltopDesk"].forEach((id) => {
   FURNITURE[id].imageBack = `img/furn/${id}Back.png`;
+  FURNITURE[id].imageSimpleBack = `img/furn/s/${id}Back.png`; // ver.하찮
 });
 // 수납 가구 9종: 반대 방향은 나무 뒷판이 보임 (앞면은 벽 쪽)
 ["cabinet", "chest", "bookcase", "tallBookcase", "bookChest", "glassCabinet", "sideboard", "fridge", "wardrobe"].forEach((id) => {
   FURNITURE[id].imageBack = `img/furn/${id}Back.png`;
+  FURNITURE[id].imageSimpleBack = `img/furn/s/${id}Back.png`; // ver.하찮
 });
 // 앞뒤가 있는 소품 9종 (망원경은 돌린 그림이 맞지 않아 두 방향만)
 ["laptopBasic", "laptop", "notebook", "mug", "deskClock", "deskClockWhite", "gramophone", "trunk", "reindeer"].forEach((id) => {
   FURNITURE[id].imageBack = `img/furn/${id}Back.png`;
+  FURNITURE[id].imageSimpleBack = `img/furn/s/${id}Back.png`; // ver.하찮
 });
 // 엔티크 가구 4종
 ["fireplace", "vanity", "grandfatherClock", "piano"].forEach((id) => {
   FURNITURE[id].imageBack = `img/furn/${id}Back.png`;
+  FURNITURE[id].imageSimpleBack = `img/furn/s/${id}Back.png`; // ver.하찮
 });
 Object.assign(FURNITURE.armchair, { backClipBack: [0, 0, 1, 0.62] });
 Object.assign(FURNITURE.sofa, { backClipBack: [0, 0, 1, 0.62] });

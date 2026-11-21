@@ -21,7 +21,7 @@ COLORS = {
     'bed': [('pink', '#f0a8b8'), ('mint', '#8fd0b8'), ('yellow', '#f0d27a'), ('gray', '#a9adb5')],
     'armchair': [('brown', '#9a6444'), ('green', '#6f9a66'), ('navy', '#4f6390'), ('mustard', '#d9aa45')],
 }
-FILES = {'sofa': ['sofa'], 'bed': ['bed', 'bedBack'], 'armchair': ['armchair']}
+FILES = {'sofa': ['sofa', 'sofaBack'], 'bed': ['bed', 'bedBack'], 'armchair': ['armchair', 'armchairBack']}
 
 def hls_of(hexc):
     r, g, b = (int(hexc[i:i + 2], 16) / 255 for i in (1, 3, 5)); return colorsys.rgb_to_hls(r, g, b)
