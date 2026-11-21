@@ -2,7 +2,7 @@
 import numpy as np
 from PIL import Image
 from scipy import ndimage
-def cells(path, maskfn, P=4.5):
+def cells(path, maskfn, P=None):
     a=np.array(Image.open(path).convert('RGBA')).astype(float); rgb=a[:,:,:3]
     light=((rgb.min(2)>232)&((rgb.max(2)-rgb.min(2))<16))|(a[:,:,3]<128)
     # 바깥 테두리와 이어진 밝은 곳만 배경 (외곽선 안의 흰 털은 남김)
@@ -17,6 +17,13 @@ def cells(path, maskfn, P=4.5):
         if cy(o)-cy(rows[-1][-1])<90: rows[-1].append(o)
         else: rows.append([o])
     objs=[o for r in rows for o in sorted(r,key=lambda o:o[0][1].start)]
+    if P is None:
+        # 도트 크기: 시트마다 캐릭터 크기가 달라서, 머리 폭(기본형 27칸)으로 잼
+        ws=[]
+        for sl,li in objs:
+            m=lab[sl]==li; top=np.nonzero(m.any(1))[0][0]
+            xs=np.nonzero(m[top:top+70].any(0))[0]; ws.append(xs.max()-xs.min()+1)
+        P=float(np.median(ws))/27
     MK=maskfn(rgb)
     out=[]
     for sl,li in objs:
