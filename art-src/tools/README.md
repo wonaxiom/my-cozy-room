@@ -54,3 +54,16 @@ GPT에서 받은 그림을 게임용 도트(`hero-art.js`)로 만드는 데 쓴 
 | 5 | `emit_xmas.py` | `acc-art.js`에 더함 (색은 그림 그대로) |
 
 - 시트마다 GPT가 캐릭터를 조금씩 다른 크기로 그립니다 (크리스마스 목도리 시트는 한 줄에 8칸이라 12% 작음). 도트 크기를 고정값으로 두면 장식이 작아지고 위로 올라가므로, 꼭 머리 폭으로 재서 맞춥니다.
+
+## 배경 장식 (2026-11: 벚꽃, 나무, 강아지, 바다, 단풍)
+
+| 파일 | 하는 일 |
+|---|---|
+| `side_theme.py` | 배경 장식 시트(`art-src/side_*.webp`)를 조각별 도트 그림으로 줄여 `img/side/`에 저장. 숨 쉬는 동물 두 장(A·B)은 같은 칸에 맞추고, 선반 띠는 이음매 없이 반복되는 `...StripTile`로 자름 |
+
+```
+python3 art-src/tools/side_theme.py art-src/side_sakura.webp img/side 6.5 sakuraVase,sakuraDango,sakuraCatA,sakuraCatB,sakuraTree,petalS,petalL,sakuraStrip
+```
+
+- 피치 6.5는 기존 선반 장식(고양이 50×32)과 도트 크기가 같아지는 값입니다.
+- 이름은 시트에서 위 줄부터, 왼쪽에서 오른쪽 순서로 적습니다.

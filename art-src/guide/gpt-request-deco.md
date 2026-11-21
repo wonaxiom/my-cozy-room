@@ -26,7 +26,7 @@ GPT 프로젝트 지침([gpt-project-instructions.md](gpt-project-instructions.m
 - 동물 두 칸은 겹쳐서 번갈아 보여 주므로, 위치와 크기가 같고 몸통만 1~2도트 차이 나게 받습니다.
 - 선반 띠는 왼쪽 끝과 오른쪽 끝이 이어지게 받아야 반복했을 때 이음매가 보이지 않습니다.
 
-> 받은 그림은 아직 게임에 넣지 않았습니다.
+> 요청 1~5는 게임에 넣었습니다 (2026-11-21). 원본은 `art-src/side_sakura.webp`, `side_wood.webp`, `side_dog.webp`, `side_sea.webp`, `side_autumn.webp`이고, 정리는 `art-src/tools/side_theme.py`로 했습니다.
 
 ---
 

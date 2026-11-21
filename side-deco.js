@@ -7,11 +7,19 @@
 // 크리스마스 현수막(12월 24~26일)과 새해 장식(1월 1~15일)은 이벤트 장식이라 그 기간에만 저절로 나옵니다.
 // =============================================================
 
-// 고를 수 있는 배경 장식. 새 장식을 만들면 여기에 한 줄 넣으면 '내 정보'의 선택지에 저절로 나옵니다.
-// (renderShelf, renderRoom에서 그 id일 때 놓을 그림도 함께 넣어 주세요)
+// 고를 수 있는 배경 장식. 여기에 한 줄 넣으면 '내 정보'의 선택지에 저절로 나옵니다.
+// art가 있는 장식은 그림 이름만 적으면 선반에 저절로 놓입니다. (그림 크기는 아래 SIZE에도 넣기)
+//   left: 등불 옆 소품들, pet: 숨 쉬는 동물 (이름A·이름B 두 장), tall: 오른쪽 끝 큰 소품,
+//   strip: 선반 띠 (없으면 기본 나무 선반), fall: 하늘 양옆에서 천천히 떨어지는 조각 (비·눈 오는 날은 빠짐)
+// 그림 만드는 법: art-src/tools/side_theme.py, GPT 요청문: art-src/guide/gpt-request-deco.md
 const DECO_THEMES = [
   { id: "basic", name: "평소 (고양이)" },
   { id: "december", name: "12월" },
+  { id: "sakura", name: "벚꽃", art: { left: ["sakuraVase", "sakuraDango"], pet: "sakuraCat", tall: "sakuraTree", strip: "sakuraStripTile", fall: ["petalS", "petalL"] } },
+  { id: "wood", name: "나무", art: { left: ["woodStump", "woodBasket"], pet: "woodCat", tall: "woodBonsai", strip: "woodStripTile" } },
+  { id: "dog", name: "강아지", art: { left: ["dogBowl", "dogToys"], pet: "dog", tall: "dogHouse" } },
+  { id: "sea", name: "바다", art: { left: ["seaShells", "seaBottle"], pet: "seaCat", tall: "seaLighthouse", strip: "seaStripTile" } },
+  { id: "autumn", name: "단풍", art: { left: ["autumnTea", "autumnBasket"], pet: "autumnCat", tall: "autumnTree", strip: "autumnStripTile", fall: ["leafS", "leafL"] } },
 ];
 const DEFAULT_DECO = "basic";
 
@@ -29,6 +37,12 @@ const SideDeco = (() => {
     // 새해 (1월)
     nyBanner: [171, 23], pouch: [34, 33], tteokguk: [37, 39], kite: [40, 41], sheep: [38, 34], nycatA: [48, 30], nycatB: [48, 30],
     sunrise: [47, 27], fireworkA: [40, 30], fireworkB: [40, 30],
+    // 고르는 배경 장식 (DECO_THEMES)
+    sakuraVase: [42, 46], sakuraDango: [39, 23], sakuraCatA: [50, 31], sakuraCatB: [50, 31], sakuraTree: [41, 46], petalS: [17, 18], petalL: [19, 18], sakuraStripTile: [121, 14],
+    woodStump: [42, 38], woodBasket: [42, 38], woodCatA: [52, 34], woodCatB: [52, 34], woodBonsai: [46, 45], woodStripTile: [170, 15],
+    dogBowl: [40, 29], dogToys: [38, 24], dogA: [53, 35], dogB: [53, 35], dogHouse: [50, 45],
+    seaShells: [46, 45], seaBottle: [36, 47], seaCatA: [57, 35], seaCatB: [57, 35], seaLighthouse: [39, 53], seaStripTile: [167, 17],
+    autumnTea: [35, 46], autumnBasket: [51, 42], autumnCatA: [53, 35], autumnCatB: [53, 35], autumnTree: [48, 48], leafS: [17, 15], leafL: [23, 18], autumnStripTile: [116, 17],
     gifts: [43, 42], snowman: [28, 40], candleA: [26, 38], candleB: [26, 38], xcatA: [49, 35], xcatB: [49, 35], lightsA: [112, 18], lightsB: [112, 18],
   };
   let lastKey = "";
@@ -47,7 +61,7 @@ const SideDeco = (() => {
   // 같은 자리에서 정해진 순서로 (매번 같은 배치가 되게)
   const seq = (i, n) => ((i * 37) % n) / n;
 
-  function renderSky(weather, night, banner) {
+  function renderSky(weather, night, banner, art) {
     sky.innerHTML = "";
     const low = banner ? 44 : 0; // 현수막 날은 구름·달을 현수막 아래로
     const add = (...els) => sky.append(...els);
@@ -73,12 +87,22 @@ const SideDeco = (() => {
         const name = wet ? "drop" : i % 3 ? "snowS" : "snowL";
         add(pic(name, { left: `${left}%`, top: "60px", animationDelay: `${-seq(i + 3, 10) * (wet ? 1.2 : 5)}s` }, wet ? "fall" : "fall snowy"));
       }
+    } else if (art && art.fall) {
+      // 꽃잎·낙엽: 눈처럼 양옆에서 천천히 (눈보다 드문드문)
+      for (let i = 0; i < 6; i++) {
+        const left = i % 2 ? 2 + seq(i, 6) * 14 : 84 + seq(i, 6) * 13;
+        add(pic(art.fall[i % 3 ? 0 : 1], { left: `${left}%`, top: "60px", animationDelay: `${-seq(i + 3, 6) * 7}s` }, "fall petal"));
+      }
     }
   }
 
-  function renderShelf(night, december, newYear) {
+  function renderShelf(night, december, newYear, art) {
     shelf.innerHTML = "";
     shelf.classList.toggle("xmas", december); // 12월: 눈 쌓인 선반 띠
+    // 고른 장식의 선반 띠 (도트 1.5배), 없으면 CSS의 기본 나무 선반
+    const strip = !newYear && art && art.strip;
+    shelf.style.backgroundImage = strip ? `url("img/side/${strip}.png")` : "";
+    shelf.style.backgroundSize = strip ? `${SIZE[strip][0] * DOT}px ${SIZE[strip][1] * DOT}px` : "";
     if (newYear) {
       // 1월 1~15일: 등불·떡국·복주머니·아기 양·복주머니 안은 고양이·방패연
       shelf.append(
@@ -90,6 +114,18 @@ const SideDeco = (() => {
         pic("nycatB", { right: "64px", bottom: "12px" }, "breathe-b"),
         pic("kite", { right: "0", bottom: "18px" }, "bob"),
       );
+      return;
+    }
+    if (art) {
+      // 왼쪽: 등불과 소품들을 차례로, 오른쪽: 끝에 큰 소품, 그 옆에 숨 쉬는 동물
+      const w = (n) => SIZE[n][0] * DOT;
+      const lantern = night ? "lanternOn" : "lanternOff";
+      shelf.append(pic(lantern, { left: "8px", bottom: "14px" }, night ? "glow" : ""));
+      let x = 8 + w(lantern) + 6;
+      for (const n of art.left) { shelf.append(pic(n, { left: `${x}px`, bottom: "13px" })); x += w(n) + 6; }
+      shelf.append(pic(art.tall, { right: "6px", bottom: "13px" }));
+      const r = `${6 + w(art.tall) + 6}px`;
+      shelf.append(pic(art.pet + "A", { right: r, bottom: "12px" }, "breathe-a"), pic(art.pet + "B", { right: r, bottom: "12px" }, "breathe-b"));
       return;
     }
     if (!december) {
@@ -169,7 +205,7 @@ const SideDeco = (() => {
     return box;
   }
 
-  function renderRoom(weather, night, december, newYear) {
+  function renderRoom(weather, night, december, newYear, art) {
     const dot = Math.max(0.7, roomSky.parentElement.clientWidth / 400);
     roomSky.innerHTML = "";
     const add = (...els) => roomSky.append(...els);
@@ -191,6 +227,11 @@ const SideDeco = (() => {
         const left = i % 2 ? 1 + seq(i, 8) * 11 : 88 + seq(i, 8) * 10;
         add(rpic(wet ? "drop" : i % 3 ? "snowS" : "snowL", dot, { left: `${left}%`, top: "20%", animationDelay: `${-seq(i + 3, 8) * (wet ? 1.2 : 5)}s` }, wet ? "fall" : "fall snowy"));
       }
+    } else if (art && art.fall) {
+      for (let i = 0; i < 6; i++) {
+        const left = i % 2 ? 1 + seq(i, 6) * 10 : 89 + seq(i, 6) * 9;
+        add(rpic(art.fall[i % 3 ? 0 : 1], dot, { left: `${left}%`, top: "20%", animationDelay: `${-seq(i + 3, 6) * 7}s` }, "fall petal"));
+      }
     }
     // 아래 선반 두 무리: 왼쪽 등불(밤에 켜짐)과 소품, 오른쪽 고양이와 화분 (12월·새해에는 바뀜)
     const lantern = rpic(night ? "lanternOn" : "lanternOff", dot, {}, night ? "glow" : "");
@@ -198,6 +239,9 @@ const SideDeco = (() => {
     if (newYear) {
       left = [lantern, rpic("tteokguk", dot, {}), rpic("pouch", dot, {})];
       right = [pair("nycatA", "nycatB", dot, "breathe-a", "breathe-b"), rpic("kite", dot, {}, "bob")];
+    } else if (art) {
+      left = [lantern, ...art.left.map((n) => rpic(n, dot, {}))];
+      right = [pair(art.pet + "A", art.pet + "B", dot, "breathe-a", "breathe-b"), rpic(art.tall, dot, {})];
     } else if (december) {
       left = [lantern, rpic("gifts", dot, {}), pair("candleA", "candleB", dot, "flicker-a", "flicker-b")];
       right = [pair("xcatA", "xcatB", dot, "breathe-a", "breathe-b"), rpic("tree", dot, {})];
@@ -211,7 +255,13 @@ const SideDeco = (() => {
     deco.style.setProperty("--strip-w", `${122 * dot}px`); deco.style.setProperty("--strip-h", `${13 * dot}px`);
     deco.style.setProperty("--snow-w", `${203 * dot}px`); deco.style.setProperty("--snow-h", `${16 * dot}px`);
     deco.style.setProperty("--strip-lift", `${8 * dot}px`);
-    $("room-strip").classList.toggle("xmas", december);
+    const roomStrip = $("room-strip");
+    roomStrip.classList.toggle("xmas", december);
+    // 고른 장식의 선반 띠 (없으면 CSS의 기본 나무 선반)
+    const strip = !newYear && art && art.strip;
+    roomStrip.style.backgroundImage = strip ? `url("img/side/${strip}.png")` : "";
+    roomStrip.style.backgroundSize = strip ? `${SIZE[strip][0] * dot}px ${SIZE[strip][1] * dot}px` : "";
+    roomStrip.style.height = strip ? `${SIZE[strip][1] * dot}px` : "";
   }
 
   // 내가 고른 배경 장식 (친구 방 구경 중에도 내 설정, 목록에 없는 값이면 기본)
@@ -227,19 +277,21 @@ const SideDeco = (() => {
     const night = currentPhase === "night" || currentPhase === "evening";
     const d = now();
     const newYear = d.getMonth() === 0 && dayOf(d) <= 15; // 새해 장식(이벤트)은 1월 15일까지, 그동안은 고른 장식 대신 나옴
-    const december = !newYear && theme() === "december"; // 고른 장식이 '12월'이면
+    const id = theme();
+    const december = !newYear && id === "december"; // 고른 장식이 '12월'이면
+    const art = newYear ? null : DECO_THEMES.find((t) => t.id === id).art || null; // 새해 기간에는 새해 장식
     const banner = bannerToday(d);
     // 보통 화면 장식 (방 그림 크기가 바뀌어도 다시 그림)
-    const rk = [weather, night, december, newYear, roomSky.parentElement.clientWidth].join("|");
-    if (rk !== roomKey) { roomKey = rk; renderRoom(weather, night, december, newYear); }
+    const rk = [weather, night, id, newYear, roomSky.parentElement.clientWidth].join("|");
+    if (rk !== roomKey) { roomKey = rk; renderRoom(weather, night, december, newYear, art); }
     const sideOn = document.body.classList.contains("side-mode") || (typeof pipWin !== "undefined" && pipWin && pipWin.document.body.classList.contains("side-mode"));
     if (!sideOn) return;
-    const key = [weather, night, december, newYear, banner].join("|");
+    const key = [weather, night, id, newYear, banner].join("|");
     if (key === lastKey) return;
     lastKey = key;
-    renderSky(weather, night, banner);
+    renderSky(weather, night, banner, art);
     renderBanner(banner, night);
-    renderShelf(night, december, newYear);
+    renderShelf(night, december, newYear, art);
   }
 
   setInterval(update, 5000);
