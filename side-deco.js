@@ -14,7 +14,7 @@
 // 그림 만드는 법: art-src/tools/side_theme.py, GPT 요청문: art-src/guide/gpt-request-deco.md
 const DECO_THEMES = [
   { id: "basic", name: "평소", pets: { cat: "cat", dog: "dog" } },
-  { id: "december", name: "12월", pets: { cat: "xcat" } },
+  { id: "december", name: "12월", pets: { cat: "xcat", dog: "xdog" } },
   { id: "sakura", name: "벚꽃", art: { left: ["sakuraVase", "sakuraDango"], pets: { cat: "sakuraCat", dog: "sakuraDog" }, tall: "sakuraTree", strip: "sakuraStripTile", fall: ["petalS", "petalL"] } },
   { id: "wood", name: "나무", art: { left: ["woodStump", "woodBasket"], pets: { cat: "woodCat", dog: "woodDog" }, tall: "woodBonsai", strip: "woodStripTile" } },
   { id: "dog", name: "강아지", art: { left: ["dogBowl", "dogToys"], pets: { cat: "cat", dog: "dog" }, tall: "dogHouse" } },
@@ -30,7 +30,7 @@ const DECO_PETS = [
 ];
 const DEFAULT_PET = "cat";
 const PLAIN_PETS = { cat: "cat", dog: "dog" };
-const NEWYEAR_PETS = { cat: "nycat" }; // 새해 장식 (이벤트)
+const NEWYEAR_PETS = { cat: "nycat", dog: "nydog" }; // 새해 장식 (이벤트)
 
 const SideDeco = (() => {
   const $ = (id) => document.getElementById(id) || app.querySelector("#" + id);
@@ -53,6 +53,7 @@ const SideDeco = (() => {
     seaShells: [46, 45], seaBottle: [36, 47], seaCatA: [57, 35], seaCatB: [57, 35], seaLighthouse: [39, 53], seaStripTile: [167, 17],
     autumnTea: [35, 46], autumnBasket: [51, 42], autumnCatA: [53, 35], autumnCatB: [53, 35], autumnTree: [48, 48], leafS: [17, 15], leafL: [23, 18], autumnStripTile: [116, 17],
     sakuraDogA: [54, 36], sakuraDogB: [54, 36], woodDogA: [54, 38], woodDogB: [54, 38], seaDogA: [58, 39], seaDogB: [58, 39], autumnDogA: [55, 38], autumnDogB: [55, 38],
+    xdogA: [53, 41], xdogB: [53, 41], nydogA: [53, 35], nydogB: [53, 35],
     gifts: [43, 42], snowman: [28, 40], candleA: [26, 38], candleB: [26, 38], xcatA: [49, 35], xcatB: [49, 35], lightsA: [112, 18], lightsB: [112, 18],
   };
   let lastKey = "";
@@ -119,7 +120,7 @@ const SideDeco = (() => {
         pic(night ? "lanternOn" : "lanternOff", { left: "8px", bottom: "14px" }, night ? "glow" : ""),
         pic("tteokguk", { left: "52px", bottom: "13px" }),
         pic("pouch", { left: "108px", bottom: "13px" }),
-        pic("sheep", { right: "136px", bottom: "13px" }),
+        pic("sheep", { right: `${64 + SIZE[pet + "A"][0] * DOT}px`, bottom: "13px" }), // 동물 바로 왼쪽 (강아지가 더 넓음)
         pic(pet + "A", { right: "64px", bottom: "12px" }, "breathe-a"),
         pic(pet + "B", { right: "64px", bottom: "12px" }, "breathe-b"),
         pic("kite", { right: "0", bottom: "18px" }, "bob"),
