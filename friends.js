@@ -250,6 +250,7 @@ const Friends = (() => {
       // 가진 방 전부 (친구가 놀러 와서 다른 방도 구경할 수 있게)
       rooms: Object.fromEntries(ROOMS.filter(owned).map((r) => [r.id, { layout: save.layouts[r.id] || r.layout, styles: save.roomStyles[r.id] || {} }])),
       lampOn: save.lampOn,
+      pianoV2: true, // 피아노 자리가 새 바닥 칸 기준임 (예전 정보는 구경할 때 맞춰 그림)
       timer: t.mode === "focus" && t.endAt ? { length: t.length, mode: "focus", endAt: t.endAt, remain: 0 } : null,
     };
     await db.from("room_snapshots").upsert({ user_id: me.id, data: cleanForServer(data) });

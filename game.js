@@ -4611,21 +4611,27 @@ retireItems();
 
 // 피아노 그림을 바닥 각도에 맞게 새로 그리면서 바닥 칸이 9x18 → 18x9로 바뀜.
 // 예전에 놓은 피아노는 가운데 자리를 그대로 두고 옮김 (처음 한 번만)
-function migratePiano() {
-  if (save.pianoV2) return;
-  save.pianoV2 = true;
+// 방 배치들(layouts)에서 예전 피아노 자리를 새 바닥 칸에 맞게 옮김. 옮긴 게 있으면 true
+function migratePianoLayouts(layouts) {
   let moved = false;
-  for (const [key, list] of Object.entries(save.layouts || {})) {
+  for (const [key, list] of Object.entries(layouts || {})) {
     const r = ROOMS.find((q) => q.id === key) || {};
     for (const p of list || []) {
       if (p.id !== "piano") continue;
       const odd = ((p.rot != null ? p.rot : p.flip ? 1 : 0) & 1) === 1;
       const [nw, nd] = odd ? [9, 18] : [18, 9];
-      p.x = Math.max(0, Math.min((r.width || ROOM) - nw, p.x + (odd ? 4.5 : -4.5)));
-      p.y = Math.max(0, Math.min((r.depth || ROOM) - nd, p.y + (odd ? -4.5 : 4.5)));
+      // 벽(x=0, y=0)에 붙어 있던 피아노는 그대로 벽에 붙여 둠
+      p.x = p.x <= 0 ? 0 : Math.max(0, Math.min((r.width || ROOM) - nw, p.x + (odd ? 4.5 : -4.5)));
+      p.y = p.y <= 0 ? 0 : Math.max(0, Math.min((r.depth || ROOM) - nd, p.y + (odd ? -4.5 : 4.5)));
       moved = true;
     }
   }
+  return moved;
+}
+function migratePiano() {
+  if (save.pianoV2) return;
+  save.pianoV2 = true;
+  const moved = migratePianoLayouts(save.layouts);
   Save.save(save, { auto: !moved });
 }
 migratePiano();
@@ -5432,6 +5438,7 @@ function visitSave(snap) {
     timer: snap.timer || { length: 25, mode: null, endAt: 0, remain: 0 },
     profileDone: true,
     decorDone: Object.fromEntries(ids.map((id) => [id, true])), // 친구 방은 친구가 꾸민 그대로
+    pianoV2: true,
   });
 }
 
@@ -5442,6 +5449,7 @@ function startVisit(friend, snap) {
   if (typeof Focus !== "undefined") Focus.close();
   Save.locked = true; // 구경하는 동안 내 저장 데이터를 건드리지 않게
   save = visitSave(snap || {});
+  if (!(snap && snap.pianoV2)) migratePianoLayouts(save.layouts); // 친구가 아직 새 버전을 안 열었으면 예전 피아노 자리를 맞춰 그림
   visiting = { id: friend.id, name: friend.name, home: save.roomId }; // home: 친구가 지금 있는 방
   save.look = normLook(save.look);
   setVisitingClass(true);
