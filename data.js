@@ -1272,9 +1272,9 @@ Object.assign(FURNITURE, {
   bunkBed: { name: "2층 침대", category: "furniture", price: 320, size: [16, 24, 30], image: "img/furn/bunkBed.png", imageSimple: "img/furn/s/bunkBed.png", hires: true, sleep: { side: [20, 18], pillow: [9, 6, 4] } },
   pinkBed: { name: "분홍 침대", category: "furniture", price: 220, size: [16, 24, 12], image: "img/furn/pinkBed.png", imageSimple: "img/furn/s/pinkBed.png", hires: true, sleep: { side: [20, 18], pillow: [8, 4.5, 8] } },
   bunkBedWhite: { name: "하얀 2층 침대", category: "furniture", price: 340, size: [16, 24, 30], image: "img/furn/bunkBedWhite.png", imageSimple: "img/furn/s/bunkBedWhite.png", hires: true, sleep: { side: [20, 18], pillow: [9, 6, 4] } },
-  fabricChair: { name: "패브릭 의자", category: "furniture", price: 150, size: [10, 10, 13], image: "img/furn/fabricChair.png", imageSimple: "img/furn/s/fabricChair.png", hires: true, seat: { z: 6, back: "-y" }, use: "chair" },
-  sofa: { name: "3인 소파", category: "furniture", price: 260, size: [10, 24, 13], image: "img/furn/sofa.png", imageSimple: "img/furn/s/sofa.png", hires: true, seat: { z: 6, back: "-y" }, use: "chair" },
-  officeChair: { name: "사무용 의자", category: "furniture", price: 110, size: [7, 7, 15], image: "img/furn/officeChair.png", imageSimple: "img/furn/s/officeChair.png", hires: true, seat: { z: 7, back: "-y" }, use: "chair" },
+  fabricChair: { name: "패브릭 의자", category: "furniture", price: 150, size: [10, 10, 13], image: "img/furn/fabricChair.png", imageSimple: "img/furn/s/fabricChair.png", hires: true, seat: { z: 6, back: "-x" }, use: "chair" },
+  sofa: { name: "3인 소파", category: "furniture", price: 260, size: [10, 24, 13], image: "img/furn/sofa.png", imageSimple: "img/furn/s/sofa.png", hires: true, seat: { z: 6, back: "-x" }, use: "chair" },
+  officeChair: { name: "사무용 의자", category: "furniture", price: 110, size: [7, 7, 15], image: "img/furn/officeChair.png", imageSimple: "img/furn/s/officeChair.png", hires: true, seat: { z: 7, back: "-x" }, use: "chair" },
   woodTable: { name: "원목 테이블", category: "furniture", price: 140, size: [14, 16, 11], image: "img/furn/woodTable.png", imageSimple: "img/furn/s/woodTable.png", surface: 11, work: [16, 8], hires: true, use: "snack" },
   laptop: { name: "노트북", category: "prop", price: 90, size: [5, 5, 3], image: "img/furn/laptop.png", imageSimple: "img/furn/s/laptop.png", hires: true, small: true },
   fridge: { name: "냉장고", category: "furniture", price: 240, size: [9, 9, 24], image: "img/furn/fridge.png", imageSimple: "img/furn/s/fridge.png", imageOpen: "img/furn/fridge-open.png", imageSimpleOpen: "img/furn/s/fridge-open.png", hires: true, use: "snack" },
@@ -1331,7 +1331,7 @@ Object.assign(FURNITURE, {
 
 // ---- 엔티크 가구 (GPT 그림) ----
 Object.assign(FURNITURE, {
-  chesterfield: { name: "체스터필드 소파", category: "furniture", price: 280, style: "antique", size: [10, 22, 12], image: "img/furn/chesterfield.png", imageSimple: "img/furn/s/chesterfield.png", hires: true, seat: { z: 6, back: "-y" }, use: "chair" },
+  chesterfield: { name: "체스터필드 소파", category: "furniture", price: 280, style: "antique", size: [10, 22, 12], image: "img/furn/chesterfield.png", imageSimple: "img/furn/s/chesterfield.png", hires: true, seat: { z: 6, back: "-x" }, use: "chair" },
   rockingChair: { name: "흔들의자", category: "furniture", price: 170, style: "antique", size: [9, 9, 16], image: "img/furn/rockingChair.png", imageSimple: "img/furn/s/rockingChair.png", hires: true, rock: true, seat: { z: 6, back: "-y" }, use: "chair" },
   teaTable: { name: "티테이블", category: "furniture", price: 150, style: "antique", size: [10, 10, 12], image: "img/furn/teaTable.png", imageSimple: "img/furn/s/teaTable.png", surface: 12, hires: true, use: "snack" },
   vanity: { name: "화장대", category: "furniture", price: 220, style: "antique", size: [9, 16, 20], image: "img/furn/vanity.png", imageSimple: "img/furn/s/vanity.png", hires: true },
