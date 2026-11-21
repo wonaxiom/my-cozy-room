@@ -180,6 +180,8 @@ const Start = (() => {
     // 배경 장식: 구경 중에는 내 방으로 돌아가서 바꿈
     $("pf-deco").hidden = away;
     $("pf-deco-select").value = DECO_THEMES.some((t) => t.id === me.decoTheme) ? me.decoTheme : DEFAULT_DECO;
+    $("pf-pet").hidden = away;
+    $("pf-pet-select").value = DECO_PETS.some((p) => p.id === me.decoPet) ? me.decoPet : DEFAULT_PET;
     $("profile").hidden = false;
     if (away) return;
 
@@ -240,8 +242,14 @@ const Start = (() => {
   $("profile-btn").addEventListener("click", openProfile);
   $("pf-close").addEventListener("click", closeProfile);
   $("pf-copy").addEventListener("click", copyCode);
-  // 배경 장식 선택지 (side-deco.js의 DECO_THEMES 목록에서 만듦)
+  // 배경 장식·선반 동물 선택지 (side-deco.js의 DECO_THEMES, DECO_PETS 목록에서 만듦)
   $("pf-deco-select").append(...DECO_THEMES.map((t) => new Option(t.name, t.id)));
+  $("pf-pet-select").append(...DECO_PETS.map((p) => new Option(p.name, p.id)));
+  $("pf-pet-select").addEventListener("change", (e) => {
+    save.decoPet = e.target.value;
+    Save.save(save);
+    SideDeco.reset();
+  });
   $("pf-deco-select").addEventListener("change", (e) => {
     save.decoTheme = e.target.value;
     Save.save(save);
