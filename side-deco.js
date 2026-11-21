@@ -102,7 +102,7 @@ const SideDeco = (() => {
       // 꽃잎·낙엽: 눈처럼 양옆에서 천천히 (눈보다 드문드문)
       for (let i = 0; i < 6; i++) {
         const left = i % 2 ? 2 + seq(i, 6) * 14 : 84 + seq(i, 6) * 13;
-        add(pic(art.fall[i % 3 ? 0 : 1], { left: `${left}%`, top: "60px", animationDelay: `${-seq(i + 3, 6) * 7}s` }, "fall petal"));
+        add(pic(art.fall[i % 3 ? 0 : 1], { left: `${left}%`, top: "60px", animationDelay: `${-seq(i + 3, 6) * 12}s` }, "fall petal"));
       }
     }
   }
@@ -241,7 +241,7 @@ const SideDeco = (() => {
     } else if (art && art.fall) {
       for (let i = 0; i < 6; i++) {
         const left = i % 2 ? 1 + seq(i, 6) * 10 : 89 + seq(i, 6) * 9;
-        add(rpic(art.fall[i % 3 ? 0 : 1], dot, { left: `${left}%`, top: "20%", animationDelay: `${-seq(i + 3, 6) * 7}s` }, "fall petal"));
+        add(rpic(art.fall[i % 3 ? 0 : 1], dot, { left: `${left}%`, top: "20%", animationDelay: `${-seq(i + 3, 6) * 12}s` }, "fall petal"));
       }
     }
     // 아래 선반 두 무리: 왼쪽 등불(밤에 켜짐)과 소품, 오른쪽 고양이와 화분 (12월·새해에는 바뀜)

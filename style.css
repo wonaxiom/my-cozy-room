@@ -1484,7 +1484,7 @@ body.side-mode .room-deco { display: none; }
 .deco.bob { animation: decoBob 4s ease-in-out infinite alternate; }
 .deco.fall { animation: decoFall 1.2s linear infinite; }
 .deco.fall.snowy { animation: decoSnow 5s linear infinite; }
-.deco.fall.petal { animation: decoPetal 7s linear infinite; } /* 꽃잎·낙엽: 눈보다 느리게, 좌우로 흔들리며 */
+.deco.fall.petal { animation: decoPetal 12s linear infinite; } /* 꽃잎·낙엽: 눈(5초)보다 훨씬 느리게, 좌우로 흔들리며 */
 .deco.glow { filter: drop-shadow(0 0 6px rgba(255, 200, 110, 0.9)); animation: decoGlow 1.8s ease-in-out infinite alternate; }
 .deco.breathe-a { animation: decoBreatheA 3.2s steps(1) infinite; }
 .deco.breathe-b { animation: decoBreatheB 3.2s steps(1) infinite; }
