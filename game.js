@@ -1544,6 +1544,7 @@ function drawCurtainWindow(win, phase) {
 
 // 미닫이 창: 왼쪽 절반은 열려 있고, 오른쪽 절반은 창호지
 function drawShojiWindow(win, phase) {
+  if (artStyle === "detail") { drawShojiWindowDetail(win, phase); return; }
   const { y1, y2, z1, z2, wall } = win;
   const mid = (y1 + y2) / 2;
   surfaceRect(wall, y1, y2, z1, z2, "windowFrame");
@@ -1558,6 +1559,80 @@ function drawShojiWindow(win, phase) {
   for (let y = y1 + 1.5 + 4; y < mid - 0.5; y += 4) surfaceRect(wall, y - 0.5, y, z1 + 1.5, z2 - 1.5, "windowFrame");
   for (let z = z1 + 1.5 + 5; z < z2 - 2; z += 5) surfaceRect(wall, y1 + 1.5, mid, z - 0.5, z, "windowFrame");
   surfaceRect(wall, mid - 0.5, mid + 1, z1, z2, "windowFrame");
+  windowSill(win, 2);
+}
+
+// ver.세밀 미닫이 창: 위 상인방, 나무 틀, 창호지 문(가는 살·아래 나무판·손잡이), 열린 쪽 그늘
+function drawShojiWindowDetail(win, phase) {
+  const { y1, y2, z1, z2, wall } = win;
+  const t = 1 / RES; // 가장 가는 선 (화면 1픽셀)
+  const mid = (y1 + y2) / 2;
+  const frame = colorOf("windowFrame");
+  const dark = mixHex(frame, "#000000", 0.3), light = mixHex(frame, "#ffffff", 0.22);
+  const night = phase === "night";
+
+  // 바깥 틀 (어두운 테두리 + 틀 + 안쪽 밝은 선)
+  surfaceRect(wall, y1 - t, y2 + t, z1 - t, z2 + t, dark);
+  surfaceRect(wall, y1, y2, z1, z2, frame);
+
+  // 열린 쪽: 하늘 + 위·문 쪽 그늘
+  const s = { wall, sy1: mid + 1, sy2: y2 - 1.33, sz1: z1 + 1.33, sz2: z2 - 1.33 };
+  drawSky(s, phase, s.sy1, s.sy2, s.sz1, s.sz2);
+  surfaceRect(wall, s.sy1, s.sy2, s.sz2 - 2 * t, s.sz2, "rgba(40, 25, 15, 0.28)");
+  surfaceRect(wall, s.sy1, s.sy1 + 2 * t, s.sz1, s.sz2, "rgba(40, 25, 15, 0.28)");
+  surfaceRect(wall, s.sy1 - t, s.sy2 + t, s.sz1 - t, s.sz1, dark); // 문턱 홈
+  surfaceRect(wall, s.sy2, s.sy2 + t, s.sz1, s.sz2, light);
+
+  // 창호지 문 (y1 쪽 절반, 가운데로 조금 겹쳐 닫혀 있음)
+  const p1 = y1 + 1, p2 = mid + 1, pz1 = z1 + 1, pz2 = z2 - 1;
+  surfaceRect(wall, p1 - t, p2 + t, pz1 - t, pz2 + t, dark);
+  surfaceRect(wall, p1, p2, pz1, pz2, frame);
+  surfaceRect(wall, p1, p2, pz2 - t, pz2, light); // 윗면 빛
+  surfaceRect(wall, p2 - t, p2, pz1, pz2, light); // 문 끝 모서리 빛
+
+  // 아래 나무판 (腰板)
+  const k1 = pz1 + 0.67, k2 = pz1 + 3.67;
+  const q1 = p1 + 0.67, q2 = p2 - 0.67;
+  surfaceRect(wall, q1, q2, k1, k2, mixHex(frame, "#000000", 0.12));
+  surfaceRect(wall, q1, q2, k2 - t, k2, light);
+  for (let a = q1 + 2.33; a < q2 - 1; a += 2.33) surfaceRect(wall, a, a + t, k1, k2 - t, dark); // 판 이음새
+
+  // 창호지 (시간에 따라 비치는 빛)
+  const glow = { dawn: "#f6e3cf", day: "#f8f2e2", evening: "#f3d9b0", night: "#b9b7c2" }[phase];
+  const paperTop = mixHex(glow, "#ffffff", night ? 0.05 : 0.35), paperShade = mixHex(glow, frame, 0.16);
+  const r1 = k2 + 0.67, r2 = pz2 - 0.67;
+  surfaceRect(wall, q1, q2, r1, r2, glow);
+  surfaceRect(wall, q1, q2, r2 - (r2 - r1) * 0.35, r2, mixHex(glow, paperTop, 0.5)); // 위쪽이 조금 더 밝음
+  surfaceRect(wall, q1, q2, r2 - (r2 - r1) * 0.15, r2, paperTop);
+
+  // 가는 살 (세로 3칸, 가로 5칸): 살 아래에 옅은 그림자
+  const [fr, fg, fb] = hexToRgb(frame);
+  const paleFrame = fr * 0.3 + fg * 0.59 + fb * 0.11 > 170; // 흰 틀이면 살은 옅은 나무색 (창호지에 묻히지 않게)
+  const kumiko = paleFrame ? mixHex("#b8946c", glow, night ? 0.2 : 0) : mixHex(frame, "#ffffff", night ? 0.05 : 0.12);
+  const cols = 3, rows = 5;
+  for (let i = 1; i < rows; i++) {
+    const z = r1 + ((r2 - r1) * i) / rows;
+    surfaceRect(wall, q1, q2, z - t, z, paperShade);
+    surfaceRect(wall, q1, q2, z, z + t, kumiko);
+  }
+  for (let i = 1; i < cols; i++) {
+    const a = q1 + ((q2 - q1) * i) / cols;
+    surfaceRect(wall, a + t, a + 2 * t, r1, r2, paperShade);
+    surfaceRect(wall, a, a + t, r1, r2, kumiko);
+  }
+  surfaceRect(wall, q1, q2, r1 - t, r1, kumiko);
+  surfaceRect(wall, q1, q2, r1 - 2 * t, r1 - t, dark);
+
+  // 손잡이 (문 끝 가까이 작은 홈)
+  const hz = (r1 + r2) / 2 - 0.5;
+  surfaceRect(wall, p2 - 0.67 - 2 * t, p2 - 0.67, hz, hz + 1.33, dark);
+  surfaceRect(wall, p2 - 0.67 - t, p2 - 0.67, hz + t, hz + 1, mixHex(dark, "#000000", 0.35));
+
+  // 위 상인방 (가로 나무)
+  surfaceRect(wall, y1 - 1.5, y2 + 1.5, z2 + t, z2 + 1.67, frame);
+  surfaceRect(wall, y1 - 1.5, y2 + 1.5, z2 + 1.33, z2 + 1.67, light);
+  surfaceRect(wall, y1 - 1.5, y2 + 1.5, z2 + t, z2 + 2 * t, dark);
+
   windowSill(win, 2);
 }
 
