@@ -2483,7 +2483,7 @@ function heroRows(name, lookIn = save.look) {
   if (!back && look.face === "mask") { for (let c = 2; c <= 7; c++) put(5, c, "U"); for (let c = 3; c <= 6; c++) put(6, c, "U"); }
   // 목도리: 목에 감고, 3/4 앞모습이면 한쪽 끝이 가슴 앞으로 내려옴
   if (look.neck && !headOnly) {
-    for (let c = 2; c <= 7; c++) put(7, c, "N");
+    for (let c = 2; c <= 7; c++) put(7, c, look.neck === "xmasScarf" && c % 2 ? "T" : "N"); // 크리스마스 목도리는 빨강·흰 줄무늬
     if (!back) { put(8, 6, look.neck === "xmasScarf" ? "N" : "T"); put(9, 6, "T"); } // 크리스마스 목도리는 끝에 흰 방울
   }
 

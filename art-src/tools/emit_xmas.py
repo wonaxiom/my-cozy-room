@@ -52,7 +52,7 @@ def enc(s_):
         for i in range(s_.shape[1]))) for j in range(s_.shape[0])]
 data['items']['santaBeard']={v:{'x':x_,'y':y_,'rows':enc(s_)} for v,(s_,x_,y_) in views.items()}
 # 크리스마스 목도리 (남자 그림을 남녀 모두에)
-X=pickle.load(open('xscarf.pkl','rb'))['male']
+X=pickle.load(open('xscarf_striped.pkl','rb'))['male']   # stripe.py로 흰 줄무늬를 넣은 것
 data['neck']['xmasScarf']={'fixed':True,'outline':ch_of(OUTL),'frames':frames_of(X,8)}
 # 산타 옷 (성별마다)
 S=pickle.load(open('santa.pkl','rb'))
