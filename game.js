@@ -2401,11 +2401,15 @@ function heroRows(name, lookIn = save.look) {
   }
   // 얼굴 장식 (동그란 안경은 drawEyewear에서 테만 그림)
   if (!back && !headOnly && look.face === "bandage") put(5, 2, "U");
+  if (!back && look.face === "santaBeard") { // 볼 아래부터 가슴까지 흰 수염
+    for (const r of [5, 6]) for (let c = 2; c <= 7; c++) put(r, c, "W");
+    if (!headOnly) for (let c = 3; c <= 6; c++) put(7, c, "W");
+  }
   if (!back && look.face === "mask") { for (let c = 2; c <= 7; c++) put(5, c, "U"); for (let c = 3; c <= 6; c++) put(6, c, "U"); }
   // 목도리: 목에 감고, 3/4 앞모습이면 한쪽 끝이 가슴 앞으로 내려옴
   if (look.neck && !headOnly) {
     for (let c = 2; c <= 7; c++) put(7, c, "N");
-    if (!back) { put(8, 6, "T"); put(9, 6, "T"); }
+    if (!back) { put(8, 6, look.neck === "xmasScarf" ? "N" : "T"); put(9, 6, "T"); } // 크리스마스 목도리는 끝에 흰 방울
   }
 
   // 아우터 (ver.하찮): 몸통 양옆, 긴소매면 어깨까지
@@ -2424,7 +2428,9 @@ function heroRows(name, lookIn = save.look) {
       if (bottom.type === "shorts") rows[12] = rows[12].map((ch) => (ch === "P" ? "S" : ch));
       if (bottom.type === "skirt") rows[12] = ".PPPPPPPP.".split("");
     }
-    if (outerDef) {
+    if (outerDef && outerDef.suit) { // 산타 옷: 몸통을 빨갛게, 밑단은 흰 털, 허리에 검은 벨트와 금색 버클
+      for (let r = 7; r <= 10; r++) for (let c = 0; c < rows[r].length; c++) if (rows[r][c] === "C" || rows[r][c] === "D") put(r, c, r === 10 ? "W" : r === 9 ? (c === 4 || c === 5 ? "Z" : "K") : "J");
+    } else if (outerDef) {
       for (let r = 7; r <= 10; r++) for (const c of [2, 7]) if (rows[r][c] === "C" || rows[r][c] === "D") put(r, c, "J");
       if (outerDef.kind !== "vest") for (const c of [1, 8]) if (rows[8][c] === ".") put(8, c, "J"); // 어깨에서 내려오는 소매
     }
@@ -2667,13 +2673,15 @@ function heroArtHead(gender, hair, frame) {
 }
 
 const HAT_IDS = ACCESSORIES.filter((a) => a.hat).map((a) => a.id); // 머리를 덮는 모자 (모자 밖으로 삐져나온 머리카락을 지움)
-// 장신구를 자리마다 그림: 목도리 → 얼굴 장식 → 머리 장식 (나중에 그린 것이 위)
+// 장신구를 자리마다 그림: 얼굴 장식 → 목도리 → 머리 장식 (나중에 그린 것이 위. 마스크 끈보다 목도리가 위, 산타 수염은 목도리 위)
 function drawAccessoryArt(look, rows, frame, w, h, px, clear, gender) {
-  drawNeckArt(look, frame, px, gender);
-  for (const key of ["face", "acc"]) {
+  const one = (key) => {
     const acc = ACCESSORIES.find((a) => a.id === look[key]);
     if (acc) drawOneAccessoryArt(acc, look, rows, frame, w, h, px, clear, gender);
-  }
+  };
+  if (look.face === "santaBeard") { drawNeckArt(look, frame, px, gender); one("face"); } // 산타 수염은 목도리 위로 늘어짐
+  else { one("face"); drawNeckArt(look, frame, px, gender); }
+  one("acc");
 }
 
 // 목도리 (ver.세밀): 동작마다 머리 왼쪽 위 기준으로 붙이고, 회색 그림을 고른 색으로 바꿔 칠함. 잘 때는 풂
@@ -2686,7 +2694,7 @@ function drawNeckArt(look, frame, px, gender) {
   lay.rows.forEach((r, j) => [...unRle(r)].forEach((ch, i) => {
     if (ch === ".") return;
     const orig = ACC_ART.palette[ch];
-    px(head[0] + lay.x + i, head[1] + lay.y + j, ch === art.outline ? orig : recolor(orig, art.base, item.color));
+    px(head[0] + lay.x + i, head[1] + lay.y + j, art.fixed || ch === art.outline ? orig : recolor(orig, art.base, item.color));
   }));
 }
 
@@ -2704,6 +2712,20 @@ function accessoryTopPad(look, gender, frame) {
     if (part) top = Math.min(top, head[1] + part.y);
   }
   return -top;
+}
+
+// 몸 위에 덮어 그리는 GPT 옷 (산타 옷): 동작마다 머리 왼쪽 위 기준, 색은 그림 그대로. 누운 그림은 없음
+const SUIT_UNDER = "#a5302c"; // 산타 옷 그림 밖으로 삐져나온 상의 칸을 칠할 색
+function suitArt(look, gender, frame) {
+  const outer = look.outer && OUTERS.find((o) => o.id === look.outer);
+  const art = outer && outer.suit && typeof ACC_ART !== "undefined" && ACC_ART.suits && ACC_ART.suits[outer.suit];
+  return (art && art[gender] && art[gender][frame]) || null;
+}
+function drawLayerArt(lay, head, px) {
+  if (!head) return;
+  lay.rows.forEach((r, j) => [...unRle(r)].forEach((ch, i) => {
+    if (ch !== ".") px(head[0] + lay.x + i, head[1] + lay.y + j, ACC_ART.palette[ch]);
+  }));
 }
 
 function drawOneAccessoryArt(acc, look, rows, frame, w, h, px, clear, gender) {
@@ -2927,7 +2949,8 @@ function heroArtCanvas(name, lookIn, flip) {
     g.fillStyle = color;
     g.fillRect(flip ? w - 1 - x : x, y + pad, 1, 1);
   };
-  const outerAt = outfit ? null : outerMap(look, rows, frame, gender, hair); // (GPT 옷 그림이 없을 때) 아우터로 덮이는 칸
+  const suit = suitArt(look, gender, frame);
+  const outerAt = outfit || suit ? null : outerMap(look, rows, frame, gender, hair); // (GPT 옷 그림이 없을 때) 아우터로 덮이는 칸
   const base = outfit ? Object.assign({}, HERO_ART.genders[gender].base, OUTFIT_ART.base[outfit.art]) : HERO_ART.genders[gender].base;
   if (outfit) target.outer = outfit.color;
   rows.forEach((row, y) => [...row].forEach((ch, x) => {
@@ -2937,9 +2960,11 @@ function heroArtCanvas(name, lookIn, flip) {
     // 손 뻗는 그림(불 켜고 끄기·축음기)은 손에 든 스위치 상자를 빼고 그림 (손끝보다 바깥 칸)
     if (frame === "switch" && x >= SWITCH_BOX_X && part !== "skin") return;
     if (outerAt && outerAt.has(x + "," + y)) { px(x, y, recolor(orig, base[part] || orig, outerAt.color)); return; }
+    if (suit && part === "top") { px(x, y, recolor(orig, base.top || orig, SUIT_UNDER)); return; } // 산타 옷 밖으로 보이는 상의는 옷 색으로
     px(x, y, target[part] ? recolor(orig, base[part] || orig, target[part]) : orig);
   }));
   if (!(frame === "lie" && findBy(BOTTOMS, look.bottom).type === "skirt")) drawBottomArt(look, rows, w, h, px, colors, HERO_ART.genders[gender].base); // 누우면 치마는 이불 속
+  if (suit) drawLayerArt(suit, heroArtHead(gender, hair, frame), px); // 산타 옷 (하의 위로 밑단이 덮임)
   drawFaceArt(look, rows, frame, gender, px, colors);
   drawAccessoryArt(look, rows, frame, w, h, px, (x, y) => g.clearRect(flip ? w - 1 - x : x, y + pad, 1, 1), gender);
   // 안경·선글라스: 눈 자리에 테와 렌즈 (눈 감은 그림은 뜬 그림의 눈 자리를 씀)
@@ -5079,8 +5104,17 @@ function sectionTitle(text) {
   shopList.append(h);
 }
 
+// 화면 아래 안내의 "1분에 ○코인" (산타 세트를 입으면 늘어남)
+function updateCoinRate() {
+  const el = byId("coin-rate");
+  if (el) el.textContent = santaSetOn() ? `${coinsPerMinute()}코인(산타 세트 효과)` : `${coinsPerMinute()}코인`;
+}
+
 function setLook(change) {
+  const wasSet = santaSetOn();
   save.look = Object.assign({}, save.look, change);
+  updateCoinRate();
+  if (!wasSet && santaSetOn()) setTimeout(() => toast(`산타 세트를 입었어요! 1분에 코인 ${COINS_PER_MINUTE + SANTA_SET_BONUS}개씩 모여요.`), 1800); // 산 물건 알림 다음에
   Save.save(save);
   renderShop();
 }
@@ -5096,7 +5130,7 @@ function renderLook() {
   const sub = shopSub.look;
   // 아우터: 하나만 입을 수 있고, 다시 누르면 벗음
   if (sub === "outer") {
-    for (const item of OUTERS) {
+    for (const item of OUTERS.filter((o) => !o.season || isXmasSeason() || save.outfits.includes(o.id))) { // 기간 한정은 기간에만 (산 것은 계속 보임)
       const look = Object.assign({}, save.look, { outer: item.id });
       const owned = save.outfits.includes(item.id);
       const on = save.look.outer === item.id;
@@ -5371,11 +5405,22 @@ shopEl.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () =>
 
 // ---- 코인 --------------------------------------------------------
 const COINS_PER_MINUTE = 2;      // 1분에 받는 코인
+
+// 산타 세트(산타 모자·수염·옷·크리스마스 목도리) 중 몇 개를 입었는지
+function santaSetCount(look = save.look) {
+  return SANTA_SET.filter((id) => [look.acc, look.face, look.neck, look.outer].includes(id)).length;
+}
+function santaSetOn(look = save.look) { return santaSetCount(look) >= SANTA_SET_MIN; }
+// 1분에 받는 코인 (산타 세트를 입으면 더 받음)
+function coinsPerMinute() {
+  return COINS_PER_MINUTE + (santaSetOn() ? SANTA_SET_BONUS : 0);
+}
 const OFFLINE_MAX_MINUTES = 180; // 꺼져 있을 때 최대 몇 분치까지 쌓이는지
 const coinPop = byId("coin-pop");
 
 function updateCoins(gained) {
   coinText.textContent = save.coins.toLocaleString();
+  updateCoinRate();
   if (gained) {
     coinPop.textContent = "+" + gained;
     coinPop.classList.remove("show");
@@ -5398,7 +5443,7 @@ function earn() {
   save.carryMs -= minutes * 60000;
   save.lastSeen = nowMs;
   if (minutes > 0) {
-    const gained = minutes * COINS_PER_MINUTE;
+    const gained = minutes * coinsPerMinute();
     save.coins += gained;
     updateCoins(gained);
     if (offline) toast(`자리를 비운 동안 ${gained}코인이 모였어요.`);

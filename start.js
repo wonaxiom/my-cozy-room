@@ -213,6 +213,7 @@ const Start = (() => {
     const name = $("ob-name").value.trim();
     save.profile = { name, city: $("ob-city").value || null };
     save.look = normLook(draft);
+    if (typeof updateCoinRate === "function") updateCoinRate(); // 산타 세트면 안내의 코인 수가 바뀜
     const first = !save.profileDone;
     save.profileDone = true;
     Save.save(save);

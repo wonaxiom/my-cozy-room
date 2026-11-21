@@ -509,6 +509,7 @@ const OUTERS = [
   { id: "blackJacket", name: "검정 재킷", price: 220, kind: "jacket", color: "#3e3e46", art: "jacket" },
   { id: "knitVest", name: "니트 조끼", price: 120, kind: "vest", color: "#b9a37a" },
   { id: "paddingVest", name: "패딩 조끼", price: 180, kind: "vest", color: "#7d9c8a" },
+  { id: "santaSuit", name: "산타 옷", price: 250, kind: "jacket", color: "#b8322e", suit: "santa", season: "xmas" }, // suit: 몸 위에 덮어 그리는 GPT 옷 (acc-art.js의 suits, 색 그대로)
 ];
 
 // slot: 쓰는 자리. head(머리, 기본) / face(얼굴) / neck(목). 자리마다 하나씩 함께 쓸 수 있음
@@ -530,11 +531,18 @@ const ACCESSORIES = [
   { id: "roundGlasses", name: "동그란 안경", price: 100, slot: "face", color: "#b07c28", dark: "#b07c28" },
   { id: "bandage", name: "볼 반창고", price: 40, slot: "face", color: "#f0b27a", dark: "#c98a5a" },
   { id: "mask", name: "마스크", price: 60, slot: "face", color: "#f4f2ee", dark: "#d6d2cc" },
+  { id: "santaBeard", name: "산타 수염", price: 120, slot: "face", season: "xmas", color: "#f7f5f2", dark: "#d9dde6" },
   { id: "scarfRed", name: "빨간 목도리", price: 120, slot: "neck", art: "scarf", color: "#c9524a", dark: "#9e3a34" },
   { id: "scarfCream", name: "크림 목도리", price: 120, slot: "neck", art: "scarf", color: "#eadcbe", dark: "#c9b98f" },
   { id: "scarfGreen", name: "초록 목도리", price: 120, slot: "neck", art: "scarf", color: "#5f8f6a", dark: "#46704f" },
   { id: "scarfNavy", name: "남색 목도리", price: 120, slot: "neck", art: "scarf", color: "#4f5f86", dark: "#3a4766" },
+  { id: "xmasScarf", name: "크리스마스 목도리", price: 150, slot: "neck", art: "xmasScarf", season: "xmas", color: "#b8322e", dark: "#f7f5f2" },
 ];
+
+// 산타 세트: 이 중 SANTA_SET_MIN개 이상 입으면 1분에 코인 +SANTA_SET_BONUS
+const SANTA_SET = ["santaHat", "santaBeard", "santaSuit", "xmasScarf"];
+const SANTA_SET_MIN = 3;
+const SANTA_SET_BONUS = 1;
 
 // 장신구를 쓰는 자리 (look에 저장하는 이름: 머리는 예전처럼 acc)
 const ACC_SLOTS = [
