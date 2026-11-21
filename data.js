@@ -1338,7 +1338,7 @@ Object.assign(FURNITURE, {
   rolltopDesk: { name: "롤톱 책상", category: "furniture", price: 240, style: "antique", size: [8, 16, 15], image: "img/furn/rolltopDesk.png", imageSimple: "img/furn/s/rolltopDesk.png", work: [10, 8], hires: true, use: "read" },
   grandfatherClock: { name: "괘종시계", category: "furniture", price: 200, style: "antique", size: [6, 6, 26], image: "img/furn/grandfatherClock.png", imageSimple: "img/furn/s/grandfatherClock.png", hires: true },
   wardrobe: { name: "엔티크 옷장", category: "furniture", price: 260, style: "antique", size: [8, 16, 25], image: "img/furn/wardrobe.png", imageSimple: "img/furn/s/wardrobe.png", hires: true },
-  piano: { name: "피아노", category: "furniture", price: 400, style: "antique", size: [9, 18, 17], image: "img/furn/piano.png", imageSimple: "img/furn/s/piano.png", hires: true },
+  piano: { name: "피아노", category: "furniture", price: 400, style: "antique", size: [18, 9, 17], image: "img/furn/piano.png", imageSimple: "img/furn/s/piano.png", hires: true },
   gramophone: { name: "축음기", category: "prop", price: 160, kind: "goods", size: [7, 7, 15], image: "img/furn/gramophone.png", imageSimple: "img/furn/s/gramophone.png", hires: true },
   candelabra: { name: "촛대", category: "prop", price: 90, kind: "light", size: [5, 5, 16], image: "img/furn/candelabra.png", imageOff: "img/furn/candelabra-off.png", imageSimple: "img/furn/s/candelabra.png", imageSimpleOff: "img/furn/s/candelabra-off.png", hires: true, light: { x: 2.5, y: 2.5, z: 14, radius: 40 }, use: "lamp" },
   persianRug: { name: "페르시안 러그", type: "floor", category: "prop", price: 120, kind: "rug", size: [20, 24, 0.5], image: "img/furn/persianRug.png", imageSimple: "img/furn/s/persianRug.png", hires: true },

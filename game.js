@@ -3039,9 +3039,14 @@ function drawHero() {
     ctx.clip();
     drawHeroFrame(frame, p.x, p.y + 1, flip);
     ctx.restore();
+    // 뒤쪽 그림(3·4번째 방향)이면 건반이 벽 쪽이라 캐릭터는 피아노 너머: 피아노를 다시 그려 몸을 가림
+    const pianoItem = hero.use && hero.use.item;
+    if (pianoItem && backView(pianoItem)) redrawImageParts(pianoItem, [[0, 0, 1, 1]]);
   } else {
     drawHeroFrame(frame, p.x, p.y - jump, flip);
     if (onChair) drawSeatFront(hero.seat); // 팔걸이·방석 앞쪽이 몸을 살짝 가림
+    // ver.하찮 피아노: 뒤쪽 그림이면 캐릭터가 피아노 너머라 피아노가 몸을 가림
+    if (hero.mode === "piano" && hero.use && hero.use.item && backView(hero.use.item)) redrawImageParts(hero.use.item, [[0, 0, 1, 1]]);
   }
   if (rock) ctx.restore();
   if (!useHeroArt() && hero.mode === "read" && !CHARACTER[frame]) drawActivityIcon(p); // 앉아서 읽을 때는 손에 든 책으로
@@ -4603,6 +4608,27 @@ function retireItems() {
   setTimeout(() => notify(`${total}의 판매가 끝나서 산 값만큼 코인을 돌려드렸어요.`), 0);
 }
 retireItems();
+
+// 피아노 그림을 바닥 각도에 맞게 새로 그리면서 바닥 칸이 9x18 → 18x9로 바뀜.
+// 예전에 놓은 피아노는 가운데 자리를 그대로 두고 옮김 (처음 한 번만)
+function migratePiano() {
+  if (save.pianoV2) return;
+  save.pianoV2 = true;
+  let moved = false;
+  for (const [key, list] of Object.entries(save.layouts || {})) {
+    const r = ROOMS.find((q) => q.id === key) || {};
+    for (const p of list || []) {
+      if (p.id !== "piano") continue;
+      const odd = ((p.rot != null ? p.rot : p.flip ? 1 : 0) & 1) === 1;
+      const [nw, nd] = odd ? [9, 18] : [18, 9];
+      p.x = Math.max(0, Math.min((r.width || ROOM) - nw, p.x + (odd ? 4.5 : -4.5)));
+      p.y = Math.max(0, Math.min((r.depth || ROOM) - nd, p.y + (odd ? -4.5 : 4.5)));
+      moved = true;
+    }
+  }
+  Save.save(save, { auto: !moved });
+}
+migratePiano();
 
 // 처음 시작할 방 (주소에 ?room=이 있으면 그 방)
 setRoom(params.get("room") || save.roomId);
