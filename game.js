@@ -5194,38 +5194,65 @@ function setLook(change) {
   renderShop();
 }
 
+// 입고 벗는 옷·장신구 카드 (key: look에 저장하는 이름, wear: 입는 말, on: 입은 중 표시)
+function wearCard(item, key, wear, on) {
+  const look = Object.assign({}, save.look, { [key]: item.id });
+  const owned = save.outfits.includes(item.id);
+  const worn = save.look[key] === item.id;
+  let btn;
+  if (!owned) {
+    btn = makeButton("구매", () => confirmBuy(item.name, item.price, makeHeroPreview(look), () => {
+      if (save.coins < item.price) return;
+      save.coins -= item.price;
+      save.outfits.push(item.id);
+      updateCoins();
+      setLook({ [key]: item.id });
+      toast(`${withObject(item.name)} 샀어요.`);
+    }));
+    btn.dataset.price = item.price;
+  } else {
+    btn = makeButton(worn ? "벗기" : wear, () => setLook({ [key]: worn ? null : item.id }));
+  }
+  shopList.append(makeCard(makeHeroPreview(look), item.name,
+    priceHtml(item.price) + (owned ? (worn ? `<span>${on}</span>` : "<span>보유</span>") : ""), btn));
+}
+
+// 장신구가 쓰이는 look 이름과 입는 말
+function accWear(item) {
+  const slot = item.slot || "head";
+  return { key: ACC_SLOTS.find((s) => s.id === slot).key, wear: slot === "neck" ? "두르기" : "쓰기", on: slot === "neck" ? "두른 중" : "쓰는 중" };
+}
+
 // 옷 탭: 상점에서 파는 상의·하의 (머리·얼굴·기본 옷은 "내 정보"에서)
 function renderLook() {
   const note = document.createElement("div");
   note.className = "shop-section";
   note.textContent = "머리, 얼굴, 기본 옷은 오른쪽 위 '내 정보'에서 바꿀 수 있어요.";
   shopList.append(note);
-  // 상의 · 하의 · 액세서리 · 아우터로 나눠 봄
-  subTabs("look", [{ id: "top", name: "상의" }, { id: "bottom", name: "하의" }, { id: "acc", name: "액세서리" }, { id: "outer", name: "아우터" }]);
+  // 상의 · 하의 · 액세서리 · 아우터 (+ 크리스마스: 기간 중이거나 산 것이 있을 때)
+  const seasonal = [...OUTERS, ...ACCESSORIES].filter((x) => x.season === "xmas");
+  const showXmas = isXmasSeason() || seasonal.some((x) => save.outfits.includes(x.id));
+  if (!showXmas && shopSub.look === "xmas") shopSub.look = "top";
+  subTabs("look", [{ id: "top", name: "상의" }, { id: "bottom", name: "하의" }, { id: "acc", name: "액세서리" }, { id: "outer", name: "아우터" }]
+    .concat(showXmas ? [{ id: "xmas", name: "크리스마스" }] : []));
   const sub = shopSub.look;
-  // 아우터: 하나만 입을 수 있고, 다시 누르면 벗음
-  if (sub === "outer") {
-    for (const item of OUTERS.filter((o) => !o.season || isXmasSeason() || save.outfits.includes(o.id))) { // 기간 한정은 기간에만 (산 것은 계속 보임)
-      const look = Object.assign({}, save.look, { outer: item.id });
-      const owned = save.outfits.includes(item.id);
-      const on = save.look.outer === item.id;
-      let btn;
-      if (!owned) {
-        btn = makeButton("구매", () => confirmBuy(item.name, item.price, makeHeroPreview(look), () => {
-          if (save.coins < item.price) return;
-          save.coins -= item.price;
-          save.outfits.push(item.id);
-          updateCoins();
-          setLook({ outer: item.id });
-          toast(`${withObject(item.name)} 샀어요.`);
-        }));
-        btn.dataset.price = item.price;
-      } else {
-        btn = makeButton(on ? "벗기" : "입기", () => setLook({ outer: on ? null : item.id }));
-      }
-      shopList.append(makeCard(makeHeroPreview(look), item.name,
-        priceHtml(item.price) + (owned ? (on ? "<span>입는 중</span>" : "<span>보유</span>") : ""), btn));
+  // 크리스마스: 산타 세트 (기간 중에는 모두, 기간이 끝나면 산 것만)
+  if (sub === "xmas") {
+    const set = document.createElement("div");
+    set.className = "shop-section";
+    set.textContent = `산타 세트: 4가지 중 ${SANTA_SET_MIN}가지 이상 입으면 1분에 코인 +${SANTA_SET_BONUS} (11월~1월)`;
+    shopList.append(set);
+    for (const id of SANTA_SET) {
+      const outer = OUTERS.find((o) => o.id === id), acc = ACCESSORIES.find((a) => a.id === id);
+      if (!isXmasSeason() && !save.outfits.includes(id)) continue;
+      if (outer) wearCard(outer, "outer", "입기", "입는 중");
+      else if (acc) { const w = accWear(acc); wearCard(acc, w.key, w.wear, w.on); }
     }
+    return;
+  }
+  // 아우터: 하나만 입을 수 있고, 다시 누르면 벗음 (기간 한정 옷은 크리스마스 칸에)
+  if (sub === "outer") {
+    for (const item of OUTERS.filter((o) => !o.season)) wearCard(item, "outer", "입기", "입는 중");
     return;
   }
   for (const [list, key] of [[TOPS, "top"], [BOTTOMS, "bottom"]]) {
@@ -5252,35 +5279,13 @@ function renderLook() {
         priceHtml(item.price) + (owned ? "<span>보유</span>" : ""), btn));
     }
   }
-  // 액세서리: 머리·얼굴·목 자리마다 하나씩 쓸 수 있고, 다시 누르면 벗음
+  // 액세서리: 머리·얼굴·목 자리마다 하나씩 쓸 수 있고, 다시 누르면 벗음 (기간 한정은 크리스마스 칸에)
   if (sub !== "acc") return;
   for (const slot of ACC_SLOTS) {
-    const items = ACCESSORIES.filter((a) => (a.slot || "head") === slot.id &&
-      (!a.season || (a.season === "xmas" && isXmasSeason()) || save.outfits.includes(a.id))); // 기간 한정은 기간에만 (산 것은 계속 보임)
+    const items = ACCESSORIES.filter((a) => (a.slot || "head") === slot.id && !a.season);
     if (!items.length) continue;
     sectionTitle(slot.name);
-    for (const item of items) {
-      const key = slot.key;
-      const look = Object.assign({}, save.look, { [key]: item.id });
-      const owned = save.outfits.includes(item.id);
-      const on = save.look[key] === item.id;
-      let btn;
-      if (!owned) {
-        btn = makeButton("구매", () => confirmBuy(item.name, item.price, makeHeroPreview(look), () => {
-          if (save.coins < item.price) return;
-          save.coins -= item.price;
-          save.outfits.push(item.id);
-          updateCoins();
-          setLook({ [key]: item.id });
-          toast(`${withObject(item.name)} 샀어요.`);
-        }));
-        btn.dataset.price = item.price;
-      } else {
-        btn = makeButton(on ? "벗기" : slot.id === "neck" ? "두르기" : "쓰기", () => setLook({ [key]: on ? null : item.id }));
-      }
-      shopList.append(makeCard(makeHeroPreview(look), item.name,
-        priceHtml(item.price) + (owned ? (on ? `<span>${slot.id === "neck" ? "두른" : "쓰는"} 중</span>` : "<span>보유</span>") : ""), btn));
-    }
+    for (const item of items) { const w = accWear(item); wearCard(item, w.key, w.wear, w.on); }
   }
 }
 
