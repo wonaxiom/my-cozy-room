@@ -29,7 +29,7 @@ GPT 프로젝트 지침([gpt-project-instructions.md](gpt-project-instructions.m
 - 선반 띠는 왼쪽 끝과 오른쪽 끝이 이어지게 받아야 반복했을 때 이음매가 보이지 않습니다.
 
 > 요청 1~5는 게임에 넣었습니다 (2026-11-21). 원본은 `art-src/side_sakura.webp`, `side_wood.webp`, `side_dog.webp`, `side_sea.webp`, `side_autumn.webp`이고, 정리는 `art-src/tools/side_theme.py`로 했습니다.
-> 요청 6~7은 아직 받지 않았습니다. 그동안 강아지를 고르면 방석 위 강아지(요청 3)가 나옵니다.
+> 요청 6은 게임에 넣었습니다 (2026-11-21, 원본 `art-src/side_dogs.webp`). 요청 7은 아직 받지 않아서, 12월·새해에 강아지를 고르면 방석 위 강아지(요청 3)가 나옵니다.
 
 ---
 
