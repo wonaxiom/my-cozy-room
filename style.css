@@ -442,6 +442,7 @@ button:disabled {
 .panel {
   position: absolute;
   inset: 0;
+  z-index: 3; /* 세로 보기 하늘 장식(2)보다 위 */
   display: flex;
   flex-direction: column;
   padding: 10px;
