@@ -2382,6 +2382,30 @@ function heroRows(name, lookIn = save.look) {
     put(0, 7, "X"); put(0, 9, "X"); put(0, 8, "Y");
   } else if (look.acc === "hairpin") {
     put(3, 1, "X");
+  } else if (look.acc === "santaHat" && !headOnly) {
+    recolorRow(0, "H", "X"); recolorRow(1, "H", "X");
+    put(0, 7, "X"); put(1, 8, "X"); put(1, 9, "Y");           // 옆으로 처진 끝과 방울
+    for (let c = 1; c <= 8; c++) put(2, c, "Y");              // 흰 털 테두리
+  } else if (look.acc === "pomBeanie" && !headOnly) {
+    recolorRow(0, "H", "X"); recolorRow(1, "H", "X"); recolorRow(2, "H", "Y");
+    put(0, 4, "W"); put(0, 5, "W");                           // 방울
+  } else if (look.acc === "earmuffs") {
+    recolorRow(0, "H", "Y");
+    for (const [r, c] of [[1, 2], [1, 7], [2, 1], [2, 8]]) put(r, c, "Y"); // 머리띠
+    for (const r of [3, 4]) for (const c of [0, 1, 8, 9]) put(r, c, "X"); // 귀를 덮는 털
+  } else if (look.acc === "catEars" || look.acc === "bearEars" || look.acc === "bunnyEars") {
+    const ear = look.acc === "bunnyEars" ? [[0, 2], [0, 3], [0, 6], [0, 7]] : [[0, 1], [0, 2], [0, 7], [0, 8]];
+    for (const [r, c] of ear) put(r, c, "X");
+    if (look.acc !== "bearEars") { put(0, ear[1][1], "Y"); put(0, ear[2][1], "Y"); } // 귀 안쪽 분홍
+    recolorRow(2, "H", look.acc === "bearEars" ? "Y" : "X");  // 머리띠
+  }
+  // 얼굴 장식 (동그란 안경은 drawEyewear에서 테만 그림)
+  if (!back && !headOnly && look.face === "bandage") put(5, 2, "U");
+  if (!back && look.face === "mask") { for (let c = 2; c <= 7; c++) put(5, c, "U"); for (let c = 3; c <= 6; c++) put(6, c, "U"); }
+  // 목도리: 목에 감고, 3/4 앞모습이면 한쪽 끝이 가슴 앞으로 내려옴
+  if (look.neck && !headOnly) {
+    for (let c = 2; c <= 7; c++) put(7, c, "N");
+    if (!back) { put(8, 6, "T"); put(9, 6, "T"); }
   }
 
   // 아우터 (ver.하찮): 몸통 양옆, 긴소매면 어깨까지
@@ -2413,6 +2437,8 @@ function heroRows(name, lookIn = save.look) {
 function heroColors(lookIn = save.look) {
   const look = normLook(lookIn);
   const acc = ACCESSORIES.find((a) => a.id === look.acc);
+  const face = ACCESSORIES.find((a) => a.id === look.face);
+  const neck = ACCESSORIES.find((a) => a.id === look.neck);
   const top = findBy(TOPS, look.top);
   return {
     H: findBy(HAIR_COLORS, look.hairColor).color,
@@ -2430,6 +2456,9 @@ function heroColors(lookIn = save.look) {
     J: (OUTERS.find((o) => o.id === look.outer) || { color: "#000" }).color, // 아우터
     X: acc ? acc.color : "#000",   // 장신구
     Y: acc ? acc.dark : "#000",
+    U: face ? face.color : "#000", // 얼굴 장식
+    N: neck ? neck.color : "#000", // 목도리
+    T: neck ? neck.dark : "#000",
     M: "#c76b6b",
     O: "#8a3b3b",
     R: "#9a6b4b",   // 책
@@ -2462,12 +2491,21 @@ const EYEWEAR = {
 
 function drawEyewear(look, left, faceTop) {
   const kind = EYEWEAR[look && look.eyes];
-  if (!kind) return;
   const u = 1 / 3;
   const rect = (x, y, w, h, color) => {
     ctx.fillStyle = color;
     ctx.fillRect(left + x * u, faceTop + y * u, w * u, h * u);
   };
+  // 동그란 안경 (얼굴 장식): 눈 둘레에 가는 금테만
+  if (look && look.face === "roundGlasses") {
+    const gold = ACCESSORIES.find((a) => a.id === "roundGlasses").color;
+    for (const x0 of [5, 17]) {
+      rect(x0 + 1, 10, 6, 1, gold); rect(x0 + 1, 16, 6, 1, gold);
+      rect(x0, 11, 1, 5, gold); rect(x0 + 7, 11, 1, 5, gold);
+    }
+    rect(13, 12, 4, 1, gold);
+  }
+  if (!kind) return;
   const y = 11; // 테 윗줄 (눈이 있는 줄(12~14)을 렌즈가 가리도록)
   for (const x0 of [5, 17]) {
     rect(x0, y, 8, 5, kind.frame);          // 테
@@ -2628,15 +2666,52 @@ function heroArtHead(gender, hair, frame) {
   return byStyle[frame] || byStyle.idle;
 }
 
-const HAT_IDS = ["cap", "beanie", "strawHat"]; // 머리를 덮는 모자 (모자 밖으로 삐져나온 머리카락을 지움)
+const HAT_IDS = ACCESSORIES.filter((a) => a.hat).map((a) => a.id); // 머리를 덮는 모자 (모자 밖으로 삐져나온 머리카락을 지움)
+// 장신구를 자리마다 그림: 목도리 → 얼굴 장식 → 머리 장식 (나중에 그린 것이 위)
 function drawAccessoryArt(look, rows, frame, w, h, px, clear, gender) {
-  const acc = ACCESSORIES.find((a) => a.id === look.acc);
-  if (!acc) return;
+  drawNeckArt(look, frame, px, gender);
+  for (const key of ["face", "acc"]) {
+    const acc = ACCESSORIES.find((a) => a.id === look[key]);
+    if (acc) drawOneAccessoryArt(acc, look, rows, frame, w, h, px, clear, gender);
+  }
+}
+
+// 목도리 (ver.세밀): 동작마다 머리 왼쪽 위 기준으로 붙이고, 회색 그림을 고른 색으로 바꿔 칠함. 잘 때는 풂
+function drawNeckArt(look, frame, px, gender) {
+  const item = ACCESSORIES.find((a) => a.id === look.neck);
+  const art = item && item.art && typeof ACC_ART !== "undefined" && ACC_ART.neck && ACC_ART.neck[item.art];
+  const lay = art && art.frames[frame];
+  const head = lay && heroArtHead(gender, look.hair, frame);
+  if (!head) return;
+  lay.rows.forEach((r, j) => [...unRle(r)].forEach((ch, i) => {
+    if (ch === ".") return;
+    const orig = ACC_ART.palette[ch];
+    px(head[0] + lay.x + i, head[1] + lay.y + j, ch === art.outline ? orig : recolor(orig, art.base, item.color));
+  }));
+}
+
+// 머리·얼굴 장식이 그림 맨 위보다 몇 칸 더 올라가는지 (그만큼 캔버스 위에 여백을 둠)
+function accessoryTopPad(look, gender, frame) {
+  if (typeof ACC_ART === "undefined") return 0;
+  const head = heroArtHead(gender, look.hair, frame);
+  if (!head) return 0;
+  let top = 0;
+  for (const key of ["face", "acc"]) {
+    const acc = ACCESSORIES.find((a) => a.id === look[key]);
+    const art = acc && ACC_ART.items[acc.id];
+    if (!art || (frame === "sleep" && HAT_IDS.includes(acc.id))) continue;
+    const part = art[frame === "back" || frame === "chairBack" ? "back" : "front"];
+    if (part) top = Math.min(top, head[1] + part.y);
+  }
+  return -top;
+}
+
+function drawOneAccessoryArt(acc, look, rows, frame, w, h, px, clear, gender) {
   if ((frame === "sleep" || frame === "lie") && HAT_IDS.includes(acc.id)) return; // 잘 때는 모자를 벗음 (머리띠·리본·머리핀은 그대로)
   const art = typeof ACC_ART !== "undefined" && ACC_ART.items[acc.id];
   const head = art && heroArtHead(gender, look.hair, frame);
   if (art && head) {
-    const part = art[frame === "back" ? "back" : frame === "lie" ? "lie" : "front"];
+    const part = art[frame === "back" || frame === "chairBack" ? "back" : frame === "lie" ? "lie" : "front"];
     if (!part) return;
     const ox = head[0] + part.x, oy = head[1] + part.y;
     const grid = part.rows.map(unRle);
@@ -2835,21 +2910,22 @@ function heroArtCanvas(name, lookIn, flip) {
   const set = heroArtSet(gender, hair);
   const frame = set[name] ? name : "idle";
   const colors = heroColors(look);
-  const key = [gender, hair, frame, colors.H, colors.S, colors.C, colors.P, look.eyes, look.mouth, look.bottom, look.acc, look.outer, look.head, flip].join("|");
+  const key = [gender, hair, frame, colors.H, colors.S, colors.C, colors.P, look.eyes, look.mouth, look.bottom, look.acc, look.face, look.neck, look.outer, look.head, flip].join("|");
   if (heroArtCache.has(key)) return heroArtCache.get(key);
   if (heroArtCache.size > 200) heroArtCache.clear();
   const dressed = outfitRows(set[frame], look, gender, hair, frame); // GPT 옷 그림을 입었으면 몸통을 바꾼 줄
   const outfit = dressed && look.outer && OUTERS.find((o) => o.id === look.outer);
   const rows = dressed || set[frame];
   const w = Math.max(...rows.map((r) => r.length)), h = rows.length;
+  const pad = frame === "lie" ? 0 : accessoryTopPad(look, gender, frame); // 높은 모자·토끼 귀가 그림 위로 잘리지 않게 위쪽 여백 (발 기준으로 그려서 위치는 그대로)
   const c = document.createElement("canvas");
   c.width = w;
-  c.height = h;
+  c.height = h + pad;
   const g = c.getContext("2d");
   const target = { hair: colors.H, skin: colors.S, leg: colors.S, top: colors.C, bottom: colors.P };
   const px = (x, y, color) => {
     g.fillStyle = color;
-    g.fillRect(flip ? w - 1 - x : x, y, 1, 1);
+    g.fillRect(flip ? w - 1 - x : x, y + pad, 1, 1);
   };
   const outerAt = outfit ? null : outerMap(look, rows, frame, gender, hair); // (GPT 옷 그림이 없을 때) 아우터로 덮이는 칸
   const base = outfit ? Object.assign({}, HERO_ART.genders[gender].base, OUTFIT_ART.base[outfit.art]) : HERO_ART.genders[gender].base;
@@ -2865,7 +2941,7 @@ function heroArtCanvas(name, lookIn, flip) {
   }));
   if (!(frame === "lie" && findBy(BOTTOMS, look.bottom).type === "skirt")) drawBottomArt(look, rows, w, h, px, colors, HERO_ART.genders[gender].base); // 누우면 치마는 이불 속
   drawFaceArt(look, rows, frame, gender, px, colors);
-  drawAccessoryArt(look, rows, frame, w, h, px, (x, y) => g.clearRect(flip ? w - 1 - x : x, y, 1, 1), gender);
+  drawAccessoryArt(look, rows, frame, w, h, px, (x, y) => g.clearRect(flip ? w - 1 - x : x, y + pad, 1, 1), gender);
   // 안경·선글라스: 눈 자리에 테와 렌즈 (눈 감은 그림은 뜬 그림의 눈 자리를 씀)
   const kind = EYEWEAR[look.eyes];
   if (kind) {
@@ -2883,7 +2959,8 @@ function heroArtCanvas(name, lookIn, flip) {
       for (let x = boxes[i].x2 + 2; x < boxes[i + 1].x1 - 1; x++) px(x, boxes[i].y1, kind.frame); // 코다리
     }
   }
-  const out = look.head === "big" && frame !== "lie" ? bigHead(c, heroArtHead(gender, hair, frame)) : c;
+  const hd = heroArtHead(gender, hair, frame);
+  const out = look.head === "big" && frame !== "lie" ? bigHead(c, hd && [hd[0], hd[1] + pad]) : c;
   heroArtCache.set(key, out);
   return out;
 }
@@ -2902,7 +2979,7 @@ function simpleHeroCanvas(name, lookIn) {
   ctx = base.getContext("2d");
   ctx.setTransform(RES, 0, 0, RES, 0, 0);
   drawSprite(rows, 0, 0, heroColors(look), false, true);
-  if (name !== "back") drawEyewear(look, 0, extra);
+  if (name !== "back" && name !== "chairBack") drawEyewear(look, 0, extra);
   ctx = prev;
   if (look.head !== "big") return { c: base, headRows: 0 };
   const headN = Math.min(h, extra + 7); // 머리: 기본 그림의 위 7줄 (+머리 위로 올라간 줄)
@@ -2953,7 +3030,7 @@ function drawHeroFrame(name, centerX, bottomY, flip, look) {
   const left = centerX - Math.floor(rows[0].length / 2), top = bottomY - rows.length;
   drawSprite(rows, left, top, heroColors(look), flip);
   const extra = rows.length - (CHARACTER[name] || CHARACTER.idle).length; // 머리 위로 더 올라간 줄
-  if (name !== "back") drawEyewear(normLook(look || save.look), left, top + extra);
+  if (name !== "back" && name !== "chairBack") drawEyewear(normLook(look || save.look), left, top + extra);
 }
 
 // 걷는 그림 순서: ver.세밀은 4장을 이어서, ver.하찮은 두 발 그림 사이에 가만히 그림
@@ -3152,7 +3229,8 @@ function drawLyingSimple(b, p) {
   const flip = lyingFlip(b);
   if (flip === null || readyImage(CHARACTER_SHEET && CHARACTER_SHEET.image)) return false;
   const look = Object.assign({}, normLook(save.look));
-  if (["cap", "beanie", "strawHat"].includes(look.acc)) look.acc = null; // 잘 때는 모자를 벗음
+  if (HAT_IDS.includes(look.acc)) look.acc = null; // 잘 때는 모자를 벗음
+  look.neck = null; // 목도리도 풂
   const { c, headRows } = simpleHeroCanvas("blink", look);
   const w = c.width / RES, h = c.height / RES;
   const extra = heroRows("blink", look).length - CHARACTER.blink.length;
@@ -3246,7 +3324,8 @@ function drawHeadTowardViewer(b, p) {
   // ver.하찮: 눈 감고 선 그림을 통째로 돌려, 머리는 베개(앞쪽)에 두고 몸은 침대 안쪽으로 눕힘 (뒤쪽 베개일 때와 같은 방식)
   if (!useHeroArt() && !readyImage(CHARACTER_SHEET && CHARACTER_SHEET.image)) {
     const look = Object.assign({}, normLook(save.look));
-    if (["cap", "beanie", "strawHat"].includes(look.acc)) look.acc = null; // 잘 때는 모자를 벗음
+    if (HAT_IDS.includes(look.acc)) look.acc = null; // 잘 때는 모자를 벗음
+    look.neck = null; // 목도리도 풂
     const { c, headRows } = simpleHeroCanvas("blink", look);
     const w = c.width / RES, h = c.height / RES;
     const extra = heroRows("blink", look).length - CHARACTER.blink.length;
@@ -5064,28 +5143,35 @@ function renderLook() {
         priceHtml(item.price) + (owned ? "<span>보유</span>" : ""), btn));
     }
   }
-  // 액세서리: 하나만 쓸 수 있고, 다시 누르면 벗음
+  // 액세서리: 머리·얼굴·목 자리마다 하나씩 쓸 수 있고, 다시 누르면 벗음
   if (sub !== "acc") return;
-  for (const item of ACCESSORIES) {
-    const look = Object.assign({}, save.look, { acc: item.id });
-    const owned = save.outfits.includes(item.id);
-    const on = save.look.acc === item.id;
-    let btn;
-    if (!owned) {
-      btn = makeButton("구매", () => confirmBuy(item.name, item.price, makeHeroPreview(look), () => {
-        if (save.coins < item.price) return;
-        save.coins -= item.price;
-        save.outfits.push(item.id);
-        updateCoins();
-        setLook({ acc: item.id });
-        toast(`${withObject(item.name)} 샀어요.`);
-      }));
-      btn.dataset.price = item.price;
-    } else {
-      btn = makeButton(on ? "벗기" : "쓰기", () => setLook({ acc: on ? null : item.id }));
+  for (const slot of ACC_SLOTS) {
+    const items = ACCESSORIES.filter((a) => (a.slot || "head") === slot.id &&
+      (!a.season || (a.season === "xmas" && isXmasSeason()) || save.outfits.includes(a.id))); // 기간 한정은 기간에만 (산 것은 계속 보임)
+    if (!items.length) continue;
+    sectionTitle(slot.name);
+    for (const item of items) {
+      const key = slot.key;
+      const look = Object.assign({}, save.look, { [key]: item.id });
+      const owned = save.outfits.includes(item.id);
+      const on = save.look[key] === item.id;
+      let btn;
+      if (!owned) {
+        btn = makeButton("구매", () => confirmBuy(item.name, item.price, makeHeroPreview(look), () => {
+          if (save.coins < item.price) return;
+          save.coins -= item.price;
+          save.outfits.push(item.id);
+          updateCoins();
+          setLook({ [key]: item.id });
+          toast(`${withObject(item.name)} 샀어요.`);
+        }));
+        btn.dataset.price = item.price;
+      } else {
+        btn = makeButton(on ? "벗기" : slot.id === "neck" ? "두르기" : "쓰기", () => setLook({ [key]: on ? null : item.id }));
+      }
+      shopList.append(makeCard(makeHeroPreview(look), item.name,
+        priceHtml(item.price) + (owned ? (on ? `<span>${slot.id === "neck" ? "두른" : "쓰는"} 중</span>` : "<span>보유</span>") : ""), btn));
     }
-    shopList.append(makeCard(makeHeroPreview(look), item.name,
-      priceHtml(item.price) + (owned ? (on ? "<span>쓰는 중</span>" : "<span>보유</span>") : ""), btn));
   }
 }
 
