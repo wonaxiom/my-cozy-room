@@ -1,9 +1,19 @@
 // =============================================================
 // side-deco.js — 세로 보기 장식 (GPT 그림, img/side/)
 // 위쪽 하늘: 날씨와 밤낮에 따라 구름·반짝이·비·눈·달·별이 바뀌고 천천히 움직입니다.
-// 맨 아래 선반: 등불(밤에 켜짐)·책·숨 쉬는 고양이·화분 (12월에는 크리스마스트리).
+// 맨 아래 선반: 등불(밤에 켜짐)·책·숨 쉬는 고양이·화분 ('12월' 장식을 고르면 트리·선물·눈사람 등).
 // 방 그림을 가리지 않게 하늘 장식은 위쪽 가장자리와 양옆에만 둡니다.
+// 선반 장식은 '내 정보 → 배경 장식'에서 고르고 계정에 저장합니다. (save.decoTheme)
+// 크리스마스 현수막(12월 24~26일)과 새해 장식(1월 1~15일)은 이벤트 장식이라 그 기간에만 저절로 나옵니다.
 // =============================================================
+
+// 고를 수 있는 배경 장식. 새 장식을 만들면 여기에 한 줄 넣으면 '내 정보'의 선택지에 저절로 나옵니다.
+// (renderShelf, renderRoom에서 그 id일 때 놓을 그림도 함께 넣어 주세요)
+const DECO_THEMES = [
+  { id: "basic", name: "평소 (고양이)" },
+  { id: "december", name: "12월" },
+];
+const DEFAULT_DECO = "basic";
 
 const SideDeco = (() => {
   const $ = (id) => document.getElementById(id) || app.querySelector("#" + id);
@@ -204,13 +214,20 @@ const SideDeco = (() => {
     $("room-strip").classList.toggle("xmas", december);
   }
 
-  // 날씨·밤낮·달이 바뀔 때만 다시 그림
+  // 내가 고른 배경 장식 (친구 방 구경 중에도 내 설정, 목록에 없는 값이면 기본)
+  function theme() {
+    const me = typeof visiting !== "undefined" && visiting && typeof ownSave !== "undefined" && ownSave ? ownSave : save;
+    const id = me && me.decoTheme;
+    return DECO_THEMES.some((t) => t.id === id) ? id : DEFAULT_DECO;
+  }
+
+  // 날씨·밤낮·장식이 바뀔 때만 다시 그림
   function update() {
     const weather = typeof storm !== "undefined" && storm ? "storm" : weatherNow();
     const night = currentPhase === "night" || currentPhase === "evening";
     const d = now();
-    const december = d.getMonth() === 11;
-    const newYear = d.getMonth() === 0 && dayOf(d) <= 15; // 새해 장식은 1월 15일까지
+    const newYear = d.getMonth() === 0 && dayOf(d) <= 15; // 새해 장식(이벤트)은 1월 15일까지, 그동안은 고른 장식 대신 나옴
+    const december = !newYear && theme() === "december"; // 고른 장식이 '12월'이면
     const banner = bannerToday(d);
     // 보통 화면 장식 (방 그림 크기가 바뀌어도 다시 그림)
     const rk = [weather, night, december, newYear, roomSky.parentElement.clientWidth].join("|");
@@ -228,5 +245,5 @@ const SideDeco = (() => {
   setInterval(update, 5000);
   window.addEventListener("resize", update);
   setTimeout(update, 300); // 처음 열 때
-  return { update, reset: () => { lastKey = ""; update(); } };
+  return { update, reset: () => { lastKey = ""; roomKey = ""; update(); } };
 })();

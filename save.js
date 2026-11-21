@@ -35,6 +35,7 @@ const Save = {
       pets: [],               // 데려온 반려동물
       pet: null,              // 함께 있는 반려동물
       profile: { name: "", city: null }, // 캐릭터 이름, 사는 곳 (실제 날씨용)
+      decoTheme: "basic",     // 배경 장식 (side-deco.js의 DECO_THEMES)
       profileDone: false,     // 처음 시작 설정을 마쳤는지
       friendCode: null,       // 고유번호 (로그인하면 서버에서 받아옴, 친구 추가용)
       owner: null,            // 이 저장 데이터의 주인 (구글 계정 id)

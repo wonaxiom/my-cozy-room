@@ -177,6 +177,9 @@ const Start = (() => {
     $("pf-note").textContent = away
       ? "친구 방을 구경하는 중이에요. 캐릭터는 내 방으로 돌아가서 바꿀 수 있어요."
       : "고유번호는 나중에 친구를 추가할 때 써요.";
+    // 배경 장식: 구경 중에는 내 방으로 돌아가서 바꿈
+    $("pf-deco").hidden = away;
+    $("pf-deco-select").value = DECO_THEMES.some((t) => t.id === me.decoTheme) ? me.decoTheme : DEFAULT_DECO;
     $("profile").hidden = false;
     if (away) return;
 
@@ -237,6 +240,13 @@ const Start = (() => {
   $("profile-btn").addEventListener("click", openProfile);
   $("pf-close").addEventListener("click", closeProfile);
   $("pf-copy").addEventListener("click", copyCode);
+  // 배경 장식 선택지 (side-deco.js의 DECO_THEMES 목록에서 만듦)
+  $("pf-deco-select").append(...DECO_THEMES.map((t) => new Option(t.name, t.id)));
+  $("pf-deco-select").addEventListener("change", (e) => {
+    save.decoTheme = e.target.value;
+    Save.save(save);
+    SideDeco.reset();
+  });
   $("pf-edit").addEventListener("click", () => {
     if (mine() !== save) return; // 구경 중에는 막기
     closeProfile();

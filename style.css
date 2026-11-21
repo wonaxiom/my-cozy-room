@@ -1718,6 +1718,15 @@ body.pip.side-mode #shop-btn { display: none; }
 }
 
 .pf-gcal[hidden] { display: none; }
+.pf-gcal select {
+  padding: 4px 6px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
 
 /* 내 정보: 배경 사진 */
 .pf-bg {
