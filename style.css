@@ -1881,7 +1881,10 @@ body.pip #side-win-btn { display: none; }
 /* ---- 카페 미니게임 ---- */
 .cafe .panel-head { gap: 8px; }
 .cafe .panel-head strong { flex: none; }
-.cafe-status { flex: 1; color: var(--sub); font-size: 12px; font-variant-numeric: tabular-nums; }
+.cafe-status { display: flex; flex: 1; gap: 6px; color: var(--sub); font-size: 12px; font-variant-numeric: tabular-nums; }
+.cafe-hud { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; color: var(--text); font-weight: 600; background: #faf6f0; border: 1px solid var(--line); border-radius: 999px; }
+.cafe-hud.hurry { color: #c0463a; border-color: #e8b8b0; }
+.cafe-canvas:focus { outline: none; }
 .cafe-body { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
 .cafe-art, .cafe-guest { image-rendering: pixelated; }
 .cafe-art { display: block; flex: none; }

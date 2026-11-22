@@ -19,12 +19,23 @@ SHEETS = [
     ("gpt-ingredients.webp", 13.5, [["shot", "water", "milk", "vanilla", "choco", "matcha"]]),
     ("gpt-upgrades.webp", 10.5, [["machine1", "machine2", "machine3", "chair", "sign"]]),
     ("gpt-small.webp", 17.5, [["trash", "tray", "heart", "angry"]]),
+    # 제작 화면
+    ("gpt-brew-machines.webp", 15.5, [["brew-machine1", "brew-machine2", "brew-machine3"]]),
+    ("gpt-hole.webp", 36, [["hole"]]),
+    ("gpt-ticket.png", 16.5, [["ticket"]]),
 ]
+
+# 만드는 중인 컵: 이미 넣은 컵과 똑같이 겹치도록 줄마다 폭과 칸 크기를 맞춤 (폭, 칸 [가로, 세로])
+MAKING = ("gpt-cups-making.webp", [
+    (["hot-shot", "hot-water", "hot-milk"], 25, (25, 27)),
+    (["ice-shot", "ice-water", "ice-milk"], 22, (22, 30)),
+])
 
 # 배경: 파일, 결과 이름, 가로 도트 수 (세로는 비율대로). 흰 여백은 잘라 냄
 BACKGROUNDS = [
     ("gpt-bg.webp", "bg", 280),
     ("gpt-counter.webp", "counter", 280),
+    ("gpt-brew-bg.webp", "brew-bg", 140),
 ]
 
 
@@ -87,7 +98,34 @@ def pixelize(a, m, p):
     return o
 
 
+def cells_of(fname, p):
+    """시트를 줄과 칸으로 나눠 [(줄 번호, x0, y0, 칸 그림, 칸 마스크)]"""
+    a = np.array(Image.open(SRC + fname).convert("RGBA")).astype(int)
+    m = alpha_mask(a)
+    out = []
+    for r, (y0, y1) in enumerate(spans(m.any(1), int(p * 3))):
+        for x0, x1 in spans(m[y0:y1].any(0), int(p * 3)):
+            cm = m[y0:y1, x0:x1]
+            ys, xs = np.nonzero(cm)
+            out.append((r, a[y0 + ys.min():y0 + ys.max() + 1, x0 + xs.min():x0 + xs.max() + 1],
+                        cm[ys.min():ys.max() + 1, xs.min():xs.max() + 1]))
+    return out
+
+
 os.makedirs(OUT, exist_ok=True)
+
+fname, rows = MAKING
+cells = cells_of(fname, 9)
+for r, (names, width, (cw, ch)) in enumerate(rows):
+    row = [c for c in cells if c[0] == r]
+    assert len(row) == len(names), (fname, r, len(row))
+    for name, (_, a, m) in zip(names, row):
+        o = pixelize(a, m, a.shape[1] / width)
+        cell = Image.new("RGBA", (cw, ch))
+        cell.alpha_composite(Image.fromarray(o), ((cw - o.shape[1]) // 2, ch - o.shape[0]))
+        cell.save(OUT + name + ".png")
+    print(fname, r, "칸 크기", (cw, ch), names)
+
 for fname, p, names in SHEETS:
     a = np.array(Image.open(SRC + fname).convert("RGBA")).astype(int)
     m = alpha_mask(a)
