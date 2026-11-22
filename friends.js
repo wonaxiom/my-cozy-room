@@ -392,6 +392,7 @@ const Friends = (() => {
     if (editing) setEditing(false);
     closeShop();
     if (typeof Focus !== "undefined") Focus.close();
+    if (typeof Cafe !== "undefined") Cafe.close();
     panel.hidden = false;
     pill.classList.add("active");
     show(v);

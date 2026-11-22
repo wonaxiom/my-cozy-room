@@ -280,6 +280,7 @@ const Focus = (() => {
     if (editing) setEditing(false);
     closeShop();
     if (typeof Friends !== "undefined") Friends.close();
+    if (typeof Cafe !== "undefined") Cafe.close();
     panel.hidden = false;
     openBtn.classList.add("active");
     render();

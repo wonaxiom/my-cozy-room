@@ -1877,3 +1877,109 @@ body.pip #side-win-btn { display: none; }
 .req-list li.done .req-body { color: var(--sub); text-decoration: line-through; }
 .req-empty { color: var(--sub); font-size: 13px; text-align: center; padding: 16px 0; }
 #req-link .badge { background: #c0392b; border-radius: 8px; }
+
+/* ---- 카페 미니게임 ---- */
+.cafe .panel-head { gap: 8px; }
+.cafe .panel-head strong { flex: none; }
+.cafe-status { flex: 1; color: var(--sub); font-size: 12px; font-variant-numeric: tabular-nums; }
+.cafe-body { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
+.cafe-cup, .cafe-guest { image-rendering: pixelated; }
+
+/* 영업 전 */
+.cafe-text { margin: 0; color: var(--sub); line-height: 1.5; }
+.cafe-start { align-self: center; min-width: 140px; padding: 8px 16px; }
+.cafe-stats { display: flex; justify-content: center; gap: 12px; color: var(--sub); }
+.cafe-sub { margin: 4px 0 2px; font-size: 13px; }
+.cafe-board { padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; }
+.cafe-board .cafe-sub { margin-top: 0; }
+.cafe-recipe { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; color: var(--sub); }
+.cafe-recipe-name { color: var(--text); }
+.cafe-note { margin: 4px 0 0; color: var(--sub); font-size: 11px; }
+.cafe-shop { display: flex; flex-direction: column; gap: 6px; }
+.cafe-item { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; }
+.cafe-item-info { display: flex; flex: 1; flex-direction: column; min-width: 0; }
+.cafe-item-info span { color: var(--sub); font-size: 11px; }
+.cafe-item button { display: inline-flex; align-items: center; gap: 4px; min-width: 64px; justify-content: center; }
+
+/* 영업 중: 손님 자리 */
+.cafe-seats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.cafe-seat {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  height: 156px;
+  padding: 6px 4px;
+  background: #faf6f0;
+}
+.cafe-seat.empty { cursor: default; background: #f7f4ef; border-style: dashed; }
+.cafe-seat.happy { background: #eef5e6; }
+.cafe-seat.sad { background: #f7ebe8; }
+.cafe-empty { margin: auto; color: #b3aca4; }
+.cafe-bubble {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 3px 6px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  white-space: normal;
+  text-align: left;
+  line-height: 1.25;
+}
+.cafe-order { font-size: 11px; }
+.cafe-order b { display: block; font-weight: 600; }
+.cafe-mood { font-size: 11px; }
+.cafe-guest { width: 78px; height: 78px; }
+.cafe-bar { width: 80%; height: 4px; overflow: hidden; background: var(--line); border-radius: 2px; }
+.cafe-bar i { display: block; height: 100%; }
+.cafe-float {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  padding: 2px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--card);
+  border-radius: 6px;
+  transform: translateX(-50%);
+  animation: cafe-float 0.9s ease-out forwards;
+  pointer-events: none;
+}
+@keyframes cafe-float { to { opacity: 0; transform: translate(-50%, -24px); } }
+
+/* 영업 중: 만드는 자리 */
+.cafe-counter { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; }
+.cafe-work { display: flex; align-items: center; gap: 10px; min-height: 48px; }
+.cafe-made { display: flex; align-items: center; justify-content: center; width: 52px; height: 48px; }
+.cafe-made-text { flex: 1; color: var(--sub); }
+.cafe-row { display: flex; flex-wrap: wrap; gap: 4px; }
+.cafe-btn { position: relative; display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; overflow: hidden; font-size: 12px; }
+.cafe-btn > * { position: relative; }
+.cafe-trash { margin-left: auto; }
+.cafe-dot { width: 10px; height: 10px; border: 1px solid #3a2a24; border-radius: 50%; }
+.cafe-btn.pouring::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--pour, 0%);
+  background: #ead9c4;
+}
+.cafe-hint { min-height: 14px; margin: 0; color: #b5463b; font-size: 11px; }
+.cafe-help summary { color: var(--sub); cursor: pointer; }
+.cafe-help .cafe-board { margin-top: 4px; }
+
+/* 영업 끝 */
+.cafe-result { display: flex; flex-direction: column; align-items: center; gap: 8px; padding-top: 8px; }
+.cafe-result-title { margin: 0; font-size: 15px; }
+.cafe-result-list { display: grid; grid-template-columns: auto auto; gap: 4px 16px; margin: 0; }
+.cafe-result-list dt { color: var(--sub); }
+.cafe-result-list dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.cafe-actions { display: flex; gap: 6px; }
+
+body.pip .cafe-seat { height: 128px; }
+body.pip .cafe-guest { width: 56px; height: 56px; }

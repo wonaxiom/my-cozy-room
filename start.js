@@ -38,6 +38,7 @@ const Start = (() => {
   // 로그인과 데이터 맞추기가 끝난 뒤
   function ready() {
     applyProfile();
+    if (typeof Cafe !== "undefined") Cafe.refresh(); // 주인 계정이면 카페 버튼 보이기
     if (!save.profileDone) openOnboarding(false);
     else setState("game");
   }
