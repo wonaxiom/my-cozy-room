@@ -4301,6 +4301,7 @@ function setEditing(on) {
   if (on) {
     closeShop();
     if (typeof Focus !== "undefined") Focus.close();
+    if (typeof Cafe !== "undefined") Cafe.close();
     if (typeof Friends !== "undefined") Friends.close();
     renderBag();
   }
@@ -4988,6 +4989,7 @@ function openShop() {
   if (editing) setEditing(false);
   if (typeof Friends !== "undefined") Friends.close();
   if (typeof Focus !== "undefined") Focus.close();
+  if (typeof Cafe !== "undefined") Cafe.close();
   shopEl.hidden = false;
   shopBtn.classList.add("active");
   renderShop();
@@ -5659,6 +5661,7 @@ function startVisit(friend, snap) {
   setEditing(false);
   closeShop();
   if (typeof Focus !== "undefined") Focus.close();
+  if (typeof Cafe !== "undefined") Cafe.close();
   Save.locked = true; // 구경하는 동안 내 저장 데이터를 건드리지 않게
   save = visitSave(snap || {});
   if (!(snap && snap.pianoV2)) migratePianoLayouts(save.layouts); // 친구가 아직 새 버전을 안 열었으면 예전 피아노 자리를 맞춰 그림
