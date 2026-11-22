@@ -5769,6 +5769,7 @@ function moveAppTo(win) {
   win.document.body.classList.add("pip");
   if (visiting) win.document.body.classList.add("visiting"); // 구경 중에 창을 열었을 때
   win.document.body.append(app);
+  win.addEventListener("resize", () => { if (typeof SideDeco !== "undefined") SideDeco.update(); }); // 창 크기가 바뀌면 방 장식 크기도
   placeholder.hidden = false;
   pipNote.textContent = "";
   updatePipButton();
@@ -5783,6 +5784,7 @@ function moveAppTo(win) {
     pipWin = null;
     updatePipButton();
     startLoop();
+    if (typeof SideDeco !== "undefined") SideDeco.reset(); // 방 장식을 본화면 크기에 맞춰 바로 다시 그림
   });
 }
 // 원래 탭을 닫으면 세로 창도 닫음

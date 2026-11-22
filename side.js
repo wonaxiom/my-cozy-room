@@ -184,7 +184,7 @@ const Side = (() => {
     panel.hidden = !on;
     btn.textContent = on ? "방 보기" : "세로 보기";
     if (on) { lastDay = ""; renderClock(); renderTimer(); renderTodos(); }
-    if (on && typeof SideDeco !== "undefined") SideDeco.reset(); // 하늘·선반 장식
+    if (typeof SideDeco !== "undefined") SideDeco.reset(); // 하늘·선반 장식 (끌 때도 방 장식을 방 크기에 맞춰 바로 다시 그림)
     if (win && win.resizeTo) {
       try {
         if (on) {
