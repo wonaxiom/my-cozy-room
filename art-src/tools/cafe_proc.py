@@ -1,5 +1,6 @@
 # 카페 미니게임 그림 정리: GPT 시트에서 배경을 지우고 칸을 나눈 뒤 1도트 = 1픽셀로 줄입니다.
-# 원본: art-src/cafe/gpt-cups.webp, gpt-ingredients.webp, gpt-upgrades.webp
+# 원본: art-src/cafe/gpt-cups.webp, gpt-ingredients.webp, gpt-upgrades.webp, gpt-small.webp (칸 그림)
+#       art-src/cafe/gpt-bg.webp, gpt-counter.webp (가게 배경, 카운터)
 # 결과: img/cafe/*.png
 # 실행: 저장소 맨 위 폴더에서  python3 art-src/tools/cafe_proc.py
 import os
@@ -17,6 +18,13 @@ SHEETS = [
     ("gpt-cups.webp", 9.5, [[f"hot-{d}" for d in DRINKS], [f"ice-{d}" for d in DRINKS]]),
     ("gpt-ingredients.webp", 13.5, [["shot", "water", "milk", "vanilla", "choco", "matcha"]]),
     ("gpt-upgrades.webp", 10.5, [["machine1", "machine2", "machine3", "chair", "sign"]]),
+    ("gpt-small.webp", 17.5, [["trash", "tray", "heart", "angry"]]),
+]
+
+# 배경: 파일, 결과 이름, 가로 도트 수 (세로는 비율대로). 흰 여백은 잘라 냄
+BACKGROUNDS = [
+    ("gpt-bg.webp", "bg", 280),
+    ("gpt-counter.webp", "counter", 280),
 ]
 
 
@@ -103,3 +111,13 @@ for fname, p, names in SHEETS:
             cell.alpha_composite(Image.fromarray(o), ((cw - o.shape[1]) // 2, ch - o.shape[0] - round((bottom - b) / p)))
             cell.save(OUT + name + ".png")
         print(fname, "칸 크기", (cw, ch), [n for n, _, _ in cells])
+
+
+for fname, name, tw in BACKGROUNDS:
+    a = np.array(Image.open(SRC + fname).convert("RGBA")).astype(int)
+    keep = a[:, :, :3].min(2).mean(1) < 235  # 거의 흰색인 위아래 여백 줄은 버림
+    ys = np.nonzero(keep)[0]
+    a = a[ys.min():ys.max() + 1]
+    o = pixelize(a, np.ones(a.shape[:2], bool), a.shape[1] / tw)
+    Image.fromarray(o).save(OUT + name + ".png")
+    print(fname, "크기", o.shape[1], o.shape[0])

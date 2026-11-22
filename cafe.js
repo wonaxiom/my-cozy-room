@@ -49,7 +49,6 @@ const Cafe = (() => {
   const openBtn = $("cafe-btn");
   const body = $("cafe-body");
   const statusEl = $("cafe-status");
-  const menuBtn = $("cafe-menu-btn");
 
   // ---- 저장 데이터 ----
   // 예전 저장에 없는 값만 채움 (같은 객체를 계속 써야 산 것이 저장됨)
@@ -99,7 +98,7 @@ const Cafe = (() => {
 
   // 캔버스용 그림 (처음 쓸 때 한 번 불러 둠)
   // 가게 배경·카운터·휴지통·표정 그림은 받은 것만 SCENE_ART에 적음. 없는 것은 코드로 그린 임시 그림을 씀
-  const SCENE_ART = [];   // 예: ["bg", "counter", "trash", "tray", "heart", "angry"]
+  const SCENE_ART = ["bg", "counter", "trash", "tray", "heart", "angry"];
   const OPTIONAL_ART = ["bg", "counter", "trash", "tray", "heart", "angry"];
   const images = {};
   function img(file) {
@@ -151,10 +150,10 @@ const Cafe = (() => {
   // 위쪽은 가게 안(문, 창문, 손님이 서는 자리), 아래쪽은 내가 일하는 카운터.
   // 좌표는 280 × 208 도트 기준이고, 캔버스는 2배로 그려서 글자가 또렷하게 보이게 함
   // =============================================================
-  const W = 280, H = 208, PX = 2;
+  const W = 280, H = 200, PX = 2;
   const COUNTER_Y = 120;   // 카운터 윗선 (손님 다리는 이 아래로 가려짐)
-  const BASE_Y = 196;      // 카운터 위 물건의 바닥선
-  const DOOR_X = 26;       // 손님이 드나드는 문 가운데
+  const BASE_Y = 187;      // 카운터 위 물건의 바닥선
+  const DOOR_X = 20;       // 손님이 드나드는 문 가운데 (배경 그림의 문)
   const SPOTS = [104, 162, 220]; // 손님이 서는 자리 (가운데 x)
   const FEET_Y = 130;      // 손님 발 위치 (발은 카운터에 가려짐)
   const GUEST_H = 70;      // 손님 키
@@ -168,7 +167,7 @@ const Cafe = (() => {
     slot: { x: 83, y: BASE_Y - 3 }, // 머신 안 컵 자리
     tray: { x: 129, y: BASE_Y - 2 },
     bottles: 154,               // 첫 재료 병 왼쪽 x (22씩 오른쪽으로)
-    trash: { x: 264, y: 176, w: 15, h: 20 },
+    trash: { x: 263, y: BASE_Y - 20, w: 15, h: 20 },
   };
 
   // ---- 영업 상태 ----
@@ -183,6 +182,7 @@ const Cafe = (() => {
   function newRound() {
     const now = Date.now();
     return {
+      startAt: now,
       endAt: now + CAFE_ROUND_SECONDS * 1000,
       nextAt: now + 800,
       guests: [],         // 손님
@@ -439,8 +439,7 @@ const Cafe = (() => {
     }
     if (now >= round.endAt) return finish();
 
-    const left = Math.max(0, Math.ceil((round.endAt - now) / 1000));
-    statusEl.textContent = `남은 시간 ${left}초 · 매출 ${round.sales}`;
+    statusEl.textContent = "영업 중";
     draw(now);
     frameId = (typeof pipWin !== "undefined" && pipWin ? pipWin : window).requestAnimationFrame(frame);
   }
@@ -457,39 +456,26 @@ const Cafe = (() => {
     ctx.drawImage(i, Math.round(cx - i.width / 2), Math.round(by - i.height));
   }
 
-  // 임시 배경 (GPT 배경 그림 img/cafe/bg.png 를 받으면 그 그림을 씀)
+  // 가게 배경과 카운터 (그림을 불러오는 동안에는 비슷한 색으로 채움)
   function drawRoom() {
     const bg = img("bg");
-    if (bg) { ctx.drawImage(bg, 0, 0, W, COUNTER_Y); return; }
-    rect(0, 0, W, COUNTER_Y, "#f1e6d4");                 // 벽
-    rect(0, 86, W, COUNTER_Y - 86, "#c9a27a");           // 벽 아래 나무판
-    rect(0, 86, W, 2, "#a77f5a");
-    for (let x = 6; x < W; x += 16) rect(x, 90, 1, COUNTER_Y - 90, "#b8916b");
-    // 문
-    rect(DOOR_X - 16, 30, 32, COUNTER_Y - 30, "#7a5034");
-    rect(DOOR_X - 13, 33, 26, COUNTER_Y - 33, "#a8774f");
-    rect(DOOR_X - 9, 38, 18, 22, "#cfe3ee");
-    rect(DOOR_X + 7, 78, 3, 3, "#e8c66a");
-    // 메뉴판
-    rect(124, 14, 64, 36, "#7a5034");
-    rect(126, 16, 60, 32, "#3f4a3c");
-    for (let i = 0; i < 4; i++) rect(132, 22 + i * 7, 26 + (i % 2) * 10, 2, "#d8d2c2");
-    // 창문
-    rect(204, 14, 56, 44, "#7a5034");
-    rect(207, 17, 50, 38, "#bfdcec");
-    rect(231, 17, 2, 38, "#7a5034");
-    rect(207, 35, 50, 2, "#7a5034");
-    // 화분
-    rect(64, 70, 14, 16, "#c0714a");
-    rect(60, 56, 22, 14, "#7fa864");
+    if (bg) return ctx.drawImage(bg, 0, 0, W, COUNTER_Y);
+    rect(0, 0, W, COUNTER_Y, "#f4dcc0");
+    rect(0, 72, W, COUNTER_Y - 72, "#c98b55");
   }
 
   function drawCounter() {
     const top = img("counter");
-    if (top) { ctx.drawImage(top, 0, COUNTER_Y - 4, W, H - COUNTER_Y + 4); return; }
-    rect(0, COUNTER_Y - 4, W, 6, "#8a5e3c");             // 손님 쪽 모서리
-    rect(0, COUNTER_Y + 2, W, H - COUNTER_Y, "#c79a6c"); // 카운터 윗면
-    for (let y = COUNTER_Y + 14; y < H; y += 14) rect(0, y, W, 1, "#b88c60");
+    if (top) return ctx.drawImage(top, 0, COUNTER_Y - 2);
+    rect(0, COUNTER_Y - 2, W, H - COUNTER_Y + 2, "#f6bb80");
+  }
+
+  // 카운터 위 물건 아래 옅은 그림자
+  function shadow(cx, w) {
+    ctx.fillStyle = "rgba(120, 64, 24, 0.18)";
+    ctx.beginPath();
+    ctx.ellipse(cx, BASE_Y - 0.5, w / 2, 2.2, 0, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   function drawTray() {
@@ -570,9 +556,88 @@ const Cafe = (() => {
     drawImg(`${cup.temp}-${drinkOf(cup.adds)}`, cup.x, cup.y);
   }
 
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  // 마우스를 올린 물건: 둥근 테두리로 은은하게
   function highlight(h) {
-    ctx.fillStyle = "rgba(255, 248, 225, 0.28)";
-    ctx.fillRect(h.x, h.y, h.w, h.h);
+    roundRect(h.x - 1, h.y - 1, h.w + 2, h.h + 2, 4);
+    ctx.fillStyle = "rgba(255, 246, 220, 0.30)";
+    ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.85)";
+    ctx.stroke();
+  }
+
+  // 오른쪽 위 작은 표 (남은 시간, 매출)
+  function pill(xRight, y, label, color, icon) {
+    ctx.font = "bold 8px system-ui, sans-serif";
+    const tw = Math.ceil(ctx.measureText(label).width);
+    const w = tw + 17, x = xRight - w;
+    roundRect(x, y, w, 13, 6.5);
+    ctx.fillStyle = "rgba(255, 250, 240, 0.94)";
+    ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "#7a5034";
+    ctx.stroke();
+    icon(x + 7.5, y + 6.5);
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = color;
+    ctx.fillText(label, x + 13, y + 7);
+    return x;
+  }
+
+  function coinIcon(cx, cy) {
+    ctx.beginPath(); ctx.arc(cx, cy, 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = "#f0c24f"; ctx.fill();
+    ctx.lineWidth = 1; ctx.strokeStyle = "#a8742a"; ctx.stroke();
+  }
+
+  function clockIcon(cx, cy) {
+    ctx.beginPath(); ctx.arc(cx, cy, 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = "#fffdf8"; ctx.fill();
+    ctx.lineWidth = 1; ctx.strokeStyle = "#7a5034"; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx, cy - 2); ctx.lineTo(cx, cy); ctx.lineTo(cx + 1.8, cy + 1); ctx.stroke();
+  }
+
+  function drawHud(now) {
+    const left = Math.max(0, Math.ceil((round.endAt - now) / 1000));
+    const hurry = left <= 10;
+    const x = pill(W - 4, 4, `${left}초`, hurry && Math.floor(now / 400) % 2 ? "#c0463a" : "#3a2a24", clockIcon);
+    pill(x - 3, 4, `${round.sales}`, "#3a2a24", coinIcon);
+    // 영업 시작 알림
+    const since = now - round.startAt;
+    if (since < 1400) {
+      ctx.globalAlpha = since < 1000 ? 1 : 1 - (since - 1000) / 400;
+      roundRect(W / 2 - 40, 50, 80, 20, 10);
+      ctx.fillStyle = "rgba(255, 250, 240, 0.96)"; ctx.fill();
+      ctx.lineWidth = 1; ctx.strokeStyle = "#7a5034"; ctx.stroke();
+      ctx.font = "bold 10px system-ui, sans-serif";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillStyle = "#7a5034";
+      ctx.fillText("영업 시작!", W / 2, 60.5);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // 에스프레소 내리는 동안 올라오는 김
+  function steam(cx, by, now) {
+    ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+    for (let i = 0; i < 3; i++) {
+      const t = ((now / 900) + i / 3) % 1;
+      const x = cx - 3 + i * 3 + Math.round(Math.sin(t * 6 + i) * 1);
+      ctx.globalAlpha = 1 - t;
+      ctx.fillRect(Math.round(x), Math.round(by - t * 12), 2, 2);
+    }
+    ctx.globalAlpha = 1;
   }
 
   function text(str, x, y, color, align = "center") {
@@ -595,8 +660,14 @@ const Cafe = (() => {
     const guests = round.guests.slice().sort((a, b) => a.x - b.x);
     guests.forEach((g) => drawGuest(g, now));
     drawCounter();
-    drawTray();
     guests.forEach((g) => drawOrder(g, now));
+
+    // 물건 그림자
+    shadow(SPOT.hot.x, 24); shadow(SPOT.ice.x, 20);
+    shadow(SPOT.machine.x + SPOT.machine.w / 2, 34);
+    for (const b of bottles()) shadow(b.x + 10, 16);
+    shadow(SPOT.trash.x + SPOT.trash.w / 2, 14);
+    drawTray();
 
     // 컵 쌓아 둔 곳
     drawImg("hot-empty", SPOT.hot.x, SPOT.hot.y - 6);
@@ -612,6 +683,7 @@ const Cafe = (() => {
       rect(SPOT.machine.x + 4, BASE_Y - 52, SPOT.machine.w - 8, 4, "#3a2a24");
       rect(SPOT.machine.x + 5, BASE_Y - 51, Math.round((SPOT.machine.w - 10) * r), 2, "#e0b24f");
       if (Math.floor(now / 90) % 2) rect(SPOT.slot.x, BASE_Y - 30, 1, 6, "#4a2e20");
+      steam(SPOT.slot.x, BASE_Y - 46, now);
     }
 
     // 재료 병
@@ -637,7 +709,8 @@ const Cafe = (() => {
 
     // 아래쪽 안내 (누를 곳 이름, 실수 안내)
     const tip = round.tipUntil > now ? round.tip : hover ? hover.name : "";
-    if (tip) text(tip, W / 2, H - 6, "#5a4636");
+    if (tip) text(tip, W / 2, H - 5, "#5a4636");
+    drawHud(now);
   }
 
   // ---- 시작과 끝 ----
@@ -692,7 +765,6 @@ const Cafe = (() => {
   function render() {
     body.innerHTML = "";
     canvas = null;
-    menuBtn.hidden = view !== "play";
     if (view === "play") return renderPlay();
     if (view === "result") return renderResult();
     renderLobby();
@@ -710,6 +782,13 @@ const Cafe = (() => {
     return row;
   }
 
+  // 영업 전·결과 화면 위쪽의 가게 그림 띠
+  function hero(title) {
+    const h = el("div", "cafe-hero");
+    if (title) h.append(el("span", "cafe-hero-title", title));
+    return h;
+  }
+
   function renderLobby() {
     statusEl.textContent = "";
     const c = data();
@@ -720,7 +799,7 @@ const Cafe = (() => {
     start.addEventListener("click", startRound);
     if (daily().coins >= CAFE_DAILY_MAX) intro.textContent = "오늘 받을 수 있는 코인은 다 받았어요. 영업은 계속 연습할 수 있어요.";
 
-    body.append(intro, start, stats(), menuBoard(), el("h3", "cafe-sub", "가게 늘리기"));
+    body.append(hero(), intro, start, stats(), menuBoard(), el("h3", "cafe-sub", "가게 늘리기"));
 
     const list = el("div", "cafe-shop");
     for (const m of CAFE_MENU.filter((x) => x.unlock)) {
@@ -782,6 +861,19 @@ const Cafe = (() => {
     return box;
   }
 
+  // 영업 중 아래쪽 레시피 (짧게, 두 칸씩)
+  function recipeGrid() {
+    const box = el("div", "cafe-grid");
+    for (const m of menuOpen()) {
+      const item = el("div", "cafe-grid-item");
+      const info = el("div", "cafe-grid-info");
+      info.append(el("strong", "", `${m.name} ${m.price}`), el("span", "", m.recipe.map(ingName).join(" + ")));
+      item.append(cupArt("hot", m.id, 1), info);
+      box.append(item);
+    }
+    return box;
+  }
+
   function renderPlay() {
     const wrap = el("div", "cafe-scene");
     canvas = el("canvas", "cafe-canvas");
@@ -801,18 +893,15 @@ const Cafe = (() => {
     });
     canvas.addEventListener("pointerleave", () => { hover = null; });
 
-    const board = menuBoard();
-    board.classList.add("cafe-board-pop");
-    board.hidden = true;
-    wrap.append(canvas, board);
-    body.append(wrap);
+    wrap.append(canvas);
+    body.append(wrap, recipeGrid());
   }
 
   function renderResult() {
     statusEl.textContent = "";
     const r = lastResult;
+    body.append(hero(r.best && r.sales ? "최고 매출 달성!" : "오늘 영업 끝"));
     const box = el("div", "cafe-result");
-    box.append(el("h3", "cafe-result-title", r.best && r.sales ? "최고 매출 달성!" : "오늘 영업 끝"));
     const dl = el("dl", "cafe-result-list");
     for (const [k, v] of [["매출", r.sales], ["손님", `${r.served}명`], ["놓친 손님", `${r.missed}명`], ["받은 코인", r.coins]]) {
       dl.append(el("dt", "", k), el("dd", "", String(v)));
@@ -860,11 +949,6 @@ const Cafe = (() => {
 
   openBtn.addEventListener("click", () => (panel.hidden ? open() : close()));
   $("cafe-close").addEventListener("click", close);
-  // 영업 중 메뉴판 (레시피를 잠깐 보기)
-  menuBtn.addEventListener("click", () => {
-    const b = body.querySelector(".cafe-board-pop");
-    if (b) b.hidden = !b.hidden;
-  });
   refresh();
 
   // round: 테스트에서 지금 영업 상태를 확인할 때 씀
