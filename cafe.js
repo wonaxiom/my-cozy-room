@@ -10,23 +10,23 @@ const CAFE_SEATS = 3;           // 동시에 기다릴 수 있는 손님 수
 const CAFE_PATIENCE = 22;       // 손님이 기다리는 시간(초)
 const CAFE_SHOT_SECONDS = [1.6, 1.0, 0.5]; // 커피 머신 단계별 에스프레소 내리는 시간
 
-// 재료 (버튼 순서대로)
+// 재료 (버튼 순서대로, 그림은 img/cafe/재료id.png)
 const CAFE_INGREDIENTS = [
-  { id: "shot", name: "에스프레소", color: "#5a3826" },
-  { id: "water", name: "물", color: "#a9cbe0" },
-  { id: "milk", name: "우유", color: "#f4efe4" },
-  { id: "vanilla", name: "바닐라", color: "#efd9a0" },
-  { id: "choco", name: "초코", color: "#7a4a32" },
-  { id: "matcha", name: "녹차", color: "#8fb36a" },
+  { id: "shot", name: "에스프레소" },
+  { id: "water", name: "물" },
+  { id: "milk", name: "우유" },
+  { id: "vanilla", name: "바닐라" },
+  { id: "choco", name: "초코" },
+  { id: "matcha", name: "녹차" },
 ];
 
 // 메뉴: recipe는 넣어야 할 재료 (순서는 상관없음), unlock이 있으면 그 메뉴를 사야 나옴
 const CAFE_MENU = [
-  { id: "americano", name: "아메리카노", price: 4, recipe: ["shot", "water"], liquid: "#4a2e20" },
-  { id: "latte", name: "카페라떼", price: 5, recipe: ["shot", "milk"], liquid: "#c79a6e" },
-  { id: "vanilla", name: "바닐라 라떼", price: 6, recipe: ["shot", "milk", "vanilla"], liquid: "#d9b27e", unlock: 80 },
-  { id: "choco", name: "초코 라떼", price: 6, recipe: ["choco", "milk"], liquid: "#8a5638", unlock: 120 },
-  { id: "matcha", name: "녹차 라떼", price: 7, recipe: ["matcha", "milk"], liquid: "#a9c77e", unlock: 160 },
+  { id: "americano", name: "아메리카노", price: 4, recipe: ["shot", "water"] },
+  { id: "latte", name: "카페라떼", price: 5, recipe: ["shot", "milk"] },
+  { id: "vanilla", name: "바닐라 라떼", price: 6, recipe: ["shot", "milk", "vanilla"], unlock: 80 },
+  { id: "choco", name: "초코 라떼", price: 6, recipe: ["choco", "milk"], unlock: 120 },
+  { id: "matcha", name: "녹차 라떼", price: 7, recipe: ["matcha", "milk"], unlock: 160 },
 ];
 
 // 장비 업그레이드: level은 지금 단계, prices는 다음 단계로 올리는 가격
@@ -71,66 +71,34 @@ const Cafe = (() => {
   const patience = () => CAFE_PATIENCE * (data().chair ? 1.3 : 1);
   const spawnGap = () => (data().sign ? [3.5, 6] : [5, 8]);
 
-  // ---- 컵 그림 (글자 한 칸 = 도트 한 칸) ----
-  // O: 외곽선, W: 머그, L: 음료, I: 얼음, C: 빈 유리컵, S: 빨대, s: 김
-  const MUG = [
-    "...s..s.....",
-    "....s..s....",
-    "OOOOOOOOO...",
-    "OLLLLLLLO...",
-    "OWWWWWWWOOO.",
-    "OWWWWWWWO.O.",
-    "OWWWWWWWO.O.",
-    "OWWWWWWWOOO.",
-    "OWWWWWWWO...",
-    ".OWWWWWO....",
-    "..OOOOO.....",
-  ];
-  const GLASS = [
-    "......S.....",
-    ".....S......",
-    "OOOOOSOOO...",
-    "OILLSLLIO...",
-    "OLIILLLLO...",
-    ".OLLLIIO....",
-    ".OLLLLLO....",
-    ".OLLLLLO....",
-    ".OLLLLLO....",
-    "..OLLLO.....",
-    "..OOOOO.....",
-  ];
-  const CUP_COLORS = { O: "#3a2a24", W: "#f4efe6", I: "#e8f3f8", C: "#dbe9f0", S: "#d0574a", s: "#d8d2ca" };
+  // ---- 그림 (img/cafe/, 정리 스크립트: art-src/tools/cafe_proc.py) ----
+  // 그림 크기 [가로, 세로] (도트). scale배로 키워서 보여 줌
+  const ART_SIZE = { hot: [25, 27], ice: [22, 30], ingredient: [20, 28], upgrade: [43, 45] };
 
-  // 지금 넣은 재료로 음료 색 정하기
-  function liquidOf(adds) {
-    if (!adds.length) return null;
+  function art(file, size, scale) {
+    const img = document.createElement("img");
+    img.src = `img/cafe/${file}.png`;
+    img.width = size[0] * scale;
+    img.height = size[1] * scale;
+    img.alt = "";
+    img.className = "cafe-art";
+    img.draggable = false;
+    return img;
+  }
+
+  // 지금 넣은 재료와 가장 가까운 음료 그림 (만드는 중에도 컵이 채워지는 모습)
+  function drinkOf(adds) {
     const exact = CAFE_MENU.find((m) => sameRecipe(m.recipe, adds));
-    if (exact) return exact.liquid;
-    if (adds.includes("matcha")) return "#a9c77e";
-    if (adds.includes("choco")) return "#8a5638";
-    if (adds.includes("shot")) return adds.includes("milk") ? "#c79a6e" : "#4a2e20";
-    if (adds.includes("milk")) return "#f4efe4";
-    return "#cfe3ee";
+    if (exact) return exact.id;
+    if (adds.includes("matcha")) return "matcha";
+    if (adds.includes("choco")) return "choco";
+    if (adds.includes("vanilla") && (adds.includes("shot") || adds.includes("milk"))) return "vanilla";
+    if (adds.includes("milk")) return "latte";
+    if (adds.includes("shot")) return "americano";
+    return "empty";
   }
 
-  function cupCanvas(temp, liquid, scale = 3) {
-    const rows = temp === "ice" ? GLASS : MUG;
-    const c = document.createElement("canvas");
-    c.width = rows[0].length * scale;
-    c.height = rows.length * scale;
-    c.className = "cafe-cup";
-    const ctx = c.getContext("2d");
-    rows.forEach((row, y) => [...row].forEach((ch, x) => {
-      if (ch === ".") return;
-      if (ch === "s" && (temp !== "hot" || !liquid)) return; // 김은 음료가 있는 따뜻한 컵만
-      let color = CUP_COLORS[ch];
-      if (ch === "L") color = liquid || (temp === "ice" ? CUP_COLORS.C : CUP_COLORS.W);
-      if (ch === "W" && temp === "ice") color = CUP_COLORS.C;
-      ctx.fillStyle = color;
-      ctx.fillRect(x * scale, y * scale, scale, scale);
-    }));
-    return c;
-  }
+  const cupArt = (temp, drink, scale) => art(`${temp}-${drink}`, ART_SIZE[temp], scale);
 
   function sameRecipe(a, b) {
     return a.length === b.length && [...a].sort().join() === [...b].sort().join();
@@ -368,7 +336,7 @@ const Cafe = (() => {
     const list = el("div", "cafe-shop");
     for (const m of CAFE_MENU.filter((x) => x.unlock)) {
       const owned = c.menu.includes(m.id);
-      list.append(shopRow(`${m.name} 메뉴`, `${m.price}코인짜리 새 메뉴`, owned ? null : m.unlock, () => {
+      list.append(shopRow(cupArt("hot", m.id, 1), `${m.name} 메뉴`, `${m.price}코인짜리 새 메뉴`, owned ? null : m.unlock, () => {
         c.menu.push(m.id);
       }));
     }
@@ -378,15 +346,18 @@ const Cafe = (() => {
       const multi = u.prices.length > 1;
       const name = multi ? `${u.name} (지금 ${lv + 1}단계)` : u.name;
       const desc = multi && !max ? `${u.desc} · ${lv + 2}단계로 올리기` : u.desc;
-      list.append(shopRow(name, desc, max ? null : u.prices[lv], () => {
+      const pic = u.id === "machine" ? `machine${Math.min(lv + 2, 3)}` : u.id; // 커피 머신은 다음 단계 그림
+      list.append(shopRow(art(pic, ART_SIZE.upgrade, 1), name, desc, max ? null : u.prices[lv], () => {
         c[u.id] = lv + 1;
       }));
     }
     body.append(list);
   }
 
-  function shopRow(name, desc, price, buy) {
+  function shopRow(pic, name, desc, price, buy) {
     const row = el("div", "cafe-item");
+    const icon = el("div", "cafe-item-pic");
+    icon.append(pic);
     const info = el("div", "cafe-item-info");
     info.append(el("strong", "", name), el("span", "", desc));
     const btn = el("button", "", price == null ? "보유" : "");
@@ -404,7 +375,7 @@ const Cafe = (() => {
         render();
       });
     }
-    row.append(info, btn);
+    row.append(icon, info, btn);
     return row;
   }
 
@@ -436,7 +407,7 @@ const Cafe = (() => {
       const b = el("button", "cafe-btn");
       b.type = "button";
       b.dataset.cup = temp;
-      b.append(cupCanvas(temp, null, 2), el("span", "", name));
+      b.append(cupArt(temp, "empty", 1), el("span", "", name));
       b.addEventListener("click", () => chooseCup(temp));
       cups.append(b);
     }
@@ -450,9 +421,7 @@ const Cafe = (() => {
       const b = el("button", "cafe-btn");
       b.type = "button";
       b.dataset.add = g.id;
-      const dot = el("i", "cafe-dot");
-      dot.style.background = g.color;
-      b.append(dot, el("span", "", g.name));
+      b.append(art(g.id, ART_SIZE.ingredient, 1), el("span", "", g.name));
       b.addEventListener("click", () => addIngredient(g.id));
       adds.append(b);
     }
@@ -485,7 +454,7 @@ const Cafe = (() => {
     const bubble = el("div", "cafe-bubble");
     if (s.mood) bubble.append(el("span", "cafe-mood", s.mood === "happy" ? "고마워요!" : "다음에 올게요"));
     else {
-      bubble.append(cupCanvas(s.temp, s.menu.liquid, 2));
+      bubble.append(cupArt(s.temp, s.menu.id, 1));
       const t = el("span", "cafe-order");
       t.append(el("b", "", s.temp === "ice" ? "아이스" : "따뜻한"), document.createTextNode(" " + s.menu.name));
       bubble.append(t);
@@ -504,7 +473,7 @@ const Cafe = (() => {
     if (!made) return;
     const cup = round.cup;
     made.innerHTML = "";
-    if (cup) made.append(cupCanvas(cup.temp, liquidOf(cup.adds), 4));
+    if (cup) made.append(cupArt(cup.temp, drinkOf(cup.adds), 2));
     const names = Object.fromEntries(CAFE_INGREDIENTS.map((g) => [g.id, g.name]));
     if (round.pouring) text.textContent = cup.adds.length ? `에스프레소 내리는 중… (${cup.adds.map((a) => names[a]).join(" + ")})` : "에스프레소 내리는 중…";
     else if (!cup) text.textContent = "컵을 골라 주세요";

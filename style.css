@@ -1883,7 +1883,8 @@ body.pip #side-win-btn { display: none; }
 .cafe .panel-head strong { flex: none; }
 .cafe-status { flex: 1; color: var(--sub); font-size: 12px; font-variant-numeric: tabular-nums; }
 .cafe-body { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
-.cafe-cup, .cafe-guest { image-rendering: pixelated; }
+.cafe-art, .cafe-guest { image-rendering: pixelated; }
+.cafe-art { display: block; flex: none; }
 
 /* 영업 전 */
 .cafe-text { margin: 0; color: var(--sub); line-height: 1.5; }
@@ -1896,7 +1897,8 @@ body.pip #side-win-btn { display: none; }
 .cafe-recipe-name { color: var(--text); }
 .cafe-note { margin: 4px 0 0; color: var(--sub); font-size: 11px; }
 .cafe-shop { display: flex; flex-direction: column; gap: 6px; }
-.cafe-item { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; }
+.cafe-item { display: flex; align-items: center; gap: 10px; padding: 4px 10px 4px 6px; border: 1px solid var(--line); border-radius: 8px; }
+.cafe-item-pic { display: flex; align-items: center; justify-content: center; width: 46px; height: 46px; }
 .cafe-item-info { display: flex; flex: 1; flex-direction: column; min-width: 0; }
 .cafe-item-info span { color: var(--sub); font-size: 11px; }
 .cafe-item button { display: inline-flex; align-items: center; gap: 4px; min-width: 64px; justify-content: center; }
@@ -1954,14 +1956,13 @@ body.pip #side-win-btn { display: none; }
 
 /* 영업 중: 만드는 자리 */
 .cafe-counter { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; }
-.cafe-work { display: flex; align-items: center; gap: 10px; min-height: 48px; }
-.cafe-made { display: flex; align-items: center; justify-content: center; width: 52px; height: 48px; }
+.cafe-work { display: flex; align-items: center; gap: 10px; min-height: 64px; }
+.cafe-made { display: flex; align-items: flex-end; justify-content: center; width: 56px; height: 64px; }
 .cafe-made-text { flex: 1; color: var(--sub); }
 .cafe-row { display: flex; flex-wrap: wrap; gap: 4px; }
-.cafe-btn { position: relative; display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; overflow: hidden; font-size: 12px; }
+.cafe-btn { position: relative; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px 3px 5px; overflow: hidden; font-size: 12px; }
 .cafe-btn > * { position: relative; }
 .cafe-trash { margin-left: auto; }
-.cafe-dot { width: 10px; height: 10px; border: 1px solid #3a2a24; border-radius: 50%; }
 .cafe-btn.pouring::before {
   content: "";
   position: absolute;

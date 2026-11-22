@@ -165,7 +165,8 @@
 
 - 영업 시간, 하루 코인 상한, 손님 수, 기다리는 시간은 `cafe.js` 맨 위의 숫자에서, 메뉴와 장비는 `CAFE_MENU`, `CAFE_UPGRADES`에서 바꿉니다.
 - 기록(산 메뉴·장비, 최고 매출, 누적 손님, 오늘 받은 코인)은 저장 데이터의 `cafe`에 들어가 계정에도 저장됩니다.
-- 컵 그림은 임시로 글자 그림(`cafe.js`의 `MUG`, `GLASS`)을 쓰고 있습니다. GPT 그림 요청문은 [카페 그림 요청문](art-src/guide/gpt-request-cafe.md)에 있습니다.
+- 컵, 재료, 장비 그림은 GPT로 받은 그림(`img/cafe/`)을 씁니다. 원본은 `art-src/cafe/`, 정리 스크립트는 `art-src/tools/cafe_proc.py`, 요청문은 [카페 그림 요청문](art-src/guide/gpt-request-cafe.md)에 있습니다.
+  - 만드는 중인 컵은 지금까지 넣은 재료와 가장 가까운 음료 그림으로 보여 줍니다.
 
 ## 상점
 

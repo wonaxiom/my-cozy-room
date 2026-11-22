@@ -9,6 +9,8 @@ GPT 프로젝트 지침([gpt-project-instructions.md](gpt-project-instructions.m
 | 2 | 재료 아이콘 6칸 | 요청 1에서 받은 그림 | 먼저 |
 | 3 | 가게 늘리기 아이콘 5칸 (커피 머신 3단계, 의자, 간판) | `art-src/gpt-furniture-1.webp` | 나중 |
 
+> 요청 1~3 모두 게임에 넣었습니다 (2026-11-22). 원본은 `art-src/cafe/gpt-cups.webp`, `gpt-ingredients.webp`, `gpt-upgrades.webp`이고, 정리는 `art-src/tools/cafe_proc.py`로 했습니다.
+
 ## 공통 구성
 
 - 컵과 아이콘은 방 가구처럼 바닥에 놓지 않고 화면 버튼과 말풍선에 들어가므로, **아이소메트릭이 아니라 살짝 위에서 본 정면 모습**으로 받습니다.
@@ -51,8 +53,8 @@ GPT 프로젝트 지침([gpt-project-instructions.md](gpt-project-instructions.m
 
 ---
 
-## 받은 뒤 넣는 방법 (메모)
+## 넣는 방법
 
-- 원본은 `art-src/cafe/`에 두고, 칸을 잘라 `img/cafe/`에 넣습니다.
-- 컵 그림이 들어오면 `cafe.js`의 `cupCanvas()`가 글자 그림 대신 그림 파일을 쓰도록 바꿉니다. 만드는 중(재료를 일부만 넣은 상태)에는 가장 가까운 음료 그림을 보여 줍니다.
-- 재료 아이콘은 버튼의 색 점(`cafe-dot`) 자리에 넣습니다.
+- 원본은 `art-src/cafe/`에 두고, `python3 art-src/tools/cafe_proc.py`로 칸을 잘라 `img/cafe/`에 넣습니다.
+- 스크립트는 흰 배경을 지우고(바깥에서 이어진 흰색만), 빈 줄과 빈 칸으로 칸을 나눈 뒤, 외곽선 두께로 잰 도트 크기(컵 9.5, 재료 13.5, 장비 10.5픽셀)로 줄입니다. 다시 받은 그림의 도트 크기가 다르면 `SHEETS`의 숫자를 고칩니다.
+- 그림 크기가 바뀌면 `cafe.js`의 `ART_SIZE`도 맞춥니다. (지금 따뜻한 컵 25×27, 아이스 컵 22×30, 재료 20×28, 장비 43×45)
