@@ -97,12 +97,10 @@ const Cafe = (() => {
   const cupArt = (temp, drink, scale) => art(`${temp}-${drink}`, ART_SIZE[temp], scale);
 
   // 캔버스용 그림 (처음 쓸 때 한 번 불러 둠)
-  // 가게 배경·카운터·휴지통·표정 그림은 받은 것만 SCENE_ART에 적음. 없는 것은 코드로 그린 임시 그림을 씀
-  const SCENE_ART = ["bg", "counter", "trash", "tray", "heart", "angry"];
-  const OPTIONAL_ART = ["bg", "counter", "trash", "tray", "heart", "angry"];
+  const SCENE_ART = ["bg", "counter", "tray", "hole", "heart", "angry", "brew-bg", "ticket", "brew-machine1", "brew-machine2", "brew-machine3"];
+  const MAKING = ["shot", "water", "milk"]; // 만드는 중인 컵 그림 (hot-shot.png 처럼)
   const images = {};
   function img(file) {
-    if (OPTIONAL_ART.includes(file) && !SCENE_ART.includes(file)) return null;
     if (!images[file]) {
       const i = new Image();
       i.src = `img/cafe/${file}.png`;
@@ -112,15 +110,18 @@ const Cafe = (() => {
     return i.complete && i.naturalWidth ? i : null;
   }
 
-  // 지금 넣은 재료와 가장 가까운 음료 그림 (만드는 중에도 컵이 채워지는 모습)
+  // 지금 넣은 재료에 맞는 컵 그림: 완성 음료, 아니면 만드는 중(에스프레소만·물만·우유만), 아니면 가장 가까운 음료
   function drinkOf(adds) {
     const exact = CAFE_MENU.find((m) => sameRecipe(m.recipe, adds));
     if (exact) return exact.id;
+    if (adds.length === 1 && MAKING.includes(adds[0])) return adds[0];
     if (adds.includes("matcha")) return "matcha";
     if (adds.includes("choco")) return "choco";
     if (adds.includes("vanilla") && (adds.includes("shot") || adds.includes("milk"))) return "vanilla";
-    if (adds.includes("milk")) return "latte";
-    if (adds.includes("shot")) return "americano";
+    if (adds.includes("shot") && adds.includes("milk")) return "latte";
+    if (adds.includes("shot")) return "shot";
+    if (adds.includes("milk")) return "milk";
+    if (adds.includes("water")) return "water";
     return "empty";
   }
 
@@ -146,28 +147,41 @@ const Cafe = (() => {
   }
 
   // =============================================================
-  // 가게 화면 (캔버스)
-  // 위쪽은 가게 안(문, 창문, 손님이 서는 자리), 아래쪽은 내가 일하는 카운터.
-  // 좌표는 280 × 208 도트 기준이고, 캔버스는 2배로 그려서 글자가 또렷하게 보이게 함
+  // 가게 화면 (캔버스) — 두 곳을 오가며 영업
+  //   주문 화면: 가게 안(손님), 카운터의 픽업대와 버리는 구멍
+  //   제작 화면: 바리스타 작업 공간 (그림을 2배로 키워 그림). 주문서, 컵, 재료 병, 커피 머신, 쟁반, 버리는 구멍
+  // 좌표는 280 × 200 도트 기준(제작 화면 안은 140 × 100 칸, 한 칸 = 2도트)이고,
+  // 캔버스는 다시 2배로 그려서 글자가 또렷하게 보이게 함
   // =============================================================
-  const W = 280, H = 200, PX = 2;
-  const COUNTER_Y = 120;   // 카운터 윗선 (손님 다리는 이 아래로 가려짐)
-  const BASE_Y = 187;      // 카운터 위 물건의 바닥선
+  const W = 280, H = 200, PX = 2, U = 2;
+  const COUNTER_Y = 120;   // 주문 화면 카운터 윗선 (손님 다리는 이 아래로 가려짐)
+  const BASE_Y = 187;      // 주문 화면 카운터 위 물건의 바닥선
   const DOOR_X = 20;       // 손님이 드나드는 문 가운데 (배경 그림의 문)
   const SPOTS = [104, 162, 220]; // 손님이 서는 자리 (가운데 x)
   const FEET_Y = 130;      // 손님 발 위치 (발은 카운터에 가려짐)
   const GUEST_H = 70;      // 손님 키
   const WALK = 55;         // 걷는 속도 (도트/초)
+  const PICKUP = [110, 140, 170]; // 주문 화면 픽업대 자리 (가운데 x)
+  const SLIDE_MS = 220;    // 화면을 옮기는 시간
 
-  // 카운터 위 자리 (바닥 가운데 x, 바닥 y)
-  const SPOT = {
-    hot: { x: 19, y: BASE_Y },
-    ice: { x: 47, y: BASE_Y },
-    machine: { x: 62, w: 43 },  // 머신 왼쪽 x, 폭
-    slot: { x: 83, y: BASE_Y - 3 }, // 머신 안 컵 자리
-    tray: { x: 129, y: BASE_Y - 2 },
-    bottles: 154,               // 첫 재료 병 왼쪽 x (22씩 오른쪽으로)
-    trash: { x: 263, y: BASE_Y - 20, w: 15, h: 20 },
+  // 주문 화면 자리 (도트)
+  const O = {
+    hole: { cx: 232, by: 189 },
+    nav: { x: W - 19, y: 58, w: 19, h: 48 },
+  };
+  // 제작 화면 자리 (칸, 한 칸 = 2도트). 컵·병·머신은 바닥 가운데 x, 바닥 y
+  const B = {
+    hot: { x: 34, y: 33 },          // 선반 왼쪽 끝 따뜻한 컵
+    ice: { x: 106, y: 33 },         // 선반 오른쪽 끝 아이스 컵
+    tickets: [108, 142, 176],       // 주문서 가운데 x (도트, 손님 자리 순서)
+    ticketTop: 11,                  // 주문서 위쪽 (도트, 금속 줄 높이)
+    bottleY: 67,                    // 재료 병 바닥 (작업대 뒤쪽)
+    bottleX: 50,                    // 첫 재료 병 가운데 x (20칸씩 오른쪽으로)
+    machine: { x: 22, y: 88 },      // 커피 머신
+    slot: { x: 22, y: 85 },         // 머신 안 컵 자리
+    tray: { x: 62, y: 86 },         // 쟁반 위 컵 자리
+    hole: { x: 124, y: 89 },        // 버리는 구멍
+    nav: { x: 0, y: 58, w: 19, h: 48 }, // 주문 화면으로 가는 탭 (도트)
   };
 
   // ---- 영업 상태 ----
@@ -185,25 +199,26 @@ const Cafe = (() => {
       startAt: now,
       endAt: now + CAFE_ROUND_SECONDS * 1000,
       nextAt: now + 800,
+      zone: "order",      // 지금 보는 곳: order(주문) / brew(제작)
+      slide: null,        // 화면 옮기는 중 { from, t0 }
       guests: [],         // 손님
-      cup: null,          // { temp, adds, at: "tray" | "machine", x, y, anim }
+      cup: null,          // 제작 중인 컵 { temp, adds, at: "tray" | "machine", x, y, anim } (제작 화면 칸 좌표)
       brew: null,         // { until, total } 에스프레소 내리는 중
       drops: [],          // 병에서 컵으로 떨어지는 방울
       lift: {},           // 재료 병 들어 올린 시각 { 재료id: 끝나는 시각 }
-      floats: [],         // 떠오르는 글자 (코인, 팁, 화남)
-      flying: null,       // 손님에게 날아가는 컵 { cup, guest, anim }
-      tip: "",            // 아래쪽 안내 글
-      tipUntil: 0,
-      sales: 0,
-      served: 0,
-      missed: 0,
+      pickup: [],         // 픽업대에 올린 음료 [{ temp, adds }]
+      sel: null,          // 고른 픽업대 음료 번호
+      flying: [],         // 날아가는 컵 { cup, zone, done }
+      floats: [],         // 떠오르는 글자 (주문 화면)
+      tip: "", tipUntil: 0,
+      sales: 0, served: 0, missed: 0,
       last: now,
     };
   }
 
-  // 위치를 부드럽게 옮기기 (dur 밀리초 동안)
-  function tween(obj, tx, ty, dur, done) {
-    obj.anim = { fx: obj.x, fy: obj.y, tx, ty, t0: Date.now(), dur, done };
+  // 위치를 부드럽게 옮기기 (dur 밀리초 동안, arc만큼 위로 휘어서)
+  function tween(obj, tx, ty, dur, arc, done) {
+    obj.anim = { fx: obj.x, fy: obj.y, tx, ty, t0: Date.now(), dur, arc: arc || 0, done };
   }
   function stepTween(obj, now) {
     const a = obj.anim;
@@ -211,7 +226,7 @@ const Cafe = (() => {
     const t = Math.min(1, (now - a.t0) / a.dur);
     const e = 1 - (1 - t) * (1 - t);
     obj.x = a.fx + (a.tx - a.fx) * e;
-    obj.y = a.fy + (a.ty - a.fy) * e - Math.sin(t * Math.PI) * (a.arc || 0);
+    obj.y = a.fy + (a.ty - a.fy) * e - Math.sin(t * Math.PI) * a.arc;
     if (t >= 1) {
       obj.anim = null;
       obj.x = a.tx; obj.y = a.ty;
@@ -242,6 +257,14 @@ const Cafe = (() => {
     out.height = y1 - y0 + 1;
     out.getContext("2d").drawImage(c, -x0, -y0);
     return out;
+  }
+
+  // ---- 화면 옮기기 ----
+  function goZone(zone) {
+    if (!round || round.zone === zone) return;
+    round.slide = { from: round.zone, t0: Date.now() };
+    round.zone = zone;
+    hover = null;
   }
 
   // ---- 손님 오고 가기 ----
@@ -287,31 +310,37 @@ const Cafe = (() => {
     round.guests = round.guests.filter((g) => !(g.state === "leave" && g.x <= DOOR_X));
   }
 
-  // ---- 만들기 ----
+  const ratio = (g, now) => Math.max(0, (g.until - now) / g.total);
+
+  // ---- 만들기 (제작 화면) ----
+  function cupBusy() {
+    const cup = round.cup;
+    return !cup || cup.at !== "tray" || !!cup.anim;
+  }
+
   function takeCup(temp) {
-    if (round.cup) {
-      if (round.cup.at !== "tray" || round.cup.anim) return say("컵이 머신에 있어요.");
-      if (round.cup.adds.length) return say("만들던 음료는 휴지통에 버리고 새 컵을 꺼내요.");
-      if (round.cup.temp === temp) return;
+    const cup = round.cup;
+    if (cup) {
+      if (cupBusy()) return say("컵이 머신에 있어요.");
+      if (cup.adds.length) return say("만들던 음료는 구멍에 버리고 새 컵을 꺼내요.");
+      if (cup.temp === temp) return;
     }
-    const from = SPOT[temp];
-    const cup = { temp, adds: [], at: "tray", x: from.x, y: from.y - 6 };
-    round.cup = cup;
-    tween(cup, SPOT.tray.x, SPOT.tray.y, 220);
-    cup.anim.arc = 10;
+    const from = B[temp];
+    const c = { temp, adds: [], at: "tray", x: from.x, y: from.y };
+    round.cup = c;
+    tween(c, B.tray.x, B.tray.y, 260, 8);
   }
 
   function useMachine() {
     const cup = round.cup;
-    if (!cup) return say("컵을 먼저 꺼내 주세요.");
-    if (cup.at !== "tray" || cup.anim) return;
+    if (!cup) return say("선반에서 컵을 먼저 꺼내요.");
+    if (cupBusy()) return;
     if (cup.adds.includes("shot")) return say("에스프레소는 이미 넣었어요.");
     cup.at = "machine";
-    tween(cup, SPOT.slot.x, SPOT.slot.y, 220, () => {
+    tween(cup, B.slot.x, B.slot.y, 220, 6, () => {
       const total = shotSeconds() * 1000;
       round.brew = { until: Date.now() + total, total };
     });
-    cup.anim.arc = 6;
   }
 
   function finishBrew() {
@@ -319,52 +348,80 @@ const Cafe = (() => {
     round.brew = null;
     if (!cup) return;
     cup.adds.push("shot");
-    tween(cup, SPOT.tray.x, SPOT.tray.y, 220, () => { cup.at = "tray"; });
-    cup.anim.arc = 6;
+    tween(cup, B.tray.x, B.tray.y, 220, 6, () => { cup.at = "tray"; });
   }
 
   function pour(id, bx) {
     const cup = round.cup;
-    if (!cup) return say("컵을 먼저 꺼내 주세요.");
-    if (cup.at !== "tray" || cup.anim) return say("컵이 머신에서 나올 때까지 기다려요.");
+    if (!cup) return say("선반에서 컵을 먼저 꺼내요.");
+    if (cupBusy()) return say("컵이 머신에서 나올 때까지 기다려요.");
     if (cup.adds.includes(id) || round.drops.some((d) => d.id === id)) return say(`${ingName(id)}는 이미 넣었어요.`);
-    const now = Date.now();
-    round.lift[id] = now + 380;
+    round.lift[id] = Date.now() + 380;
     const g = CAFE_INGREDIENTS.find((x) => x.id === id);
-    const drop = { id, color: g.drop, x: bx + 10, y: BASE_Y - 30 };
-    tween(drop, SPOT.tray.x, SPOT.tray.y - 22, 320, () => {
+    const drop = { id, color: g.drop, x: bx, y: B.bottleY - 28 };
+    tween(drop, B.tray.x, B.tray.y - 22, 320, 10, () => {
       round.drops = round.drops.filter((d) => d !== drop);
       if (round.cup === cup) cup.adds.push(id);
     });
-    drop.anim.arc = 14;
     round.drops.push(drop);
   }
 
-  function trash() {
+  function trashBrew() {
     const cup = round.cup;
-    if (!cup || cup.at !== "tray" || cup.anim) return;
+    if (!cup || cupBusy()) return;
     round.cup = null;
-    round.flying = { cup, trash: true };
-    tween(cup, SPOT.trash.x + 7, SPOT.trash.y + 6, 240, () => { round.flying = null; });
-    cup.anim.arc = 12;
+    fly(cup, "brew", B.hole.x, B.hole.y - 4, 12);
+  }
+
+  // 다 만든 컵을 픽업대로
+  function send() {
+    const cup = round.cup;
+    if (!cup || cupBusy() || round.drops.length) return;
+    if (!cup.adds.length) return say("빈 컵이에요. 재료를 넣어요.");
+    if (round.pickup.length >= PICKUP.length) return say("픽업대가 가득 찼어요. 주문 화면에서 건네거나 버려요.");
+    round.cup = null;
+    fly(cup, "brew", 150, B.tray.y, 6, () => {
+      round.pickup.push({ temp: cup.temp, adds: cup.adds });
+    });
+    say("픽업대로 보냈어요.");
+  }
+
+  function fly(cup, zone, tx, ty, arc, done) {
+    const f = { cup, zone };
+    tween(cup, tx, ty, 260, arc, () => {
+      round.flying = round.flying.filter((x) => x !== f);
+      if (done) done();
+    });
+    round.flying.push(f);
+  }
+
+  // ---- 건네기 (주문 화면) ----
+  function pickSelect(i) {
+    round.sel = round.sel === i ? null : i;
+  }
+
+  function trashPickup() {
+    if (round.sel == null) return say("버릴 음료를 픽업대에서 먼저 골라요.");
+    const d = round.pickup.splice(round.sel, 1)[0];
+    const c = { temp: d.temp, adds: d.adds, x: PICKUP[round.sel], y: BASE_Y };
+    round.sel = null;
+    fly(c, "order", O.hole.cx, O.hole.by - 4, 12);
   }
 
   function serve(g) {
-    const cup = round.cup;
     if (g.state !== "wait") return;
-    if (!cup) return say("음료를 만들어서 건네요.");
-    if (cup.at !== "tray" || cup.anim || round.drops.length) return;
-    if (!cup.adds.length) return say("빈 컵이에요.");
-    round.cup = null;
-    round.flying = { cup, guest: g };
-    tween(cup, g.x, FEET_Y - GUEST_H + 10, 260, () => {
-      round.flying = null;
-      judge(g, cup);
-    });
-    cup.anim.arc = 18;
+    if (!round.pickup.length) return say("제작 화면에서 음료를 만들어 픽업대로 보내요.");
+    // 주문과 맞는 음료가 있으면 그것을, 없으면 고른 음료를 건넴
+    let i = round.pickup.findIndex((d) => d.temp === g.temp && sameRecipe(d.adds, g.menu.recipe));
+    if (i < 0) i = round.sel;
+    if (i == null) return say("이 손님 주문과 맞는 음료가 없어요.");
+    const d = round.pickup.splice(i, 1)[0];
+    round.sel = null;
+    const c = { temp: d.temp, adds: d.adds, x: PICKUP[i], y: BASE_Y };
+    fly(c, "order", g.x, FEET_Y - GUEST_H + 10, 18, () => judge(g, c));
   }
 
-  // 건넨 음료 확인: 맞으면 기다린 시간에 따라 값을 받고, 틀리면 돌려받음
+  // 건넨 음료 확인: 맞으면 기다린 시간에 따라 값을 받고, 틀리면 돌려받음(버려짐)
   function judge(g, cup) {
     if (g.state !== "wait") return;
     const headY = FEET_Y - GUEST_H;
@@ -384,27 +441,39 @@ const Cafe = (() => {
     leave(g, "happy");
   }
 
-  // ---- 누를 수 있는 곳 ----
+  // ---- 누를 수 있는 곳 (도트 좌표) ----
   function bottles() {
-    return ingredientOpen().filter((g) => g.id !== "shot").map((g, i) => ({ id: g.id, x: SPOT.bottles + i * 22 }));
+    return ingredientOpen().filter((g) => g.id !== "shot").map((g, i) => ({ id: g.id, x: B.bottleX + i * 20 }));
   }
+  const u = (x, y, w, h) => ({ x: x * U, y: y * U, w: w * U, h: h * U }); // 제작 화면 칸 → 도트
 
   function hotspots() {
+    if (round.zone === "brew") {
+      const list = [
+        { name: "주문 화면으로", ...B.nav, act: () => goZone("order") },
+        { name: "따뜻한 컵 꺼내기", ...u(21, 4, 26, 30), act: () => takeCup("hot") },
+        { name: "아이스 컵 꺼내기", ...u(95, 2, 23, 32), act: () => takeCup("ice") },
+        { name: "커피 머신 (에스프레소)", ...u(2, 45, 40, 44), act: useMachine },
+      ];
+      for (const b of bottles()) list.push({ name: ingName(b.id), ...u(b.x - 10, B.bottleY - 28, 20, 28), act: () => pour(b.id, b.x) });
+      list.push({ name: "버리기", ...u(110, 74, 28, 17), act: trashBrew });
+      if (round.cup && !cupBusy()) list.push({ name: "픽업대로 보내기", ...u(B.tray.x - 14, B.tray.y - 28, 28, 30), act: send });
+      return list;
+    }
     const list = [
-      { id: "hot", name: "따뜻한 컵", x: 5, y: BASE_Y - 34, w: 28, h: 36, act: () => takeCup("hot") },
-      { id: "ice", name: "아이스 컵", x: 35, y: BASE_Y - 36, w: 25, h: 38, act: () => takeCup("ice") },
-      { id: "machine", name: "커피 머신 (에스프레소)", x: SPOT.machine.x, y: BASE_Y - 46, w: SPOT.machine.w, h: 48, act: useMachine },
+      { name: "제작 화면으로", ...O.nav, act: () => goZone("brew") },
+      { name: "버리기 (고른 음료)", x: O.hole.cx - 14, y: O.hole.by - 16, w: 28, h: 17, act: trashPickup },
     ];
-    for (const b of bottles()) list.push({ id: b.id, name: ingName(b.id), x: b.x, y: BASE_Y - 30, w: 21, h: 32, act: () => pour(b.id, b.x) });
-    list.push({ id: "trash", name: "휴지통", ...SPOT.trash, act: trash });
+    round.pickup.forEach((d, i) => list.push({ name: "음료 고르기", x: PICKUP[i] - 13, y: BASE_Y - 32, w: 26, h: 33, act: () => pickSelect(i) }));
     for (const g of round.guests) {
       if (g.state !== "wait") continue;
-      list.push({ id: "guest", guest: g, name: "손님에게 건네기", x: g.x - 18, y: FEET_Y - GUEST_H - 42, w: 36, h: COUNTER_Y - (FEET_Y - GUEST_H - 42), act: () => serve(g) });
+      list.push({ id: "guest", name: "손님에게 건네기", x: g.x - 18, y: FEET_Y - GUEST_H - 42, w: 36, h: COUNTER_Y - (FEET_Y - GUEST_H - 42), act: () => serve(g) });
     }
     return list;
   }
 
   function hit(px, py) {
+    if (round.slide) return null;
     const list = hotspots();
     for (let i = list.length - 1; i >= 0; i--) {
       const h = list[i];
@@ -427,10 +496,12 @@ const Cafe = (() => {
 
     if (round.brew && now >= round.brew.until) finishBrew();
     if (round.cup) stepTween(round.cup, now);
-    if (round.flying) stepTween(round.flying.cup, now);
+    round.flying.slice().forEach((f) => stepTween(f.cup, now));
     round.drops.slice().forEach((d) => stepTween(d, now));
     stepGuests(now, dt);
     round.floats = round.floats.filter((f) => now - f.t0 < 1400);
+    if (round.slide && now - round.slide.t0 >= SLIDE_MS) round.slide = null;
+    if (round.sel != null && round.sel >= round.pickup.length) round.sel = null;
 
     if (now >= round.nextAt && now < round.endAt - 8000) {
       spawn();
@@ -439,7 +510,7 @@ const Cafe = (() => {
     }
     if (now >= round.endAt) return finish();
 
-    statusEl.textContent = "영업 중";
+    updateHud(now);
     draw(now);
     frameId = (typeof pipWin !== "undefined" && pipWin ? pipWin : window).requestAnimationFrame(frame);
   }
@@ -456,41 +527,12 @@ const Cafe = (() => {
     ctx.drawImage(i, Math.round(cx - i.width / 2), Math.round(by - i.height));
   }
 
-  // 가게 배경과 카운터 (그림을 불러오는 동안에는 비슷한 색으로 채움)
-  function drawRoom() {
-    const bg = img("bg");
-    if (bg) return ctx.drawImage(bg, 0, 0, W, COUNTER_Y);
-    rect(0, 0, W, COUNTER_Y, "#f4dcc0");
-    rect(0, 72, W, COUNTER_Y - 72, "#c98b55");
-  }
-
-  function drawCounter() {
-    const top = img("counter");
-    if (top) return ctx.drawImage(top, 0, COUNTER_Y - 2);
-    rect(0, COUNTER_Y - 2, W, H - COUNTER_Y + 2, "#f6bb80");
-  }
-
-  // 카운터 위 물건 아래 옅은 그림자
-  function shadow(cx, w) {
+  // 바닥에 놓인 물건 아래 옅은 그림자
+  function shadow(cx, by, w) {
     ctx.fillStyle = "rgba(120, 64, 24, 0.18)";
     ctx.beginPath();
-    ctx.ellipse(cx, BASE_Y - 0.5, w / 2, 2.2, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx, by - 0.5, w / 2, 2.2, 0, 0, Math.PI * 2);
     ctx.fill();
-  }
-
-  function drawTray() {
-    if (img("tray")) return drawImg("tray", SPOT.tray.x, SPOT.tray.y + 3);
-    rect(SPOT.tray.x - 17, SPOT.tray.y - 2, 34, 5, "#8a8f96");
-    rect(SPOT.tray.x - 17, SPOT.tray.y - 2, 34, 1, "#b7bcc2");
-  }
-
-  function drawTrash() {
-    const t = SPOT.trash;
-    if (img("trash")) return drawImg("trash", t.x + t.w / 2, t.y + t.h);
-    rect(t.x, t.y + 3, t.w, t.h - 3, "#7d8590");
-    rect(t.x - 1, t.y, t.w + 2, 3, "#5d646d");
-    rect(t.x + 4, t.y + 6, 1, t.h - 9, "#646b74");
-    rect(t.x + 9, t.y + 6, 1, t.h - 9, "#646b74");
   }
 
   function drawGuest(g, now) {
@@ -499,7 +541,7 @@ const Cafe = (() => {
     const w = c.width * s, h = c.height * s;
     const walking = g.state !== "wait";
     const bob = walking && Math.floor(now / 140) % 2 ? 1 : 0;
-    const shake = g.wrongUntil > now || (g.state === "wait" && (g.until - now) / g.total < 0.15) ? Math.round(Math.sin(now / 40)) : 0;
+    const shake = g.wrongUntil > now || (g.state === "wait" && ratio(g, now) < 0.15) ? Math.round(Math.sin(now / 40)) : 0;
     ctx.save();
     ctx.translate(Math.round(g.x + shake), FEET_Y - h - bob);
     if (g.state === "leave") ctx.scale(-1, 1);
@@ -513,48 +555,29 @@ const Cafe = (() => {
     ctx.fillRect(x, y - 1, w, h + 2);
     ctx.fillStyle = "#fffdf8";
     ctx.fillRect(x, y, w, h);
-    // 꼬리
     const cx = Math.round(x + w / 2);
-    rect(cx - 2, y + h, 5, 1, "#fffdf8");
-    rect(cx - 1, y + h + 1, 3, 1, "#fffdf8");
-    rect(cx, y + h + 2, 1, 1, "#fffdf8");
-    rect(cx - 3, y + h, 1, 1, "#3a2a24");
-    rect(cx + 3, y + h, 1, 1, "#3a2a24");
-    rect(cx - 2, y + h + 1, 1, 1, "#3a2a24");
-    rect(cx + 2, y + h + 1, 1, 1, "#3a2a24");
-    rect(cx - 1, y + h + 2, 1, 1, "#3a2a24");
-    rect(cx + 1, y + h + 2, 1, 1, "#3a2a24");
-    rect(cx, y + h + 3, 1, 1, "#3a2a24");
+    for (let i = 0; i < 3; i++) rect(cx - 2 + i, y + h + i, 5 - i * 2, 1, "#fffdf8");
+    for (const [dx, dy] of [[-3, 0], [3, 0], [-2, 1], [2, 1], [-1, 2], [1, 2], [0, 3]]) rect(cx + dx, y + h + dy, 1, 1, "#3a2a24");
   }
 
-  // 작은 표정 그림 (하트, 화남). 받은 그림 img/cafe/heart.png, angry.png 가 있으면 그 그림을 씀
-  const HEART = [".RR.RR.", "RRRRRRR", "RRRRRRR", ".RRRRR.", "..RRR..", "...R..."];
-  const ANGRY = ["RR...RR", "R.....R", "...R...", "..RRR..", "...R...", "R.....R", "RR...RR"];
-  function pixels(rows, x, y, color) {
-    rows.forEach((r, j) => [...r].forEach((ch, i) => { if (ch === "R") rect(x + i, y + j, 1, 1, color); }));
-  }
+  const barColor = (r) => (r > CAFE_TIP_OVER ? "#7fae5a" : r > CAFE_LATE_UNDER ? "#e0b24f" : "#d0574a");
 
-  function drawOrder(g, now) {
+  function drawOrderBubble(g, now) {
     const headY = FEET_Y - GUEST_H;
     if (g.state === "leave") {
-      if (g.mood === "happy") { if (!img("heart")) pixels(HEART, Math.round(g.x - 3), headY - 6, "#e0605a"); else drawImg("heart", g.x, headY - 1); }
-      if (g.mood === "angry") { if (!img("angry")) pixels(ANGRY, Math.round(g.x - 3), headY - 7, "#d0443a"); else drawImg("angry", g.x, headY - 1); }
+      if (g.mood) drawImg(g.mood === "happy" ? "heart" : "angry", g.x, headY - 1);
       return;
     }
     if (g.state !== "wait") return;
     const bw = 32, bh = 40, bx = Math.round(g.x - bw / 2), by = headY - bh - 5;
     bubble(bx, by, bw, bh);
     drawImg(`${g.temp}-${g.menu.id}`, g.x, by + 33);
-    // 기다림 막대
-    const r = Math.max(0, (g.until - now) / g.total);
+    const r = ratio(g, now);
     rect(bx + 3, by + bh - 5, bw - 6, 3, "#e4ded6");
-    rect(bx + 3, by + bh - 5, Math.round((bw - 6) * r), 3, r > CAFE_TIP_OVER ? "#7fae5a" : r > CAFE_LATE_UNDER ? "#e0b24f" : "#d0574a");
+    rect(bx + 3, by + bh - 5, Math.round((bw - 6) * r), 3, barColor(r));
   }
 
-  function drawCup(cup) {
-    if (!cup) return;
-    drawImg(`${cup.temp}-${drinkOf(cup.adds)}`, cup.x, cup.y);
-  }
+  const cupFile = (cup) => `${cup.temp}-${drinkOf(cup.adds)}`;
 
   function roundRect(x, y, w, h, r) {
     ctx.beginPath();
@@ -576,73 +599,27 @@ const Cafe = (() => {
     ctx.stroke();
   }
 
-  // 오른쪽 위 작은 표 (남은 시간, 매출)
-  function pill(xRight, y, label, color, icon) {
-    ctx.font = "bold 8px system-ui, sans-serif";
-    const tw = Math.ceil(ctx.measureText(label).width);
-    const w = tw + 17, x = xRight - w;
-    roundRect(x, y, w, 13, 6.5);
-    ctx.fillStyle = "rgba(255, 250, 240, 0.94)";
+  // 화면 옆 탭 (다른 화면으로 가기). alert면 빨갛게 깜빡임
+  function navTab(n, label, arrow, alert, now) {
+    const blink = alert && Math.floor(now / 350) % 2;
+    roundRect(n.x + 0.5, n.y + 0.5, n.w - 1, n.h - 1, 6);
+    ctx.fillStyle = blink ? "rgba(236, 160, 150, 0.96)" : "rgba(255, 250, 240, 0.94)";
     ctx.fill();
     ctx.lineWidth = 1;
     ctx.strokeStyle = "#7a5034";
     ctx.stroke();
-    icon(x + 7.5, y + 6.5);
-    ctx.textAlign = "left";
+    ctx.fillStyle = "#7a5034";
+    ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillStyle = color;
-    ctx.fillText(label, x + 13, y + 7);
-    return x;
-  }
-
-  function coinIcon(cx, cy) {
-    ctx.beginPath(); ctx.arc(cx, cy, 3.5, 0, Math.PI * 2);
-    ctx.fillStyle = "#f0c24f"; ctx.fill();
-    ctx.lineWidth = 1; ctx.strokeStyle = "#a8742a"; ctx.stroke();
-  }
-
-  function clockIcon(cx, cy) {
-    ctx.beginPath(); ctx.arc(cx, cy, 3.5, 0, Math.PI * 2);
-    ctx.fillStyle = "#fffdf8"; ctx.fill();
-    ctx.lineWidth = 1; ctx.strokeStyle = "#7a5034"; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(cx, cy - 2); ctx.lineTo(cx, cy); ctx.lineTo(cx + 1.8, cy + 1); ctx.stroke();
-  }
-
-  function drawHud(now) {
-    const left = Math.max(0, Math.ceil((round.endAt - now) / 1000));
-    const hurry = left <= 10;
-    const x = pill(W - 4, 4, `${left}초`, hurry && Math.floor(now / 400) % 2 ? "#c0463a" : "#3a2a24", clockIcon);
-    pill(x - 3, 4, `${round.sales}`, "#3a2a24", coinIcon);
-    // 영업 시작 알림
-    const since = now - round.startAt;
-    if (since < 1400) {
-      ctx.globalAlpha = since < 1000 ? 1 : 1 - (since - 1000) / 400;
-      roundRect(W / 2 - 40, 50, 80, 20, 10);
-      ctx.fillStyle = "rgba(255, 250, 240, 0.96)"; ctx.fill();
-      ctx.lineWidth = 1; ctx.strokeStyle = "#7a5034"; ctx.stroke();
-      ctx.font = "bold 10px system-ui, sans-serif";
-      ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillStyle = "#7a5034";
-      ctx.fillText("영업 시작!", W / 2, 60.5);
-      ctx.globalAlpha = 1;
-    }
-  }
-
-  // 에스프레소 내리는 동안 올라오는 김
-  function steam(cx, by, now) {
-    ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-    for (let i = 0; i < 3; i++) {
-      const t = ((now / 900) + i / 3) % 1;
-      const x = cx - 3 + i * 3 + Math.round(Math.sin(t * 6 + i) * 1);
-      ctx.globalAlpha = 1 - t;
-      ctx.fillRect(Math.round(x), Math.round(by - t * 12), 2, 2);
-    }
-    ctx.globalAlpha = 1;
-  }
-
-  function text(str, x, y, color, align = "center") {
     ctx.font = "bold 8px system-ui, sans-serif";
-    ctx.textAlign = align;
+    const cx = n.x + n.w / 2;
+    ctx.fillText(arrow, cx, n.y + 9);
+    [...label].forEach((ch, i) => ctx.fillText(ch, cx, n.y + 21 + i * 10));
+  }
+
+  function text(str, x, y, color, size = 8) {
+    ctx.font = `bold ${size}px system-ui, sans-serif`;
+    ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.lineWidth = 2.5;
     ctx.strokeStyle = "#fffdf8";
@@ -651,78 +628,174 @@ const Cafe = (() => {
     ctx.fillText(str, x, y);
   }
 
-  function draw(now) {
-    ctx.setTransform(PX, 0, 0, PX, 0, 0);
-    ctx.imageSmoothingEnabled = false;
-    ctx.clearRect(0, 0, W, H);
-    drawRoom();
+  // ---- 주문 화면 ----
+  function drawOrderZone(now) {
+    const bg = img("bg");
+    if (bg) ctx.drawImage(bg, 0, 0, W, COUNTER_Y);
+    else rect(0, 0, W, COUNTER_Y, "#f4dcc0");
 
     const guests = round.guests.slice().sort((a, b) => a.x - b.x);
     guests.forEach((g) => drawGuest(g, now));
-    drawCounter();
-    guests.forEach((g) => drawOrder(g, now));
 
-    // 물건 그림자
-    shadow(SPOT.hot.x, 24); shadow(SPOT.ice.x, 20);
-    shadow(SPOT.machine.x + SPOT.machine.w / 2, 34);
-    for (const b of bottles()) shadow(b.x + 10, 16);
-    shadow(SPOT.trash.x + SPOT.trash.w / 2, 14);
-    drawTray();
+    const top = img("counter");
+    if (top) ctx.drawImage(top, 0, COUNTER_Y - 2);
+    else rect(0, COUNTER_Y - 2, W, H - COUNTER_Y + 2, "#f6bb80");
+    guests.forEach((g) => drawOrderBubble(g, now));
 
-    // 컵 쌓아 둔 곳
-    drawImg("hot-empty", SPOT.hot.x, SPOT.hot.y - 6);
-    drawImg("hot-empty", SPOT.hot.x, SPOT.hot.y);
-    drawImg("ice-empty", SPOT.ice.x, SPOT.ice.y - 5);
-    drawImg("ice-empty", SPOT.ice.x, SPOT.ice.y);
+    // 픽업대 (쟁반 3칸)와 올린 음료
+    PICKUP.forEach((x) => { shadow(x, BASE_Y + 1, 26); drawImg("tray", x, BASE_Y + 3); });
+    round.pickup.forEach((d, i) => {
+      const lifted = round.sel === i;
+      if (lifted) highlight({ x: PICKUP[i] - 14, y: BASE_Y - 36, w: 28, h: 37 });
+      drawImg(cupFile(d), PICKUP[i], BASE_Y - (lifted ? 4 : 0));
+    });
+    if (!round.pickup.length) text("픽업대", 140, BASE_Y - 12, "#a0785a", 7);
+    drawImg("hole", O.hole.cx, O.hole.by);
 
-    // 커피 머신
-    const m = `machine${data().machine + 1}`;
-    drawImg(m, SPOT.machine.x + SPOT.machine.w / 2, BASE_Y);
-    if (round.brew) {
-      const r = 1 - Math.max(0, round.brew.until - now) / round.brew.total;
-      rect(SPOT.machine.x + 4, BASE_Y - 52, SPOT.machine.w - 8, 4, "#3a2a24");
-      rect(SPOT.machine.x + 5, BASE_Y - 51, Math.round((SPOT.machine.w - 10) * r), 2, "#e0b24f");
-      if (Math.floor(now / 90) % 2) rect(SPOT.slot.x, BASE_Y - 30, 1, 6, "#4a2e20");
-      steam(SPOT.slot.x, BASE_Y - 46, now);
-    }
-
-    // 재료 병
-    for (const b of bottles()) drawImg(b.id, b.x + 10, BASE_Y - ((round.lift[b.id] || 0) > now ? 4 : 0));
-    drawTrash();
-
-    if (hover && hover.id !== "guest") highlight(hover);
-    if (round.cup && round.cup.at === "machine") drawCup(round.cup);
-    if (round.cup && round.cup.at !== "machine") drawCup(round.cup);
-    if (round.flying) drawCup(round.flying.cup);
-    for (const d of round.drops) {
-      rect(Math.round(d.x) - 1, Math.round(d.y) - 1, 3, 3, "#3a2a24");
-      rect(Math.round(d.x), Math.round(d.y), 1, 1, d.color);
-      rect(Math.round(d.x) - 1, Math.round(d.y), 3, 1, d.color);
-    }
-
+    for (const f of round.flying) if (f.zone === "order") drawImg(cupFile(f.cup), f.cup.x, f.cup.y);
     for (const f of round.floats) {
       const t = (now - f.t0) / 1400;
       ctx.globalAlpha = 1 - t * t;
       text(f.text, f.x, f.y - t * 14, f.color);
       ctx.globalAlpha = 1;
     }
+    navTab(O.nav, "제작", "▶", false, now);
+  }
 
-    // 아래쪽 안내 (누를 곳 이름, 실수 안내)
+  // ---- 제작 화면 (그림 2배) ----
+  function drawBrewZone(now) {
+    ctx.save();
+    ctx.scale(U, U);
+    const bg = img("brew-bg");
+    if (bg) ctx.drawImage(bg, 0, 0);
+    else rect(0, 0, W / U, H / U, "#f4dcc0");
+
+    // 선반 위 컵
+    drawImg("hot-empty", B.hot.x, B.hot.y - 3);
+    drawImg("hot-empty", B.hot.x, B.hot.y);
+    drawImg("ice-empty", B.ice.x, B.ice.y - 3);
+    drawImg("ice-empty", B.ice.x, B.ice.y);
+
+    // 작업대 뒤쪽 재료 병
+    for (const b of bottles()) {
+      shadow(b.x, B.bottleY, 16);
+      drawImg(b.id, b.x, B.bottleY - ((round.lift[b.id] || 0) > now ? 3 : 0));
+    }
+
+    // 앞쪽: 머신, 쟁반, 버리는 구멍
+    shadow(B.machine.x, B.machine.y, 34);
+    drawImg(`brew-machine${data().machine + 1}`, B.machine.x, B.machine.y);
+    shadow(B.tray.x, B.tray.y + 2, 26);
+    drawImg("tray", B.tray.x, B.tray.y + 2);
+    drawImg("hole", B.hole.x, B.hole.y);
+
+    if (round.cup) drawImg(cupFile(round.cup), round.cup.x, round.cup.y);
+    for (const f of round.flying) if (f.zone === "brew") drawImg(cupFile(f.cup), f.cup.x, f.cup.y);
+    for (const d of round.drops) {
+      rect(Math.round(d.x) - 1, Math.round(d.y) - 1, 3, 3, "#3a2a24");
+      rect(Math.round(d.x) - 1, Math.round(d.y), 3, 1, d.color);
+      rect(Math.round(d.x), Math.round(d.y), 1, 1, d.color);
+    }
+    // 에스프레소 내리는 중: 머신 위 막대와 김
+    if (round.brew) {
+      const r = 1 - Math.max(0, round.brew.until - now) / round.brew.total;
+      rect(B.machine.x - 15, B.machine.y - 49, 30, 4, "#3a2a24");
+      rect(B.machine.x - 14, B.machine.y - 48, Math.round(28 * r), 2, "#e0b24f");
+      ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+      for (let i = 0; i < 3; i++) {
+        const t = ((now / 900) + i / 3) % 1;
+        ctx.globalAlpha = 1 - t;
+        ctx.fillRect(Math.round(B.slot.x - 4 + i * 3 + Math.sin(t * 6 + i)), Math.round(B.slot.y - 28 - t * 10), 2, 2);
+      }
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+
+    // 주문서 (도트 크기 그대로): 손님 자리 순서대로
+    let hurry = false;
+    SPOTS.forEach((_, i) => {
+      const g = round.guests.find((x) => x.spot === i && x.state === "wait");
+      if (!g) return;
+      const r = ratio(g, now);
+      if (r < CAFE_LATE_UNDER) hurry = true;
+      const cx = B.tickets[i] + (r < 0.15 ? Math.round(Math.sin(now / 40)) : 0);
+      const top = B.ticketTop;
+      drawImg("ticket", cx, top + 39);
+      drawImg(`${g.temp}-${g.menu.id}`, cx, top + 33);
+      rect(cx - 10, top + 34, 20, 2, "#e4ded6");
+      rect(cx - 10, top + 34, Math.round(20 * r), 2, barColor(r));
+    });
+    navTab(B.nav, "주문", "◀", hurry, now);
+  }
+
+  // 영업 시작 알림 (처음 잠깐)
+  function drawBanner(now) {
+    const since = now - round.startAt;
+    if (since >= 1400) return;
+    ctx.globalAlpha = since < 1000 ? 1 : 1 - (since - 1000) / 400;
+    roundRect(W / 2 - 40, 50, 80, 20, 10);
+    ctx.fillStyle = "rgba(255, 250, 240, 0.96)"; ctx.fill();
+    ctx.lineWidth = 1; ctx.strokeStyle = "#7a5034"; ctx.stroke();
+    ctx.font = "bold 10px system-ui, sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillStyle = "#7a5034";
+    ctx.fillText("영업 시작!", W / 2, 60.5);
+    ctx.globalAlpha = 1;
+  }
+
+  // 패널 제목줄: 매출과 남은 시간 (마지막 10초는 빨갛게)
+  let hudText = "";
+  function updateHud(now) {
+    const left = Math.max(0, Math.ceil((round.endAt - now) / 1000));
+    const key = `${round.sales}|${left}`;
+    if (key === hudText) return;
+    hudText = key;
+    statusEl.innerHTML = `<span class="cafe-hud"><i class="coin"></i>${round.sales}</span>`
+      + `<span class="cafe-hud${left <= 10 ? " hurry" : ""}">남은 ${left}초</span>`;
+  }
+
+  function draw(now) {
+    ctx.setTransform(PX, 0, 0, PX, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, W, H);
+
+    // 화면 옮기는 중이면 두 화면을 옆으로 밀며 그림 (주문 화면이 왼쪽, 제작 화면이 오른쪽)
+    let cam = round.zone === "brew" ? 1 : 0;
+    if (round.slide) {
+      const t = Math.min(1, (now - round.slide.t0) / SLIDE_MS);
+      const e = 1 - (1 - t) * (1 - t);
+      const from = round.slide.from === "brew" ? 1 : 0;
+      cam = from + (cam - from) * e;
+    }
+    if (cam < 1) {
+      ctx.save(); ctx.translate(Math.round(-cam * W), 0);
+      drawOrderZone(now);
+      if (hover && round.zone === "order" && hover.id !== "guest" && !round.slide) highlight(hover);
+      ctx.restore();
+    }
+    if (cam > 0) {
+      ctx.save(); ctx.translate(Math.round((1 - cam) * W), 0);
+      drawBrewZone(now);
+      if (hover && round.zone === "brew" && !round.slide) highlight(hover);
+      ctx.restore();
+    }
+
     const tip = round.tipUntil > now ? round.tip : hover ? hover.name : "";
     if (tip) text(tip, W / 2, H - 5, "#5a4636");
-    drawHud(now);
+    drawBanner(now);
   }
 
   // ---- 시작과 끝 ----
   // 그림을 미리 불러 둠 (첫 손님이 올 때 그림이 비지 않게)
   function preload() {
-    const files = [...OPTIONAL_ART, "machine1", "machine2", "machine3", ...CAFE_INGREDIENTS.map((g) => g.id)];
-    for (const t of ["hot", "ice"]) for (const d of ["empty", ...CAFE_MENU.map((m) => m.id)]) files.push(`${t}-${d}`);
+    const files = [...SCENE_ART, ...CAFE_INGREDIENTS.map((g) => g.id)];
+    for (const t of ["hot", "ice"]) for (const d of ["empty", ...MAKING, ...CAFE_MENU.map((m) => m.id)]) files.push(`${t}-${d}`);
     files.forEach(img);
   }
 
   function startRound() {
     if (visiting || !allowed()) return;
+    hudText = "";
     preload();
     round = newRound();
     view = "play";
@@ -883,6 +956,7 @@ const Cafe = (() => {
     canvas.addEventListener("pointerdown", (e) => {
       if (!round) return;
       e.preventDefault();
+      canvas.focus({ preventScroll: true });
       const h = hit(...toLocal(e));
       if (h) h.act();
     });
@@ -892,6 +966,13 @@ const Cafe = (() => {
       canvas.style.cursor = hover ? "pointer" : "default";
     });
     canvas.addEventListener("pointerleave", () => { hover = null; });
+    // 키보드 ← → 로 주문·제작 화면 옮기기 (캔버스를 누른 뒤)
+    canvas.tabIndex = 0;
+    canvas.addEventListener("keydown", (e) => {
+      if (!round) return;
+      if (e.key === "ArrowRight") { goZone("brew"); e.preventDefault(); }
+      if (e.key === "ArrowLeft") { goZone("order"); e.preventDefault(); }
+    });
 
     wrap.append(canvas);
     body.append(wrap, recipeGrid());

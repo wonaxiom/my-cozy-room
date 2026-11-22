@@ -17,7 +17,8 @@ GPT 프로젝트 지침([gpt-project-instructions.md](gpt-project-instructions.m
 | 10 | 버리는 구멍 | 요청 7에서 받은 그림 | 먼저 |
 | 11 | 주문서 종이 | `art-src/cafe/gpt-cups.webp` | 나중 |
 
-> 요청 1~6 모두 게임에 넣었습니다 (2026-11-22). 요청 4~6 원본은 `art-src/cafe/gpt-bg.webp`, `gpt-counter.webp`, `gpt-small.webp`입니다. 원본은 `art-src/cafe/gpt-cups.webp`, `gpt-ingredients.webp`, `gpt-upgrades.webp`이고, 정리는 `art-src/tools/cafe_proc.py`로 했습니다.
+> 요청 1~6 모두 게임에 넣었습니다 (2026-11-22). 요청 4~6 원본은 `art-src/cafe/gpt-bg.webp`, `gpt-counter.webp`, `gpt-small.webp`입니다.
+> 요청 7~11도 넣었습니다 (2026-11-22). 원본은 `art-src/cafe/gpt-brew-bg.webp`, `gpt-brew-machines.webp`, `gpt-cups-making.webp`, `gpt-hole.webp`, `gpt-ticket.png`입니다. (휴지통 그림 `trash.png`는 버리는 구멍으로 바꿔서 쓰지 않음) 원본은 `art-src/cafe/gpt-cups.webp`, `gpt-ingredients.webp`, `gpt-upgrades.webp`이고, 정리는 `art-src/tools/cafe_proc.py`로 했습니다.
 
 ## 공통 구성
 
@@ -186,5 +187,6 @@ GPT 프로젝트 지침([gpt-project-instructions.md](gpt-project-instructions.m
 
 - 원본은 `art-src/cafe/`에 두고, `python3 art-src/tools/cafe_proc.py`로 칸을 잘라 `img/cafe/`에 넣습니다.
 - 스크립트는 흰 배경을 지우고(바깥에서 이어진 흰색만), 빈 줄과 빈 칸으로 칸을 나눈 뒤, 외곽선 두께로 잰 도트 크기(컵 9.5, 재료 13.5, 장비 10.5, 작은 그림 17.5픽셀)로 줄입니다. 배경과 카운터는 위아래 흰 여백을 잘라 낸 뒤 가로 280도트로 줄입니다. (배경 280 × 120, 카운터 280 × 85) 다시 받은 그림의 도트 크기가 다르면 `SHEETS`의 숫자를 고칩니다.
-- 요청 4~6 그림은 `img/cafe/bg.png`, `counter.png`, `trash.png`, `tray.png`, `heart.png`, `angry.png`로 넣고, `cafe.js`의 `SCENE_ART`에 이름을 적으면 임시 그림 대신 쓰입니다.
+- 가게 화면 그림은 `img/cafe/`에 넣고 `cafe.js`의 `SCENE_ART`에 이름을 적습니다. (`bg`, `counter`, `tray`, `hole`, `heart`, `angry`, `brew-bg`, `ticket`, `brew-machine1~3`)
+- 만드는 중인 컵(`hot-shot` 등)은 이미 넣은 컵과 겹치도록 줄마다 폭(따뜻한 25, 아이스 22도트)에 맞춰 줄입니다. (`cafe_proc.py`의 `MAKING`)
 - 그림 크기가 바뀌면 `cafe.js`의 `ART_SIZE`도 맞춥니다. (지금 따뜻한 컵 25×27, 아이스 컵 22×30, 재료 20×28, 장비 43×45)
