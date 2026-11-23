@@ -10,8 +10,8 @@ const CAFE_ROUND_SECONDS = 90;  // 한 판 영업 시간
 const CAFE_SEATS = 3;           // 카운터 앞에 설 수 있는 손님 수
 // 난이도: 손님이 기다리는 시간(초), 빨리 건넸을 때 받는 팁, 하루에 받을 수 있는 코인(난이도마다 따로). 영업 전 화면에서 고름
 const CAFE_MODES = [
-  { id: "normal", name: "보통", patience: 30, tip: 2, dailyMax: 80 },
-  { id: "hard", name: "어려움", patience: 25, tip: 3, dailyMax: 100 },
+  { id: "normal", name: "보통", patience: 45, tip: 2, dailyMax: 80 },
+  { id: "hard", name: "어려움", patience: 35, tip: 3, dailyMax: 100 },
 ];
 const CAFE_SHOT_SECONDS = [2.0, 1.3, 0.7]; // 커피 머신 단계별 에스프레소 내리는 시간
 // 기다림이 얼마나 남았을 때 건넸는지에 따라: 넉넉하면 팁, 조금 남았으면 덜 냄
