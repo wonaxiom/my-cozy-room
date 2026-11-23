@@ -970,6 +970,13 @@ const FURNITURE = {
     name: "이로리", style: "japanese",
     category: "furniture", price: 180,
   },
+  // 좌식 의자 (자이스): 방석처럼 위에 앉아 책 읽기·간식 (등받이는 뒤쪽이라 캐릭터를 가리지 않음). 색은 COLOR_VARIANTS
+  zaisu: {
+    size: [8, 8, 7], image: "img/furn/zaisu.png", imageSimple: "img/furn/s/zaisu.png", hires: true,
+    use: "sit",
+    name: "좌식 의자", style: "japanese",
+    category: "furniture", price: 70,
+  },
   // 유카타 걸이: 색은 COLOR_VARIANTS (남색·분홍·흰색), 그림 정리는 art-src/tools/japanese_proc.py
   yukataHanger: {
     size: [16, 1, 12], image: "img/furn/yukataHanger.png", imageSimple: "img/furn/s/yukataHanger.png", hires: true, rightWallArt: true,
@@ -1510,6 +1517,7 @@ for (const [field, groups] of Object.entries(SHOP_TAGS)) {
 const COLOR_VARIANTS = {
   sofa: [["base", "크림", "#f3e6d2"], ["navy", "네이비", "#4f6a9a"], ["sage", "세이지", "#9db58e"], ["gray", "그레이", "#9a9aa2"], ["pink", "핑크", "#eab4bc"]],
   bed: [["base", "블루", "#8fb3e3"], ["pink", "핑크", "#f0a8b8"], ["mint", "민트", "#8fd0b8"], ["yellow", "옐로", "#f0d27a"], ["gray", "그레이", "#a9adb5"]],
+  zaisu: [["base", "빨강", "#b84a3e"], ["navy", "남색", "#4a5580"], ["green", "녹차", "#8aa25a"]],
   temari: [["base", "빨강", "#c8433a"], ["navy", "남색", "#33406e"], ["white", "흰색", "#f1e8d8"]],
   yukataHanger: [["base", "남색", "#3f4a7a"], ["pink", "분홍", "#e9a0ad"], ["white", "흰색", "#f1ece4"]],
   armchair: [["base", "퍼플", "#a7639a"], ["brown", "브라운", "#9a6444"], ["green", "그린", "#6f9a66"], ["navy", "네이비", "#4f6390"], ["mustard", "머스터드", "#d9aa45"]],

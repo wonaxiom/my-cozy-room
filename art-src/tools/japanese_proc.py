@@ -20,6 +20,7 @@ SHEETS = [
     ("gpt-yukata.webp", 11, ["yukataHanger", "yukataHanger_pink", "yukataHanger_white"], 41),
     ("gpt-temari.webp", 15, ["temari", "temari_navy", "temari_white"], 14),
     ("gpt-irori.webp", 8, ["irori", "irori-off"], 67),  # 불 켜짐 / 꺼짐
+    ("gpt-zaisu.webp", 7.5, ["zaisu", "zaisu_navy", "zaisu_green"], 38),
 ]
 
 
