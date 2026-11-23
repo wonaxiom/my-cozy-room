@@ -1887,6 +1887,9 @@ body.pip #side-win-btn { display: none; }
 .cafe-status { display: flex; flex: 1; gap: 6px; color: var(--sub); font-size: 12px; font-variant-numeric: tabular-nums; }
 .cafe-hud { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; color: var(--text); font-weight: 600; background: #faf6f0; border: 1px solid var(--line); border-radius: 999px; }
 .cafe-hud.hurry { color: #c0463a; border-color: #e8b8b0; }
+.cafe-hud.hard { color: #ffffff; background: #7a5034; border-color: #7a5034; }
+.cafe-modes { display: flex; justify-content: center; gap: 6px; }
+.cafe-modes button { padding: 5px 12px; font-size: 12px; border-radius: 999px; }
 .cafe-canvas:focus { outline: none; }
 .cafe-body { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
 .cafe-art, .cafe-guest { image-rendering: pixelated; }

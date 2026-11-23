@@ -9,7 +9,11 @@
 const CAFE_ROUND_SECONDS = 90;  // 한 판 영업 시간
 const CAFE_DAILY_MAX = 80;      // 하루에 카페에서 받을 수 있는 코인
 const CAFE_SEATS = 3;           // 카운터 앞에 설 수 있는 손님 수
-const CAFE_PATIENCE = 25;       // 손님이 기다리는 시간(초)
+// 난이도별 손님이 기다리는 시간(초). 영업 전 화면에서 고름
+const CAFE_MODES = [
+  { id: "normal", name: "보통", patience: 30 },
+  { id: "hard", name: "어려움", patience: 25 },
+];
 const CAFE_SHOT_SECONDS = [2.0, 1.3, 0.7]; // 커피 머신 단계별 에스프레소 내리는 시간
 // 기다림이 얼마나 남았을 때 건넸는지에 따라: 넉넉하면 팁, 조금 남았으면 덜 냄
 const CAFE_TIP_OVER = 0.6;      // 기다림이 60% 넘게 남으면 팁
@@ -58,6 +62,7 @@ const Cafe = (() => {
     for (const k in base) if (typeof c[k] !== "number") c[k] = base[k];
     if (!Array.isArray(c.menu)) c.menu = [];
     if (!c.daily) c.daily = {};
+    if (!CAFE_MODES.some((m) => m.id === c.mode)) c.mode = CAFE_MODES[0].id;
     return c;
   }
 
@@ -75,7 +80,8 @@ const Cafe = (() => {
   const menuOpen = () => CAFE_MENU.filter((m) => !m.unlock || data().menu.includes(m.id));
   const ingredientOpen = () => CAFE_INGREDIENTS.filter((g) => menuOpen().some((m) => m.recipe.includes(g.id)));
   const shotSeconds = () => CAFE_SHOT_SECONDS[data().machine] || CAFE_SHOT_SECONDS[0];
-  const patience = () => CAFE_PATIENCE * (data().chair ? 1.3 : 1);
+  const mode = () => CAFE_MODES.find((m) => m.id === data().mode);
+  const patience = () => mode().patience * (data().chair ? 1.3 : 1);
   const spawnGap = () => (data().sign ? [3.5, 6] : [5, 8]);
   const ingName = (id) => (CAFE_INGREDIENTS.find((g) => g.id === id) || {}).name;
 
@@ -759,7 +765,8 @@ const Cafe = (() => {
     if (key === hudText) return;
     hudText = key;
     statusEl.innerHTML = `<span class="cafe-hud"><i class="coin"></i>${round.sales}</span>`
-      + `<span class="cafe-hud${left <= 10 ? " hurry" : ""}">남은 ${left}초</span>`;
+      + `<span class="cafe-hud${left <= 10 ? " hurry" : ""}">남은 ${left}초</span>`
+      + (data().mode === "hard" ? `<span class="cafe-hud hard">${mode().name}</span>` : "");
   }
 
   function draw(now) {
@@ -824,7 +831,7 @@ const Cafe = (() => {
     c.served += round.served;
     const best = round.sales > c.best;
     if (best) c.best = round.sales;
-    lastResult = { sales: round.sales, served: round.served, missed: round.missed, coins, best };
+    lastResult = { sales: round.sales, served: round.served, missed: round.missed, coins, best, mode: mode().name };
     round = null;
     if (coins) {
       save.coins += coins;
@@ -870,17 +877,35 @@ const Cafe = (() => {
     return h;
   }
 
+  // 난이도 고르기 (계정에 저장)
+  function modePicker() {
+    const wrap = el("div", "cafe-modes");
+    for (const m of CAFE_MODES) {
+      const sec = m.patience * (data().chair ? 1.3 : 1);
+      const b = el("button", m.id === data().mode ? "active" : "", `${m.name} · 손님 ${Math.round(sec * 10) / 10}초`);
+      b.type = "button";
+      b.addEventListener("click", () => {
+        if (data().mode === m.id) return;
+        data().mode = m.id;
+        Save.save(save);
+        render();
+      });
+      wrap.append(b);
+    }
+    return wrap;
+  }
+
   function renderLobby() {
     statusEl.textContent = "";
     const c = data();
     const intro = el("p", "cafe-text",
-      "손님이 주문하면 컵을 꺼내고, 머신으로 에스프레소를 내리고, 재료를 넣어 만든 뒤 손님을 눌러 건네요. 빨리 주면 팁을 받고, 너무 기다리게 하면 화내며 나가요.");
+      "손님이 주문하면 제작 화면에서 컵을 꺼내고, 에스프레소를 내리고, 재료를 넣어 픽업대로 보낸 뒤 손님을 눌러 건네요. 빨리 주면 팁을 받고, 너무 기다리게 하면 화내며 나가요.");
     const start = el("button", "primary cafe-start", "영업 시작");
     start.type = "button";
     start.addEventListener("click", startRound);
     if (daily().coins >= CAFE_DAILY_MAX) intro.textContent = "오늘 받을 수 있는 코인은 다 받았어요. 영업은 계속 연습할 수 있어요.";
 
-    body.append(hero(), intro, start, stats(), menuBoard(), el("h3", "cafe-sub", "가게 늘리기"));
+    body.append(hero(), intro, modePicker(), start, stats(), menuBoard(), el("h3", "cafe-sub", "가게 늘리기"));
 
     const list = el("div", "cafe-shop");
     for (const m of CAFE_MENU.filter((x) => x.unlock)) {
@@ -992,7 +1017,7 @@ const Cafe = (() => {
     body.append(hero(r.best && r.sales ? "최고 매출 달성!" : "오늘 영업 끝"));
     const box = el("div", "cafe-result");
     const dl = el("dl", "cafe-result-list");
-    for (const [k, v] of [["매출", r.sales], ["손님", `${r.served}명`], ["놓친 손님", `${r.missed}명`], ["받은 코인", r.coins]]) {
+    for (const [k, v] of [["난이도", r.mode], ["매출", r.sales], ["손님", `${r.served}명`], ["놓친 손님", `${r.missed}명`], ["받은 코인", r.coins]]) {
       dl.append(el("dt", "", k), el("dd", "", String(v)));
     }
     box.append(dl);
