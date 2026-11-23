@@ -7,12 +7,11 @@
 // =============================================================
 
 const CAFE_ROUND_SECONDS = 90;  // 한 판 영업 시간
-const CAFE_DAILY_MAX = 80;      // 하루에 카페에서 받을 수 있는 코인 (난이도마다 따로)
 const CAFE_SEATS = 3;           // 카운터 앞에 설 수 있는 손님 수
-// 난이도: 손님이 기다리는 시간(초)과 빨리 건넸을 때 받는 팁. 영업 전 화면에서 고름
+// 난이도: 손님이 기다리는 시간(초), 빨리 건넸을 때 받는 팁, 하루에 받을 수 있는 코인(난이도마다 따로). 영업 전 화면에서 고름
 const CAFE_MODES = [
-  { id: "normal", name: "보통", patience: 30, tip: 2 },
-  { id: "hard", name: "어려움", patience: 25, tip: 3 },
+  { id: "normal", name: "보통", patience: 30, tip: 2, dailyMax: 80 },
+  { id: "hard", name: "어려움", patience: 25, tip: 3, dailyMax: 100 },
 ];
 const CAFE_SHOT_SECONDS = [2.0, 1.3, 0.7]; // 커피 머신 단계별 에스프레소 내리는 시간
 // 기다림이 얼마나 남았을 때 건넸는지에 따라: 넉넉하면 팁, 조금 남았으면 덜 냄
@@ -828,12 +827,12 @@ const Cafe = (() => {
     frameId = null;
     const c = data();
     const id = data().mode;
-    const coins = Math.max(0, Math.min(round.sales, CAFE_DAILY_MAX - todayCoins(id)));
+    const coins = Math.max(0, Math.min(round.sales, mode().dailyMax - todayCoins(id)));
     daily().coins[id] = todayCoins(id) + coins;
     c.served += round.served;
     const best = round.sales > c.best;
     if (best) c.best = round.sales;
-    lastResult = { sales: round.sales, served: round.served, missed: round.missed, coins, best, mode: mode().name };
+    lastResult = { sales: round.sales, served: round.served, missed: round.missed, coins, best, mode: mode().name, dailyMax: mode().dailyMax };
     round = null;
     if (coins) {
       save.coins += coins;
@@ -864,7 +863,7 @@ const Cafe = (() => {
     const c = data();
     const row = el("div", "cafe-stats");
     row.append(
-      ...CAFE_MODES.map((m) => el("span", "", `오늘 ${m.name} 코인 ${todayCoins(m.id)}/${CAFE_DAILY_MAX}`)),
+      ...CAFE_MODES.map((m) => el("span", "", `오늘 ${m.name} 코인 ${todayCoins(m.id)}/${m.dailyMax}`)),
       el("span", "", `최고 매출 ${c.best}`),
       el("span", "", `누적 손님 ${c.served}`),
     );
@@ -904,8 +903,8 @@ const Cafe = (() => {
     const start = el("button", "primary cafe-start", "영업 시작");
     start.type = "button";
     start.addEventListener("click", startRound);
-    if (todayCoins(data().mode) >= CAFE_DAILY_MAX) {
-      const other = CAFE_MODES.find((m) => todayCoins(m.id) < CAFE_DAILY_MAX);
+    if (todayCoins(data().mode) >= mode().dailyMax) {
+      const other = CAFE_MODES.find((m) => todayCoins(m.id) < m.dailyMax);
       intro.textContent = other
         ? `오늘 ${mode().name} 난이도로 받을 수 있는 코인은 다 받았어요. ${other.name} 난이도로 받거나, 영업은 계속 연습할 수 있어요.`
         : "오늘 받을 수 있는 카페 코인은 다 받았어요. 영업은 계속 연습할 수 있어요.";
@@ -1027,7 +1026,7 @@ const Cafe = (() => {
       dl.append(el("dt", "", k), el("dd", "", String(v)));
     }
     box.append(dl);
-    if (r.coins < r.sales) box.append(el("p", "cafe-note", `카페 코인은 난이도마다 하루 ${CAFE_DAILY_MAX}까지 받을 수 있어요.`));
+    if (r.coins < r.sales) box.append(el("p", "cafe-note", `${r.mode} 난이도 카페 코인은 하루 ${r.dailyMax}까지 받을 수 있어요.`));
     const row = el("div", "cafe-actions");
     const again = el("button", "primary", "다시 영업");
     again.type = "button";
