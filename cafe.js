@@ -810,7 +810,7 @@ const Cafe = (() => {
   }
 
   function startRound() {
-    if (visiting || !allowed() || sideMode()) return;
+    if (visiting || sideMode()) return;
     hudText = "";
     preload();
     round = newRound();
@@ -1044,7 +1044,7 @@ const Cafe = (() => {
   const sideMode = () => app.ownerDocument.body.classList.contains("side-mode");
 
   function open() {
-    if (visiting || !allowed() || sideMode()) return;
+    if (visiting || sideMode()) return;
     if (editing) setEditing(false);
     closeShop();
     if (typeof Focus !== "undefined") Focus.close();
@@ -1062,17 +1062,9 @@ const Cafe = (() => {
     openBtn.classList.remove("active");
   }
 
-  // 테스트 중이라 게임 주인 계정에서만 버튼이 보임 (파일로 직접 열었을 때도 확인용으로 보임)
-  const allowed = () => location.protocol === "file:" || (typeof isOwnerAccount === "function" && isOwnerAccount());
-  function refresh() {
-    openBtn.hidden = !allowed();
-    if (openBtn.hidden && !panel.hidden) close();
-  }
-
   openBtn.addEventListener("click", () => (panel.hidden ? open() : close()));
   $("cafe-close").addEventListener("click", close);
-  refresh();
 
   // round: 테스트에서 지금 영업 상태를 확인할 때 씀
-  return { open, close, refresh, round: () => round };
+  return { open, close, round: () => round };
 })();
