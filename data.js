@@ -977,6 +977,14 @@ const FURNITURE = {
     name: "좌식 의자", style: "japanese",
     category: "furniture", price: 70,
   },
+  // 다기 세트: 좌탁 위에 올리는 찻주전자와 찻잔, 머그잔처럼 김이 피어오름. 색은 COLOR_VARIANTS
+  teaSet: {
+    size: [6, 5, 4], image: "img/furn/teaSet.png", imageSimple: "img/furn/s/teaSet.png", hires: true,
+    name: "다기 세트",
+    category: "prop", kind: "goods", price: 45,
+    small: true,
+    steam: true,
+  },
   // 유카타 걸이: 색은 COLOR_VARIANTS (남색·분홍·흰색), 그림 정리는 art-src/tools/japanese_proc.py
   yukataHanger: {
     size: [16, 1, 12], image: "img/furn/yukataHanger.png", imageSimple: "img/furn/s/yukataHanger.png", hires: true, rightWallArt: true,
@@ -1517,6 +1525,7 @@ for (const [field, groups] of Object.entries(SHOP_TAGS)) {
 const COLOR_VARIANTS = {
   sofa: [["base", "크림", "#f3e6d2"], ["navy", "네이비", "#4f6a9a"], ["sage", "세이지", "#9db58e"], ["gray", "그레이", "#9a9aa2"], ["pink", "핑크", "#eab4bc"]],
   bed: [["base", "블루", "#8fb3e3"], ["pink", "핑크", "#f0a8b8"], ["mint", "민트", "#8fd0b8"], ["yellow", "옐로", "#f0d27a"], ["gray", "그레이", "#a9adb5"]],
+  teaSet: [["base", "연두", "#a3b98a"], ["navy", "남색", "#4a5580"], ["white", "흰색", "#eef0f2"]],
   zaisu: [["base", "빨강", "#b84a3e"], ["navy", "남색", "#4a5580"], ["green", "녹차", "#8aa25a"]],
   temari: [["base", "빨강", "#c8433a"], ["navy", "남색", "#33406e"], ["white", "흰색", "#f1e8d8"]],
   yukataHanger: [["base", "남색", "#3f4a7a"], ["pink", "분홍", "#e9a0ad"], ["white", "흰색", "#f1ece4"]],
