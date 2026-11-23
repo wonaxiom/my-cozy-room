@@ -955,6 +955,12 @@ const FURNITURE = {
     name: "족자", type: "wall",
     category: "prop", price: 50,
   },
+  // 유카타 걸이: 색은 COLOR_VARIANTS (남색·분홍·흰색), 그림 정리는 art-src/tools/japanese_proc.py
+  yukataHanger: {
+    size: [16, 1, 12], image: "img/furn/yukataHanger.png", imageSimple: "img/furn/s/yukataHanger.png", hires: true, rightWallArt: true,
+    name: "유카타 걸이", type: "wall",
+    category: "prop", price: 70,
+  },
 
   // ---- 다락방 ----
   mattress: {
@@ -1474,7 +1480,7 @@ const SHOP_TAGS = {
     light: ["lamp", "andon", "tableLamp", "floorLamp", "moonLamp", "paperLantern", "squareLamp", "stoneLantern"],
     plant: ["plant", "squarePot", "bigPlant", "yellowFlower", "pinkFlower", "bonsai", "sakuraVase", "tsukubai"],
     rug: ["rug", "checkRug", "greenRug", "roundRug", "cushion"],
-    wall: ["frame", "shelf", "scroll", "wallClock", "digitalClock", "landscape", "catFrame", "photo1", "photo2", "fusuma", "noren", "luggageRack"],
+    wall: ["frame", "shelf", "scroll", "yukataHanger", "wallClock", "digitalClock", "landscape", "catFrame", "photo1", "photo2", "fusuma", "noren", "luggageRack"],
     window: ["windowCurtain", "windowShoji", "windowRound", "windowTrain"],
     goods: ["laptopBasic", "mug", "notebook", "laptop", "deskClock", "deskClockWhite", "diffuser", "globe", "telescope"],
   },
@@ -1489,6 +1495,7 @@ for (const [field, groups] of Object.entries(SHOP_TAGS)) {
 const COLOR_VARIANTS = {
   sofa: [["base", "크림", "#f3e6d2"], ["navy", "네이비", "#4f6a9a"], ["sage", "세이지", "#9db58e"], ["gray", "그레이", "#9a9aa2"], ["pink", "핑크", "#eab4bc"]],
   bed: [["base", "블루", "#8fb3e3"], ["pink", "핑크", "#f0a8b8"], ["mint", "민트", "#8fd0b8"], ["yellow", "옐로", "#f0d27a"], ["gray", "그레이", "#a9adb5"]],
+  yukataHanger: [["base", "남색", "#3f4a7a"], ["pink", "분홍", "#e9a0ad"], ["white", "흰색", "#f1ece4"]],
   armchair: [["base", "퍼플", "#a7639a"], ["brown", "브라운", "#9a6444"], ["green", "그린", "#6f9a66"], ["navy", "네이비", "#4f6390"], ["mustard", "머스터드", "#d9aa45"]],
 };
 for (const [id, list] of Object.entries(COLOR_VARIANTS)) {

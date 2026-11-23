@@ -7,7 +7,7 @@ GPT 프로젝트 지침([gpt-project-instructions.md](gpt-project-instructions.m
 
 | 순서 | 이름 | 종류 | 상태 |
 |---|---|---|---|
-| 1 | 유카타 걸이 | 벽 장식 | 요청 |
+| 1 | 유카타 걸이 | 벽 장식 | 완료 (남색·분홍·흰색, 상점 소품 › 벽 장식 70) |
 | 2 | 테마리 공 | 소품 | 대기 |
 | 3 | 이로리 (화덕) | 가구 | 대기 |
 | 4 | 좌식 의자 (자이스) | 가구 | 대기 |
@@ -35,3 +35,6 @@ GPT 프로젝트 지침([gpt-project-instructions.md](gpt-project-instructions.m
 ```
 
 받으면 `art-src/japanese/`에 원본을 두고 `img/furn/`에 넣습니다. 세 벌은 색상 변형(상점에서 색 고르기)으로 묶습니다.
+
+> 넣었습니다 (2026-11-23). 원본 `art-src/japanese/gpt-yukata.webp`, 정리 `art-src/tools/japanese_proc.py`.
+> GPT가 투명 대신 체크무늬 배경을 그려 넣어서, 끈 안쪽처럼 갇힌 배경은 무채색 비율로 골라 지웠습니다. (`clear_checker`)
