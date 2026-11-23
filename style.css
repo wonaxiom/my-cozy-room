@@ -1514,7 +1514,9 @@ body.pip.side-mode.visiting .visit-bar { opacity: 1; }
 /* 세로 보기에서는 방 바꾸기·꾸미기 버튼을 숨겨 자리를 아낌 */
 body.pip.side-mode .room-picker,
 body.pip.side-mode #edit-btn,
-body.pip.side-mode #shop-btn { display: none; }
+body.pip.side-mode #shop-btn,
+body.side-mode #cafe-btn,
+body.side-mode #cafe { display: none; } /* 카페는 세로 보기에서 쓰지 않음 (화면 비율이 맞지 않음) */
 
 /* 시계도 다른 칸처럼 어두운 카드에 (밝은 낮 배경·사진 위에서도 읽히게) */
 .side-clock { padding: 10px 14px; background: #3b332e; border-radius: 14px; box-shadow: 0 2px 6px rgba(70, 45, 25, 0.25); }
@@ -1879,6 +1881,7 @@ body.pip #side-win-btn { display: none; }
 #req-link .badge { background: #c0392b; border-radius: 8px; }
 
 /* ---- 카페 미니게임 ---- */
+.cafe { background: #ffffff; } /* 뒤의 방 화면(코인, 시계)이 비치지 않게 */
 .cafe .panel-head { gap: 8px; }
 .cafe .panel-head strong { flex: none; }
 .cafe-status { display: flex; flex: 1; gap: 6px; color: var(--sub); font-size: 12px; font-variant-numeric: tabular-nums; }

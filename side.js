@@ -181,6 +181,7 @@ const Side = (() => {
     on = next;
     const body = win ? win.document.body : document.body;
     body.classList.toggle("side-mode", on);
+    if (on && typeof Cafe !== "undefined") Cafe.close(); // 카페는 세로 보기에서 쓰지 않음 (영업 중이면 마감)
     panel.hidden = !on;
     btn.textContent = on ? "방 보기" : "세로 보기";
     if (on) { lastDay = ""; renderClock(); renderTimer(); renderTodos(); }

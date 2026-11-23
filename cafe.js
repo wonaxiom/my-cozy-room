@@ -472,14 +472,22 @@ const Cafe = (() => {
     return list;
   }
 
-  function hit(px, py) {
+  // 누른 곳의 물건. 휴대폰처럼 손가락으로 누를 때는(pad) 물건에서 조금 벗어나도 가장 가까운 물건을 고름
+  function hit(px, py, pad = 0) {
     if (round.slide) return null;
     const list = hotspots();
     for (let i = list.length - 1; i >= 0; i--) {
       const h = list[i];
       if (px >= h.x && px <= h.x + h.w && py >= h.y && py <= h.y + h.h) return h;
     }
-    return null;
+    let best = null, bestD = pad;
+    for (const h of list) {
+      const dx = Math.max(h.x - px, 0, px - (h.x + h.w));
+      const dy = Math.max(h.y - py, 0, py - (h.y + h.h));
+      const d = Math.hypot(dx, dy);
+      if (d <= bestD) { best = h; bestD = d; }
+    }
+    return best;
   }
 
   function toLocal(e) {
@@ -794,7 +802,7 @@ const Cafe = (() => {
   }
 
   function startRound() {
-    if (visiting || !allowed()) return;
+    if (visiting || !allowed() || sideMode()) return;
     hudText = "";
     preload();
     round = newRound();
@@ -957,7 +965,7 @@ const Cafe = (() => {
       if (!round) return;
       e.preventDefault();
       canvas.focus({ preventScroll: true });
-      const h = hit(...toLocal(e));
+      const h = hit(...toLocal(e), e.pointerType === "mouse" ? 0 : 8);
       if (h) h.act();
     });
     canvas.addEventListener("pointermove", (e) => {
@@ -1002,8 +1010,11 @@ const Cafe = (() => {
   }
 
   // ---- 패널 열기/닫기 ----
+  // 세로 보기(세로 창)에서는 화면 비율이 맞지 않아 열지 않음
+  const sideMode = () => app.ownerDocument.body.classList.contains("side-mode");
+
   function open() {
-    if (visiting || !allowed()) return;
+    if (visiting || !allowed() || sideMode()) return;
     if (editing) setEditing(false);
     closeShop();
     if (typeof Focus !== "undefined") Focus.close();
