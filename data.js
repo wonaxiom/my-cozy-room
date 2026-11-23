@@ -962,6 +962,14 @@ const FURNITURE = {
     name: "족자", type: "wall",
     category: "prop", price: 50,
   },
+  // 이로리 (바닥 화덕): 조명처럼 켜고 끔 (불 켜짐·꺼짐 그림), 저녁에 캐릭터가 불을 붙이러 감
+  irori: {
+    size: [14, 14, 6], image: "img/furn/irori.png", imageOff: "img/furn/irori-off.png",
+    imageSimple: "img/furn/s/irori.png", imageSimpleOff: "img/furn/s/irori-off.png", hires: true,
+    light: { x: 7, y: 7, z: 2, radius: 44 }, use: "lamp",
+    name: "이로리", style: "japanese",
+    category: "furniture", price: 180,
+  },
   // 유카타 걸이: 색은 COLOR_VARIANTS (남색·분홍·흰색), 그림 정리는 art-src/tools/japanese_proc.py
   yukataHanger: {
     size: [16, 1, 12], image: "img/furn/yukataHanger.png", imageSimple: "img/furn/s/yukataHanger.png", hires: true, rightWallArt: true,

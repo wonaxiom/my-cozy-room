@@ -19,6 +19,7 @@ OUT = "img/furn/"
 SHEETS = [
     ("gpt-yukata.webp", 11, ["yukataHanger", "yukataHanger_pink", "yukataHanger_white"], 41),
     ("gpt-temari.webp", 15, ["temari", "temari_navy", "temari_white"], 14),
+    ("gpt-irori.webp", 8, ["irori", "irori-off"], 67),  # 불 켜짐 / 꺼짐
 ]
 
 
@@ -50,6 +51,18 @@ def clear_checker(a, m):
     return m
 
 
+def same_size(imgs):
+    """같은 시트의 칸을 같은 크기로 (바닥과 가운데 맞춤). 켜짐·꺼짐처럼 바꿔 그릴 때 그림이 튀지 않게"""
+    w = max(o.shape[1] for o in imgs)
+    h = max(o.shape[0] for o in imgs)
+    out = []
+    for o in imgs:
+        cell = Image.new("RGBA", (w, h))
+        cell.alpha_composite(Image.fromarray(o), ((w - o.shape[1]) // 2, h - o.shape[0]))
+        out.append(cell)
+    return out
+
+
 def main():
     os.makedirs(OUT + "s", exist_ok=True)
     for fname, p, names, width in SHEETS:
@@ -58,16 +71,18 @@ def main():
         (y0, y1), = spans(m.any(1), int(p * 3))
         cols = spans(m[y0:y1].any(0), int(p * 3))
         assert len(cols) == len(names), (fname, cols)
+        details, simples = [], []
         for (x0, x1), name in zip(cols, names):
             cm = m[y0:y1, x0:x1]
             ys, xs = np.nonzero(cm)
             ca = a[y0 + ys.min():y0 + ys.max() + 1, x0 + xs.min():x0 + xs.max() + 1]
             cm = cm[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
-            detail = pixelize(ca, cm, ca.shape[1] / width)
-            simple = pixelize(ca, cm, ca.shape[1] / max(4, round(width / 3)))
-            Image.fromarray(detail).save(OUT + name + ".png")
-            Image.fromarray(simple).save(OUT + "s/" + name + ".png")
-            print(name, "세밀", detail.shape[1], detail.shape[0], "하찮", simple.shape[1], simple.shape[0])
+            details.append(pixelize(ca, cm, ca.shape[1] / width))
+            simples.append(pixelize(ca, cm, ca.shape[1] / max(4, round(width / 3))))
+        for name, d, sm in zip(names, same_size(details), same_size(simples)):
+            d.save(OUT + name + ".png")
+            sm.save(OUT + "s/" + name + ".png")
+            print(name, "세밀", d.size, "하찮", sm.size)
 
 
 if __name__ == "__main__":
