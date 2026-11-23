@@ -112,50 +112,55 @@ def cells_of(fname, p):
     return out
 
 
-os.makedirs(OUT, exist_ok=True)
+def main():
+    os.makedirs(OUT, exist_ok=True)
 
-fname, rows = MAKING
-cells = cells_of(fname, 9)
-for r, (names, width, (cw, ch)) in enumerate(rows):
-    row = [c for c in cells if c[0] == r]
-    assert len(row) == len(names), (fname, r, len(row))
-    for name, (_, a, m) in zip(names, row):
-        o = pixelize(a, m, a.shape[1] / width)
-        cell = Image.new("RGBA", (cw, ch))
-        cell.alpha_composite(Image.fromarray(o), ((cw - o.shape[1]) // 2, ch - o.shape[0]))
-        cell.save(OUT + name + ".png")
-    print(fname, r, "칸 크기", (cw, ch), names)
-
-for fname, p, names in SHEETS:
-    a = np.array(Image.open(SRC + fname).convert("RGBA")).astype(int)
-    m = alpha_mask(a)
-    rows = spans(m.any(1), int(p * 3))
-    assert len(rows) == len(names), (fname, rows)
-    for (y0, y1), row_names in zip(rows, names):
-        cols = spans(m[y0:y1].any(0), int(p * 3))
-        assert len(cols) == len(row_names), (fname, cols)
-        cells = []
-        for (x0, x1), name in zip(cols, row_names):
-            cm = m[y0:y1, x0:x1]
-            ys, xs = np.nonzero(cm)
-            cy0, cy1, cx0, cx1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
-            cells.append((name, pixelize(a[y0 + cy0:y0 + cy1, x0 + cx0:x0 + cx1], cm[cy0:cy1, cx0:cx1], p), cy1))
-        # 한 줄은 같은 크기의 칸에, 바닥선을 맞춰 넣음
-        bottom = max(b for _, _, b in cells)
-        cw = max(o.shape[1] for _, o, _ in cells)
-        ch = max(o.shape[0] + round((bottom - b) / p) for _, o, b in cells)
-        for name, o, b in cells:
+    fname, rows = MAKING
+    cells = cells_of(fname, 9)
+    for r, (names, width, (cw, ch)) in enumerate(rows):
+        row = [c for c in cells if c[0] == r]
+        assert len(row) == len(names), (fname, r, len(row))
+        for name, (_, a, m) in zip(names, row):
+            o = pixelize(a, m, a.shape[1] / width)
             cell = Image.new("RGBA", (cw, ch))
-            cell.alpha_composite(Image.fromarray(o), ((cw - o.shape[1]) // 2, ch - o.shape[0] - round((bottom - b) / p)))
+            cell.alpha_composite(Image.fromarray(o), ((cw - o.shape[1]) // 2, ch - o.shape[0]))
             cell.save(OUT + name + ".png")
-        print(fname, "칸 크기", (cw, ch), [n for n, _, _ in cells])
+        print(fname, r, "칸 크기", (cw, ch), names)
+
+    for fname, p, names in SHEETS:
+        a = np.array(Image.open(SRC + fname).convert("RGBA")).astype(int)
+        m = alpha_mask(a)
+        rows = spans(m.any(1), int(p * 3))
+        assert len(rows) == len(names), (fname, rows)
+        for (y0, y1), row_names in zip(rows, names):
+            cols = spans(m[y0:y1].any(0), int(p * 3))
+            assert len(cols) == len(row_names), (fname, cols)
+            cells = []
+            for (x0, x1), name in zip(cols, row_names):
+                cm = m[y0:y1, x0:x1]
+                ys, xs = np.nonzero(cm)
+                cy0, cy1, cx0, cx1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
+                cells.append((name, pixelize(a[y0 + cy0:y0 + cy1, x0 + cx0:x0 + cx1], cm[cy0:cy1, cx0:cx1], p), cy1))
+            # 한 줄은 같은 크기의 칸에, 바닥선을 맞춰 넣음
+            bottom = max(b for _, _, b in cells)
+            cw = max(o.shape[1] for _, o, _ in cells)
+            ch = max(o.shape[0] + round((bottom - b) / p) for _, o, b in cells)
+            for name, o, b in cells:
+                cell = Image.new("RGBA", (cw, ch))
+                cell.alpha_composite(Image.fromarray(o), ((cw - o.shape[1]) // 2, ch - o.shape[0] - round((bottom - b) / p)))
+                cell.save(OUT + name + ".png")
+            print(fname, "칸 크기", (cw, ch), [n for n, _, _ in cells])
 
 
-for fname, name, tw in BACKGROUNDS:
-    a = np.array(Image.open(SRC + fname).convert("RGBA")).astype(int)
-    keep = a[:, :, :3].min(2).mean(1) < 235  # 거의 흰색인 위아래 여백 줄은 버림
-    ys = np.nonzero(keep)[0]
-    a = a[ys.min():ys.max() + 1]
-    o = pixelize(a, np.ones(a.shape[:2], bool), a.shape[1] / tw)
-    Image.fromarray(o).save(OUT + name + ".png")
-    print(fname, "크기", o.shape[1], o.shape[0])
+    for fname, name, tw in BACKGROUNDS:
+        a = np.array(Image.open(SRC + fname).convert("RGBA")).astype(int)
+        keep = a[:, :, :3].min(2).mean(1) < 235  # 거의 흰색인 위아래 여백 줄은 버림
+        ys = np.nonzero(keep)[0]
+        a = a[ys.min():ys.max() + 1]
+        o = pixelize(a, np.ones(a.shape[:2], bool), a.shape[1] / tw)
+        Image.fromarray(o).save(OUT + name + ".png")
+        print(fname, "크기", o.shape[1], o.shape[0])
+
+
+if __name__ == "__main__":
+    main()

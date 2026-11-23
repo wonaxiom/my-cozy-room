@@ -1281,6 +1281,17 @@ const FURNITURE = {
     category: "prop", price: 60,
   },
 
+  // ---- 카페 (카페 미니게임 그림을 방 크기로 줄임, art-src/tools/cafe_furniture.py) ----
+  // 정면에 가까운 그림이라 돌리면 좌우로만 뒤집힘
+  homeCoffeeMachine: { name: "홈 커피 머신", category: "prop", kind: "cafe", price: 120, size: [4, 4, 10], image: "img/furn/homeCoffeeMachine.png", imageSimple: "img/furn/s/homeCoffeeMachine.png", hires: true, small: true },
+  espressoMachine: { name: "에스프레소 머신", category: "prop", kind: "cafe", price: 200, size: [5, 5, 12], image: "img/furn/espressoMachine.png", imageSimple: "img/furn/s/espressoMachine.png", hires: true, small: true },
+  cafeCoffeeMachine: { name: "카페 커피 머신", category: "prop", kind: "cafe", price: 320, size: [7, 7, 13], image: "img/furn/cafeCoffeeMachine.png", imageSimple: "img/furn/s/cafeCoffeeMachine.png", hires: true, small: true },
+  cafeLatteMug: { name: "라떼 머그", category: "prop", kind: "cafe", price: 25, size: [4, 3, 3], image: "img/furn/cafeLatteMug.png", imageSimple: "img/furn/s/cafeLatteMug.png", hires: true, small: true },
+  cafeIceAmericano: { name: "아이스 아메리카노", category: "prop", kind: "cafe", price: 25, size: [3, 2.5, 6], image: "img/furn/cafeIceAmericano.png", imageSimple: "img/furn/s/cafeIceAmericano.png", hires: true, small: true },
+  cafeIceMatcha: { name: "아이스 녹차 라떼", category: "prop", kind: "cafe", price: 25, size: [3, 2.5, 6], image: "img/furn/cafeIceMatcha.png", imageSimple: "img/furn/s/cafeIceMatcha.png", hires: true, small: true },
+  cafeSign: { name: "카페 입간판", category: "prop", kind: "cafe", price: 90, size: [6, 7, 14], image: "img/furn/cafeSign.png", imageSimple: "img/furn/s/cafeSign.png", hires: true },
+  cafeArmchair: { name: "카페 안락의자", category: "furniture", style: "natural", price: 150, size: [9, 9, 13], image: "img/furn/cafeArmchair.png", imageSimple: "img/furn/s/cafeArmchair.png", hires: true, seat: { z: 6, back: "-x" }, use: "chair" },
+
 };
 
 // 잠자리 가구는 처음 방향에서 베개(머리)가 벽 쪽(화면 뒤)에 오도록 앞뒤를 뒤집어 둡니다.
@@ -1450,6 +1461,7 @@ const PROP_KINDS = [
   { id: "wall", name: "벽 장식" },
   { id: "window", name: "창문" },
   { id: "goods", name: "잡화" },
+  { id: "cafe", name: "카페" },
 ];
 const SHOP_TAGS = {
   style: {
