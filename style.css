@@ -1888,7 +1888,7 @@ body.pip #side-win-btn { display: none; }
 .cafe-hud { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; color: var(--text); font-weight: 600; background: #faf6f0; border: 1px solid var(--line); border-radius: 999px; }
 .cafe-hud.hurry { color: #c0463a; border-color: #e8b8b0; }
 .cafe-hud.hard { color: #ffffff; background: #7a5034; border-color: #7a5034; }
-.cafe-modes { display: flex; justify-content: center; gap: 6px; }
+.cafe-modes { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
 .cafe-modes button { padding: 5px 12px; font-size: 12px; border-radius: 999px; }
 .cafe-canvas:focus { outline: none; }
 .cafe-body { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
@@ -1920,7 +1920,8 @@ body.pip #side-win-btn { display: none; }
 /* 영업 전 */
 .cafe-text { margin: 0; color: var(--sub); line-height: 1.5; }
 .cafe-start { align-self: center; min-width: 140px; padding: 8px 16px; }
-.cafe-stats { display: flex; justify-content: center; gap: 12px; color: var(--sub); }
+.cafe-stats { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 12px; color: var(--sub); }
+.cafe-stats span { white-space: nowrap; }
 .cafe-sub { margin: 4px 0 2px; font-size: 13px; }
 .cafe-board { padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; }
 .cafe-board .cafe-sub { margin-top: 0; }
