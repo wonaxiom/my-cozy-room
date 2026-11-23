@@ -18,6 +18,7 @@ OUT = "img/furn/"
 # 시트: (파일, 도트 크기, 칸마다 가구 이름, ver.세밀 폭)
 SHEETS = [
     ("gpt-yukata.webp", 11, ["yukataHanger", "yukataHanger_pink", "yukataHanger_white"], 41),
+    ("gpt-temari.webp", 15, ["temari", "temari_navy", "temari_white"], 14),
 ]
 
 

@@ -921,6 +921,13 @@ const FURNITURE = {
     petUse: "ball",
     size: [2, 2, 2], image: "img/furn/petBall.png", imageSimple: "img/furn/s/petBall.png", hires: true,
   },
+  // 테마리 공: 바닥에 두면 반려동물이 장난감 공처럼 굴리고, 선반·탁자 위에 두면 장식. 색은 COLOR_VARIANTS
+  temari: {
+    name: "테마리 공",
+    category: "prop", kind: "goods", price: 40,
+    petUse: "ball", small: true,
+    size: [3, 3, 3], image: "img/furn/temari.png", imageSimple: "img/furn/s/temari.png", hires: true,
+  },
   petBowl: {
     name: "밥그릇",
     category: "prop", kind: "pet", price: 30,
@@ -1495,6 +1502,7 @@ for (const [field, groups] of Object.entries(SHOP_TAGS)) {
 const COLOR_VARIANTS = {
   sofa: [["base", "크림", "#f3e6d2"], ["navy", "네이비", "#4f6a9a"], ["sage", "세이지", "#9db58e"], ["gray", "그레이", "#9a9aa2"], ["pink", "핑크", "#eab4bc"]],
   bed: [["base", "블루", "#8fb3e3"], ["pink", "핑크", "#f0a8b8"], ["mint", "민트", "#8fd0b8"], ["yellow", "옐로", "#f0d27a"], ["gray", "그레이", "#a9adb5"]],
+  temari: [["base", "빨강", "#c8433a"], ["navy", "남색", "#33406e"], ["white", "흰색", "#f1e8d8"]],
   yukataHanger: [["base", "남색", "#3f4a7a"], ["pink", "분홍", "#e9a0ad"], ["white", "흰색", "#f1ece4"]],
   armchair: [["base", "퍼플", "#a7639a"], ["brown", "브라운", "#9a6444"], ["green", "그린", "#6f9a66"], ["navy", "네이비", "#4f6390"], ["mustard", "머스터드", "#d9aa45"]],
 };
