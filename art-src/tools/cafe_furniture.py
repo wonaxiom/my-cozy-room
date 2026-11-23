@@ -14,12 +14,14 @@ from cafe_proc import cells_of, pixelize  # noqa: E402
 OUT = "img/furn/"
 
 # 가구 id: (시트, 도트 크기, 줄, 칸, ver.세밀 폭)
+# 머신·의자·입간판은 방 가구와 같은 아이소메트릭으로 다시 받은 그림 (gpt-furniture-iso.webp, 앞면이 오른쪽 아래)
+# 컵은 둥근 물건이라 정면 그림(카페 미니게임 컵)을 그대로 씀
 ITEMS = {
-    "homeCoffeeMachine": ("gpt-upgrades.webp", 10.5, 0, 0, 19),
-    "espressoMachine": ("gpt-upgrades.webp", 10.5, 0, 1, 24),
-    "cafeCoffeeMachine": ("gpt-upgrades.webp", 10.5, 0, 2, 34),
-    "cafeArmchair": ("gpt-upgrades.webp", 10.5, 0, 3, 43),
-    "cafeSign": ("gpt-upgrades.webp", 10.5, 0, 4, 31),
+    "homeCoffeeMachine": ("gpt-furniture-iso.webp", 11, 0, 0, 19),
+    "espressoMachine": ("gpt-furniture-iso.webp", 11, 0, 1, 24),
+    "cafeCoffeeMachine": ("gpt-furniture-iso.webp", 11, 0, 2, 34),
+    "cafeArmchair": ("gpt-furniture-iso.webp", 11, 0, 3, 43),
+    "cafeSign": ("gpt-furniture-iso.webp", 11, 0, 4, 31),
     "cafeLatteMug": ("gpt-cups.webp", 9.5, 0, 2, 17),
     "cafeIceAmericano": ("gpt-cups.webp", 9.5, 1, 1, 13),
     "cafeIceMatcha": ("gpt-cups.webp", 9.5, 1, 5, 13),

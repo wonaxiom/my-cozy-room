@@ -1282,7 +1282,7 @@ const FURNITURE = {
   },
 
   // ---- 카페 (카페 미니게임 그림을 방 크기로 줄임, art-src/tools/cafe_furniture.py) ----
-  // 정면에 가까운 그림이라 돌리면 좌우로만 뒤집힘
+  // 머신·의자·입간판은 방 가구와 같은 아이소메트릭 그림, 컵은 둥글어서 정면 그림. 돌리면 좌우로만 뒤집힘
   homeCoffeeMachine: { name: "홈 커피 머신", category: "prop", kind: "cafe", price: 120, size: [4, 4, 10], image: "img/furn/homeCoffeeMachine.png", imageSimple: "img/furn/s/homeCoffeeMachine.png", hires: true, small: true },
   espressoMachine: { name: "에스프레소 머신", category: "prop", kind: "cafe", price: 200, size: [5, 5, 12], image: "img/furn/espressoMachine.png", imageSimple: "img/furn/s/espressoMachine.png", hires: true, small: true },
   cafeCoffeeMachine: { name: "카페 커피 머신", category: "prop", kind: "cafe", price: 320, size: [7, 7, 13], image: "img/furn/cafeCoffeeMachine.png", imageSimple: "img/furn/s/cafeCoffeeMachine.png", hires: true, small: true },
