@@ -55,6 +55,13 @@ const CAFE_GUESTS = [
 ];
 
 // 장비 업그레이드: level은 지금 단계, prices는 다음 단계로 올리는 가격
+// 일일 랭킹: 난이도마다 하루(한국 날짜) 최고 매출을 영문 3글자 이름으로 올림. 서버 함수는 Supabase의 cafe_daily_ranking
+// 그날 1위는 한국 시각 24시가 지나면 코인을 받음 (서버 claim_cafe_rewards의 금액과 같아야 함)
+const CAFE_RANK_PRIZE = { normal: 25, hard: 50 };
+const CAFE_RANK_SHOW = 10;       // 랭킹에 보여 주는 순위 수
+const CAFE_RANK_MAX_SCORE = 1000; // 서버가 받는 가장 높은 점수
+const CAFE_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
 const CAFE_UPGRADES = [
   { id: "machine", name: "커피 머신", desc: "에스프레소를 더 빨리 내려요", prices: [150, 300] },
   { id: "chair", name: "푹신한 의자", desc: "손님이 더 오래 기다려 줘요", prices: [200] },
@@ -946,7 +953,9 @@ const Cafe = (() => {
     const best = round.sales > c.best;
     if (best) c.best = round.sales;
     lastResult = { sales: round.sales, served: round.served, missed: round.missed, coins, best, mode: mode().name, dailyMax: mode().dailyMax,
-      over: !!round.overAt, strikes: round.strikes, lives: mode().lives };
+      over: !!round.overAt, strikes: round.strikes, lives: mode().lives, modeId: id,
+      // 오늘 이 난이도 내 기록보다 높으면 이름을 적어 랭킹에 올릴 수 있음
+      record: round.sales > 0 && round.sales <= CAFE_RANK_MAX_SCORE && round.sales > rankBest(id), entry: null };
     round = null;
     if (coins) {
       save.coins += coins;
@@ -1025,7 +1034,7 @@ const Cafe = (() => {
         : "오늘 받을 수 있는 카페 코인은 다 받았어요. 영업은 계속 연습할 수 있어요.";
     }
 
-    body.append(hero(), intro, modePicker(), start, stats(), menuBoard(), el("h3", "cafe-sub", "가게 늘리기"));
+    body.append(hero(), intro, modePicker(), start, stats(), rankBoard(), menuBoard(), el("h3", "cafe-sub", "가게 늘리기"));
 
     const list = el("div", "cafe-shop");
     for (const m of CAFE_MENU.filter((x) => x.unlock)) {
@@ -1145,6 +1154,7 @@ const Cafe = (() => {
     box.append(dl);
     if (r.over) box.append(el("p", "cafe-note", `실수가 ${r.lives}번 쌓여서 영업을 일찍 마쳤어요. 그때까지의 매출은 받아요.`));
     if (r.coins < r.sales) box.append(el("p", "cafe-note", `${r.mode} 난이도 카페 코인은 하루 ${r.dailyMax}까지 받을 수 있어요.`));
+    if (r.record) box.append(nameEntry(r));
     const row = el("div", "cafe-actions");
     const again = el("button", "primary", "다시 영업");
     again.type = "button";
@@ -1155,6 +1165,176 @@ const Cafe = (() => {
     row.append(lobby, again);
     box.append(row);
     body.append(box);
+  }
+
+  // ---- 일일 랭킹 ----
+  const db = () => (typeof Cloud !== "undefined" ? Cloud.client() : null); // 로그인하고 계정을 맞춘 뒤에만
+  const kstDay = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10); // 랭킹 날짜는 한국 기준
+  const modeName = (id) => (CAFE_MODES.find((m) => m.id === id) || {}).name;
+  let rankTab = null; // 영업 전 화면에서 보고 있는 랭킹 난이도
+
+  // 오늘 이 난이도로 랭킹에 올린 내 점수 (이 기기에 기억, 날이 바뀌면 0)
+  function rankBest(id) {
+    const c = data();
+    if (!c.rankBest || c.rankBest.day !== kstDay()) c.rankBest = { day: kstDay() };
+    return c.rankBest[id] || 0;
+  }
+
+  // 랭킹 표 (상위 CAFE_RANK_SHOW명 + 순위 밖이면 내 줄). 불러오는 동안 자리만 잡아 둠
+  function rankTable(id) {
+    const box = el("div", "cafe-rank-list");
+    box.append(el("p", "cafe-note", "불러오는 중…"));
+    const client = db();
+    if (!client) return box;
+    client.rpc("cafe_ranking", { p_mode: id, p_limit: CAFE_RANK_SHOW }).then(({ data: rows, error }) => {
+      box.innerHTML = "";
+      if (error) return box.append(el("p", "cafe-note", "랭킹을 불러오지 못했어요."));
+      if (!rows || !rows.length) return box.append(el("p", "cafe-note", "아직 오늘 기록이 없어요. 첫 1위가 되어 보세요."));
+      rows.forEach((x, i) => {
+        if (i && x.rank > rows[i - 1].rank + 1) box.append(el("div", "cafe-rank-gap", "⋯"));
+        const line = el("div", "cafe-rank-row" + (x.mine ? " mine" : "") + (x.rank === 1 ? " first" : ""));
+        line.append(el("span", "cafe-rank-no", String(x.rank)), el("span", "cafe-rank-name", x.name), el("span", "cafe-rank-score", String(x.score)));
+        box.append(line);
+      });
+    });
+    return box;
+  }
+
+  // 영업 전 화면의 "오늘의 랭킹"
+  function rankBoard() {
+    const box = el("div", "cafe-board");
+    box.append(el("h3", "cafe-sub", "오늘의 랭킹"));
+    if (!db()) {
+      box.append(el("p", "cafe-note", "구글 로그인을 하면 일일 랭킹에 참여할 수 있어요."));
+      return box;
+    }
+    const tab = rankTab || data().mode;
+    const tabs = el("div", "cafe-modes cafe-rank-tabs");
+    for (const m of CAFE_MODES) {
+      const b = el("button", m.id === tab ? "active" : "", m.name);
+      b.type = "button";
+      b.addEventListener("click", () => {
+        if (tab === m.id) return;
+        rankTab = m.id;
+        box.replaceWith(rankBoard());
+      });
+      tabs.append(b);
+    }
+    box.append(tabs, rankTable(tab),
+      el("p", "cafe-note", `오늘 최고 기록을 내면 이름을 남길 수 있어요. 자정(한국 시각)이 지나면 1위에게 어려움 ${CAFE_RANK_PRIZE.hard}코인, 보통 ${CAFE_RANK_PRIZE.normal}코인을 줘요.`));
+    return box;
+  }
+
+  // 결과 화면: 오락실처럼 영문 3글자 이름 적기 (▲▼ 버튼이나 키보드)
+  function nameEntry(r) {
+    const box = el("div", "cafe-entry");
+    if (!db()) {
+      box.append(el("p", "cafe-note", "오늘 최고 기록이에요. 구글 로그인을 하면 일일 랭킹에 올릴 수 있어요."));
+      return box;
+    }
+    if (r.entry && r.entry.done) {
+      box.append(el("p", "cafe-entry-title", r.entry.text), rankTable(r.modeId));
+      return box;
+    }
+    const c = data();
+    const e = r.entry || (r.entry = { letters: ((c.rankName || "AAA") + "AAA").slice(0, 3).split(""), at: 0, busy: false });
+    box.append(el("p", "cafe-entry-title", `오늘 ${r.mode} 최고 기록! 이름을 남겨 주세요`));
+
+    const slots = el("div", "cafe-entry-slots");
+    slots.tabIndex = 0;
+    const cells = e.letters.map((_, i) => {
+      const cell = el("div", "cafe-entry-cell");
+      const up = el("button", "cafe-entry-arrow", "▲");
+      const down = el("button", "cafe-entry-arrow", "▼");
+      const letter = el("span", "cafe-entry-letter");
+      up.type = down.type = "button";
+      up.setAttribute("aria-label", `${i + 1}번째 글자 앞으로`);
+      down.setAttribute("aria-label", `${i + 1}번째 글자 뒤로`);
+      up.addEventListener("click", () => { e.at = i; shift(-1); });
+      down.addEventListener("click", () => { e.at = i; shift(1); });
+      letter.addEventListener("click", () => { e.at = i; paint(); slots.focus({ preventScroll: true }); });
+      cell.append(up, letter, down);
+      slots.append(cell);
+      return { cell, letter };
+    });
+    const submit = el("button", "primary", "등록");
+    submit.type = "button";
+    const msg = el("p", "cafe-note");
+
+    function paint() {
+      cells.forEach((x, i) => {
+        x.letter.textContent = e.letters[i];
+        x.cell.classList.toggle("active", i === e.at);
+      });
+    }
+    function shift(d) {
+      const k = CAFE_LETTERS.indexOf(e.letters[e.at]);
+      e.letters[e.at] = CAFE_LETTERS[(k + d + CAFE_LETTERS.length) % CAFE_LETTERS.length];
+      paint();
+    }
+    slots.addEventListener("keydown", (ev) => {
+      const key = ev.key;
+      if (/^[a-zA-Z]$/.test(key)) { e.letters[e.at] = key.toUpperCase(); e.at = Math.min(2, e.at + 1); paint(); }
+      else if (key === "ArrowUp") shift(-1);
+      else if (key === "ArrowDown") shift(1);
+      else if (key === "ArrowLeft" || key === "Backspace") { e.at = Math.max(0, e.at - 1); paint(); }
+      else if (key === "ArrowRight") { e.at = Math.min(2, e.at + 1); paint(); }
+      else if (key === "Enter") send();
+      else return;
+      ev.preventDefault();
+    });
+
+    async function send() {
+      const client = db();
+      if (e.busy || !client) return;
+      e.busy = true;
+      submit.disabled = true;
+      msg.textContent = "올리는 중…";
+      const name = e.letters.join("");
+      const { data: rows, error } = await client.rpc("submit_cafe_score", { p_mode: r.modeId, p_name: name, p_score: r.sales });
+      e.busy = false;
+      if (error || !rows || !rows[0]) {
+        submit.disabled = false;
+        msg.textContent = "올리지 못했어요. 잠시 후 다시 시도해 주세요.";
+        return;
+      }
+      const res = rows[0];
+      c.rankName = name;
+      rankBest(r.modeId);
+      c.rankBest[r.modeId] = res.best;
+      Save.save(save);
+      e.done = true;
+      e.text = res.updated
+        ? `${name} · ${r.sales} · 오늘 ${r.mode} ${res.rank}위에 올랐어요!`
+        : `다른 기기에서 낸 오늘 기록(${res.best})이 더 높아요. 지금 ${r.mode} ${res.rank}위예요.`;
+      if (view === "result" && lastResult === r) render();
+    }
+    submit.addEventListener("click", send);
+
+    paint();
+    box.append(slots, submit, msg, el("p", "cafe-note", "▲▼나 키보드로 입력하고 Enter로 등록해요."));
+    setTimeout(() => slots.focus({ preventScroll: true }), 0);
+    return box;
+  }
+
+  // 지난 날 1위 보상 받기 (로그인할 때, 카페를 열 때). 서버가 한 번만 주도록 막음
+  let claiming = false;
+  async function claimRewards() {
+    const client = db();
+    if (!client || claiming || visiting) return;
+    claiming = true;
+    const { data: rows, error } = await client.rpc("claim_cafe_rewards");
+    claiming = false;
+    if (error || !rows || !rows.length) return;
+    let total = 0;
+    for (const x of rows) {
+      total += x.amount;
+      const [, mm, dd] = String(x.day).split("-").map(Number);
+      notify(`${mm}/${dd} 카페 ${modeName(x.mode)} 랭킹 1위! ${x.amount}코인을 받았어요.`);
+    }
+    save.coins += total;
+    Save.save(save);
+    updateCoins(total);
   }
 
   // ---- 패널 열기/닫기 ----
@@ -1170,6 +1350,7 @@ const Cafe = (() => {
     panel.hidden = false;
     openBtn.classList.add("active");
     if (!round) { view = view === "play" ? "lobby" : view; render(); }
+    claimRewards();
   }
 
   // 닫으면 영업 중이던 판은 그때까지의 매출로 마감
@@ -1184,5 +1365,5 @@ const Cafe = (() => {
   $("cafe-close").addEventListener("click", close);
 
   // round: 테스트에서 지금 영업 상태를 확인할 때 씀
-  return { open, close, round: () => round };
+  return { open, close, claimRewards, round: () => round };
 })();

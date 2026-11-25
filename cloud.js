@@ -79,6 +79,7 @@ const Cloud = (() => {
     await upload();
     await loadProfile();
     if (typeof Friends !== "undefined") Friends.start(client, user);
+    if (typeof Cafe !== "undefined") Cafe.claimRewards(); // 지난 날 카페 랭킹 1위 보상
   }
 
   // 고유번호 받아오기 (처음이면 서버가 겹치지 않는 번호를 만들어 줌). 이름도 함께 맞춥니다.
