@@ -187,6 +187,15 @@ const PALETTE = {
   seatHead: "#e9e4d8",
   blanketStripe: "#efe1c4",
   flower: "#e8889a",
+  // 카페 가구 (상자로 만든 것)
+  cafeTop: "#efe4d2",        // 카운터 윗판
+  cafeCase: "#f4eee4",       // 진열장 몸통
+  cafeGlass: "rgba(207, 227, 230, 0.45)", // 진열장 유리 (비쳐 보임)
+  chocoCake: "#7a4a32",
+  matchaCake: "#a3b98a",
+  burlap: "#c9a877",         // 원두 자루
+  burlapDark: "#a8875a",
+  beans: "#5a3a28",
 
   // 캐릭터
   hair: "#4a3226",
@@ -1326,7 +1335,107 @@ const FURNITURE = {
   cafeIceAmericano: { name: "아이스 아메리카노", category: "prop", kind: "cafe", price: 25, size: [3, 2.5, 6], image: "img/furn/cafeIceAmericano.png", imageSimple: "img/furn/s/cafeIceAmericano.png", hires: true, small: true },
   cafeIceMatcha: { name: "아이스 녹차 라떼", category: "prop", kind: "cafe", price: 25, size: [3, 2.5, 6], image: "img/furn/cafeIceMatcha.png", imageSimple: "img/furn/s/cafeIceMatcha.png", hires: true, small: true },
   cafeSign: { name: "카페 입간판", category: "prop", kind: "cafe", price: 90, size: [6, 7, 14], image: "img/furn/cafeSign.png", imageSimple: "img/furn/s/cafeSign.png", hires: true },
-  cafeArmchair: { name: "카페 안락의자", category: "furniture", style: "natural", price: 150, size: [9, 9, 13], image: "img/furn/cafeArmchair.png", imageSimple: "img/furn/s/cafeArmchair.png", hires: true, seat: { z: 6, back: "-x" }, use: "chair" },
+  cafeArmchair: { name: "카페 안락의자", category: "furniture", style: "cafe", price: 150, size: [9, 9, 13], image: "img/furn/cafeArmchair.png", imageSimple: "img/furn/s/cafeArmchair.png", hires: true, seat: { z: 6, back: "-x" }, use: "chair" },
+
+  // 카페 미니게임 음료·재료 (컵과 병은 정면 그림)
+  cafeAmericanoMug: { name: "아메리카노 머그", category: "prop", kind: "cafe", price: 25, size: [4, 3, 3], image: "img/furn/cafeAmericanoMug.png", imageSimple: "img/furn/s/cafeAmericanoMug.png", hires: true, small: true },
+  cafeVanillaMug: { name: "바닐라 라떼 머그", category: "prop", kind: "cafe", price: 25, size: [4, 3, 3], image: "img/furn/cafeVanillaMug.png", imageSimple: "img/furn/s/cafeVanillaMug.png", hires: true, small: true },
+  cafeChocoMug: { name: "초코 라떼 머그", category: "prop", kind: "cafe", price: 25, size: [4, 3, 3], image: "img/furn/cafeChocoMug.png", imageSimple: "img/furn/s/cafeChocoMug.png", hires: true, small: true },
+  cafeMatchaMug: { name: "녹차 라떼 머그", category: "prop", kind: "cafe", price: 25, size: [4, 3, 3], image: "img/furn/cafeMatchaMug.png", imageSimple: "img/furn/s/cafeMatchaMug.png", hires: true, small: true },
+  cafeMatchaWhipMug: { name: "휘핑 녹차 라떼", category: "prop", kind: "cafe", price: 25, size: [4, 3, 4], image: "img/furn/cafeMatchaWhipMug.png", imageSimple: "img/furn/s/cafeMatchaWhipMug.png", hires: true, small: true },
+  cafeChocoWhipMug: { name: "휘핑 초코 라떼", category: "prop", kind: "cafe", price: 25, size: [4, 3, 4], image: "img/furn/cafeChocoWhipMug.png", imageSimple: "img/furn/s/cafeChocoWhipMug.png", hires: true, small: true },
+  cafeIceLatte: { name: "아이스 카페 라떼", category: "prop", kind: "cafe", price: 25, size: [3, 2.5, 6], image: "img/furn/cafeIceLatte.png", imageSimple: "img/furn/s/cafeIceLatte.png", hires: true, small: true },
+  cafeIceVanilla: { name: "아이스 바닐라 라떼", category: "prop", kind: "cafe", price: 25, size: [3, 2.5, 6], image: "img/furn/cafeIceVanilla.png", imageSimple: "img/furn/s/cafeIceVanilla.png", hires: true, small: true },
+  cafeIceChoco: { name: "아이스 초코 라떼", category: "prop", kind: "cafe", price: 25, size: [3, 2.5, 6], image: "img/furn/cafeIceChoco.png", imageSimple: "img/furn/s/cafeIceChoco.png", hires: true, small: true },
+  cafeIceMatchaWhip: { name: "휘핑 아이스 녹차", category: "prop", kind: "cafe", price: 25, size: [3, 3, 8], image: "img/furn/cafeIceMatchaWhip.png", imageSimple: "img/furn/s/cafeIceMatchaWhip.png", hires: true, small: true },
+  cafeIceChocoWhip: { name: "휘핑 아이스 초코", category: "prop", kind: "cafe", price: 25, size: [3, 3, 8], image: "img/furn/cafeIceChocoWhip.png", imageSimple: "img/furn/s/cafeIceChocoWhip.png", hires: true, small: true },
+  cafeEspresso: { name: "에스프레소 잔", category: "prop", kind: "cafe", price: 20, size: [2.2, 2, 3], image: "img/furn/cafeEspresso.png", imageSimple: "img/furn/s/cafeEspresso.png", hires: true, small: true },
+  cafeWaterPitcher: { name: "물병", category: "prop", kind: "cafe", price: 20, size: [3.5, 2.8, 6], image: "img/furn/cafeWaterPitcher.png", imageSimple: "img/furn/s/cafeWaterPitcher.png", hires: true, small: true },
+  cafeMilk: { name: "우유", category: "prop", kind: "cafe", price: 20, size: [2.5, 2.5, 5], image: "img/furn/cafeMilk.png", imageSimple: "img/furn/s/cafeMilk.png", hires: true, small: true },
+  cafeVanillaSyrup: { name: "바닐라 시럽", category: "prop", kind: "cafe", price: 20, size: [2.3, 2.3, 7], image: "img/furn/cafeVanillaSyrup.png", imageSimple: "img/furn/s/cafeVanillaSyrup.png", hires: true, small: true },
+  cafeChocoSyrup: { name: "초코 시럽", category: "prop", kind: "cafe", price: 20, size: [2.3, 2.3, 7], image: "img/furn/cafeChocoSyrup.png", imageSimple: "img/furn/s/cafeChocoSyrup.png", hires: true, small: true },
+  cafeMatchaJar: { name: "녹차 가루 병", category: "prop", kind: "cafe", price: 20, size: [2.5, 2.5, 5], image: "img/furn/cafeMatchaJar.png", imageSimple: "img/furn/s/cafeMatchaJar.png", hires: true, small: true },
+  cafeWhipCan: { name: "휘핑크림 통", category: "prop", kind: "cafe", price: 20, size: [2, 1.8, 6], image: "img/furn/cafeWhipCan.png", imageSimple: "img/furn/s/cafeWhipCan.png", hires: true, small: true },
+  cafeTray: { name: "카페 쟁반", category: "prop", kind: "cafe", price: 20, size: [5, 4, 1], image: "img/furn/cafeTray.png", imageSimple: "img/furn/s/cafeTray.png", hires: true, small: true },
+  cafeTrash: { name: "카페 휴지통", category: "prop", kind: "cafe", price: 30, size: [3, 2.8, 7], image: "img/furn/cafeTrash.png", imageSimple: "img/furn/s/cafeTrash.png", hires: true },
+  // 카페 벽 장식 (카페 가게 배경에서 잘라 오른쪽 벽 각도로 기울인 그림)
+  cafeMenuBoard: { name: "카페 메뉴판", category: "prop", kind: "cafe", price: 80, size: [18, 1, 10], image: "img/furn/cafeMenuBoard.png", imageSimple: "img/furn/s/cafeMenuBoard.png", hires: true, type: "wall", rightWallArt: true },
+  cafeHangingPlant: { name: "행잉 화분", category: "prop", kind: "cafe", price: 60, size: [7, 1, 12], image: "img/furn/cafeHangingPlant.png", imageSimple: "img/furn/s/cafeHangingPlant.png", hires: true, type: "wall", rightWallArt: true },
+  cafeFlowerShelf: { name: "꽃병 선반", category: "prop", kind: "cafe", price: 50, size: [9, 1, 7], image: "img/furn/cafeFlowerShelf.png", imageSimple: "img/furn/s/cafeFlowerShelf.png", hires: true, type: "wall", rightWallArt: true },
+
+  // 카페 가구 (상자를 쌓아 만듦. 나중에 GPT 그림을 받으면 image로 바꿀 수 있음, art-src/guide/gpt-request-cafe-room.md)
+  cafeCounter: {
+    name: "카페 카운터", category: "furniture", style: "cafe", price: 220,
+    size: [8, 20, 14], surface: 14,
+    parts: [
+      [0.5, 0.5, 0, 7, 19, 1, "woodDark"],
+      [0.5, 0.5, 1, 7, 19, 12, "wood"],
+      [7.5, 2.5, 3, 0.01, 4, 8, "woodDark"], [7.5, 8, 3, 0.01, 4, 8, "woodDark"], [7.5, 13.5, 3, 0.01, 4, 8, "woodDark"],
+      [1.5, 19.5, 3, 5, 0.01, 8, "woodDark"],
+      [0, 0, 13, 8, 20, 1, "cafeTop"],
+    ],
+  },
+  cafeRoundTable: {
+    name: "카페 원형 테이블", category: "furniture", style: "cafe", price: 110,
+    size: [8, 8, 11], surface: 11, use: "snack",
+    parts: [
+      [2.5, 2.5, 0, 3, 3, 2 / 3, "iron"],
+      [11 / 3, 11 / 3, 2 / 3, 2 / 3, 2 / 3, 29 / 3, "iron"],
+      [0, 1.5, 31 / 3, 1.5, 5, 2 / 3, "woodLight"],
+      [1.5, 0, 31 / 3, 5, 8, 2 / 3, "woodLight"],
+      [6.5, 1.5, 31 / 3, 1.5, 5, 2 / 3, "woodLight"],
+    ],
+  },
+  cafeChair: {
+    name: "카페 의자", category: "furniture", style: "cafe", price: 80,
+    size: [6, 6, 13], seat: { z: 6, back: "-x" }, use: "chair",
+    parts: [
+      [1 / 3, 1 / 3, 0, 2 / 3, 2 / 3, 16 / 3, "woodDark"], [5, 1 / 3, 0, 2 / 3, 2 / 3, 16 / 3, "woodDark"],
+      [1 / 3, 5, 0, 2 / 3, 2 / 3, 16 / 3, "woodDark"], [5, 5, 0, 2 / 3, 2 / 3, 16 / 3, "woodDark"],
+      [0, 0, 16 / 3, 6, 6, 2 / 3, "wood"],
+      [0, 0.5, 6, 2 / 3, 2 / 3, 5, "woodDark"], [0, 8 / 3, 6, 2 / 3, 2 / 3, 5, "woodDark"], [0, 29 / 6, 6, 2 / 3, 2 / 3, 5, "woodDark"],
+      [0, 0.5, 11, 2 / 3, 5, 2, "wood"],
+    ],
+  },
+  cafeBarStool: {
+    name: "바 스툴", category: "furniture", style: "cafe", price: 70,
+    size: [5, 5, 10], seat: { z: 10 },
+    parts: [
+      [0.5, 0.5, 0, 2 / 3, 2 / 3, 9, "iron"], [23 / 6, 0.5, 0, 2 / 3, 2 / 3, 9, "iron"],
+      [0.5, 23 / 6, 0, 2 / 3, 2 / 3, 9, "iron"], [23 / 6, 23 / 6, 0, 2 / 3, 2 / 3, 9, "iron"],
+      [7 / 6, 23 / 6, 3, 8 / 3, 2 / 3, 1 / 3, "iron"], [23 / 6, 7 / 6, 3, 2 / 3, 8 / 3, 1 / 3, "iron"],
+      [0, 1, 9, 1, 3, 1, "chairCushion"],
+      [1, 0, 9, 3, 5, 1, "chairCushion"],
+      [4, 1, 9, 1, 3, 1, "chairCushion"],
+    ],
+  },
+  cakeShowcase: {
+    name: "케이크 진열장", category: "furniture", style: "cafe", price: 260,
+    size: [7, 14, 13], surface: 13,
+    parts: [
+      [0, 0, 0, 7, 14, 1, "woodDark"],
+      [0, 0, 1, 7, 14, 6, "cafeCase"],
+      [6.99, 1, 2.5, 0.01, 12, 3, "woodLight"],
+      ...[[1.5, 1.5, "cakeBase"], [1.5, 6, "chocoCake"], [1.5, 10.5, "matchaCake"], [4, 3.5, "chocoCake"], [4, 8.5, "cakeBase"]].flatMap(([x, y, c]) => [
+        [x, y, 7, 2.5, 2.5, 1 / 3, "cakePlate"],
+        [x + 1 / 3, y + 1 / 3, 22 / 3, 11 / 6, 11 / 6, 5 / 3, c],
+        [x + 1 / 3, y + 1 / 3, 9, 11 / 6, 11 / 6, 1 / 3, "cakeCream"],
+        [x + 1, y + 1, 28 / 3, 0.5, 0.5, 0.5, "berry"],
+      ]),
+      [0.25, 0.25, 7, 6.5, 13.5, 5, "cafeGlass"],
+      [0, 0, 12, 7, 14, 1, "cafeTop"],
+    ],
+  },
+  coffeeBeanSack: {
+    name: "원두 자루", category: "prop", kind: "cafe", price: 50,
+    size: [5, 5, 6],
+    parts: [
+      [0, 0, 0, 5, 5, 14 / 3, "burlap"],
+      [1 / 3, 1 / 3, 14 / 3, 13 / 3, 13 / 3, 2 / 3, "burlapDark"],
+      [1, 1, 16 / 3, 3, 3, 1 / 3, "beans"],
+      [0.5, 5, 1.5, 4, 0.01, 4 / 3, "woodDark"],
+    ],
+  },
 
 };
 
@@ -1488,6 +1597,7 @@ const FURNITURE_STYLES = [
   { id: "modern", name: "모던" },
   { id: "antique", name: "엔티크" },
   { id: "japanese", name: "일본풍" },
+  { id: "cafe", name: "카페" },
 ];
 const PROP_KINDS = [
   { id: "pet", name: "반려동물" },

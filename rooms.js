@@ -199,6 +199,8 @@ const WALLPAPERS = [
     colors: { wallLeft: "#4a5a7a", wallRight: "#3f4e6c", wallDot: "#56678a" } },
   { id: "redBricks", name: "붉은 벽돌", price: 180, pattern: "bricks",
     colors: { wallLeft: "#c98c74", wallRight: "#bd806a", wallDot: "#a86a56" } },
+  { id: "cafePanel", name: "카페 판넬", price: 150, pattern: "panel",
+    colors: { wallLeft: "#f6dcc2", wallRight: "#eed0b3", wallDot: "#a8714a" } },
 ];
 
 const FLOORS = [
@@ -216,4 +218,6 @@ const FLOORS = [
     colors: { floor: "#d8c7ad", floorLine: "#cbb89c" } },
   { id: "walnut", name: "월넛 마루", price: 180, pattern: "wood",
     colors: { floor: "#7d5638", floorLine: "#68462d" } },
+  { id: "cafeTile", name: "카페 체크 타일", price: 150, pattern: "tile",
+    colors: { floor: "#efe4d2", floorLine: "#b48e6c" } },
 ];
