@@ -6,8 +6,8 @@
 const W = 160;          // 게임 화면 가로 (도트)
 const H = 128;          // 게임 화면 세로 (도트)
 const OX = 80;          // 방 안쪽 모서리의 화면 위치
-const OY = 52;
-const ROOM = 64;        // 바닥 크기
+const OY = 49;          // (방을 72로 넓히면서 화면 가운데에 오도록 조금 올림)
+const ROOM = 72;        // 바닥 크기 (예전 64에서 넓힘. 위치가 0인 벽 쪽은 그대로라 예전 배치도 그대로 맞음)
 const FPS = 30;         // 초당 화면 갱신 수 (낮을수록 컴퓨터가 편함)
 const WALK_SPEED = 9;   // 걷는 속도
 
@@ -1350,13 +1350,14 @@ function drawFloorPattern() {
   ctx.clip();
 
   if (pattern === "tatami") {
-    // 다다미 4장 + 2장씩 엇갈린 배치
+    // 다다미 4장 + 2장씩 엇갈린 배치 (64칸 기준 배치를 바닥 크기에 맞게 늘림)
+    const sx = w / 64, sy = d / 64;
     const mats = [
       [0, 0, 32, 16], [0, 16, 32, 16],
       [32, 0, 16, 32], [48, 0, 16, 32],
       [0, 32, 16, 32], [16, 32, 16, 32],
       [32, 32, 32, 16], [32, 48, 32, 16],
-    ];
+    ].map(([x, y, mw, md]) => [x * sx, y * sy, mw * sx, md * sy]);
     for (const [x, y, mw, md] of mats) {
       quad([x, y, 0], [x + mw, y, 0], [x + mw, y + md, 0], [x, y + md, 0], "tatami");
       // 짚 무늬
