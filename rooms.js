@@ -142,6 +142,40 @@ const ROOMS = [
 //         바닥은 floor(바닥), floorLine(무늬)
 // =============================================================
 
+// ---- 같은 방 여러 개 ----
+// 가진 방은 같은 모양의 방을 더 살 수 있음 (따로 꾸미는 방). id는 "원래방id~번호" (예: "studio~2"), 이름은 "원룸 2"
+// 추가 방은 save.ownedRooms에 그 id로 들어가고, 배치·벽지·바닥도 그 id로 따로 저장됨
+const ROOM_COPY_MAX = 3;          // 같은 방을 가질 수 있는 개수 (원래 방 포함)
+const ROOM_COPY_FREE_PRICE = 500; // 원래 무료인 방(원룸)을 하나 더 살 때 가격. 나머지는 원래 가격
+
+const roomCopyPrice = (base) => base.price || ROOM_COPY_FREE_PRICE;
+
+// 추가 방 정보 (원래 방을 그대로 쓰고 id·이름·가격만 다름, 처음 배치는 비어 있음). 같은 id는 같은 객체를 돌려줌
+const roomCopies = {};
+function roomCopy(id) {
+  if (roomCopies[id]) return roomCopies[id];
+  const m = /^([a-zA-Z]+)~(\d+)$/.exec(String(id));
+  const base = m && ROOMS.find((r) => r.id === m[1]);
+  const no = m ? Number(m[2]) : 0;
+  if (!base || no < 2 || no > ROOM_COPY_MAX) return null;
+  return (roomCopies[id] = Object.assign({}, base, { id, name: `${base.name} ${no}`, base: base.id, copyNo: no, price: roomCopyPrice(base), layout: [] }));
+}
+
+// id로 방 찾기 (추가 방 포함)
+const roomById = (id) => ROOMS.find((r) => r.id === id) || roomCopy(id);
+
+// 원래 방 목록 사이사이에 가진 추가 방을 끼운 목록 (원룸, 원룸 2, 다다미방, …)
+function roomList(owned) {
+  const list = [];
+  for (const r of ROOMS) {
+    list.push(r);
+    for (let n = 2; n <= ROOM_COPY_MAX; n++) {
+      if (owned.includes(`${r.id}~${n}`)) list.push(roomCopy(`${r.id}~${n}`));
+    }
+  }
+  return list;
+}
+
 const WALLPAPERS = [
   { id: "creamDots", name: "크림 점무늬", price: 0, pattern: "dots",
     colors: { wallLeft: "#eadcc6", wallRight: "#e0cfb5", wallDot: "#d6c3a6" } },

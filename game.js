@@ -160,7 +160,7 @@ function isSleepTime(h) {
 }
 
 // ---- 현재 방 -----------------------------------------------------
-let room = null;     // 지금 보고 있는 방 (rooms.js의 ROOMS 중 하나)
+let room = null;     // 지금 보고 있는 방 (rooms.js의 ROOMS 중 하나, 또는 같은 방을 더 산 추가 방)
 let items = [];      // 이 방에 놓인 가구들
 let floorItems = [], wallItems = [], objects = [], blockers = [];
 
@@ -837,7 +837,7 @@ function drawItemOutline(item) {
 
 // ---- 방 바꾸기 ---------------------------------------------------
 function setRoom(id) {
-  room = ROOMS.find((r) => r.id === id) || ROOMS[0];
+  room = roomById(id) || ROOMS[0];
   setOrigin(room);
   applyStyle();
   // 직접 꾸민 배치가 있으면 그것을, 없으면 처음 배치를 씁니다.
@@ -854,7 +854,7 @@ function setRoom(id) {
     saveLayout({ auto: true }); // 앱을 열 때 하는 정리
   }
   if (typeof setEditing === "function") setEditing(editing);
-  roomName.textContent = room.name;
+  showRoomName();
   const moved = save.roomId !== room.id;
   save.roomId = room.id;
   Save.save(save, { auto: !moved });
@@ -863,6 +863,63 @@ function setRoom(id) {
   for (const w of walkers.values()) placeWalker(w);
   updateLock();
 }
+
+// ---- 방 이름 ------------------------------------------------------
+// 가진 방은 이름을 바꿀 수 있음 (아래 방 이름을 누름). save.roomNames { 방id: 이름 }, 비우면 원래 이름
+const ROOM_NAME_MAX = 12;
+function roomLabel(r = room) {
+  const n = save.roomNames && save.roomNames[r.id];
+  return n && ownsRoom(r) ? n : r.name;
+}
+
+function showRoomName() {
+  const can = !visiting && ownsRoom();
+  roomName.textContent = roomLabel();
+  roomName.classList.toggle("editable", can);
+  roomName.title = can ? "눌러서 방 이름 바꾸기" : "";
+  if (can) { roomName.tabIndex = 0; roomName.setAttribute("role", "button"); }
+  else { roomName.removeAttribute("tabindex"); roomName.removeAttribute("role"); }
+}
+
+function editRoomName() {
+  if (visiting || !ownsRoom() || roomName.querySelector("input")) return;
+  const r = room;
+  const input = document.createElement("input");
+  input.className = "room-name-input";
+  input.maxLength = ROOM_NAME_MAX;
+  input.value = roomLabel(r);
+  input.placeholder = r.name;
+  input.setAttribute("aria-label", "방 이름");
+  let done = false;
+  const finish = (ok) => {
+    if (done) return;
+    done = true;
+    if (ok) {
+      const name = cleanText(input.value).trim().slice(0, ROOM_NAME_MAX);
+      save.roomNames = save.roomNames || {};
+      const before = save.roomNames[r.id] || "";
+      if (!name || name === r.name) delete save.roomNames[r.id];
+      else save.roomNames[r.id] = name;
+      if ((save.roomNames[r.id] || "") !== before) Save.save(save);
+      if (!shopEl.hidden) renderShop();
+    }
+    showRoomName();
+  };
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); finish(true); }
+    else if (e.key === "Escape") { e.preventDefault(); finish(false); }
+    e.stopPropagation(); // 방 단축키 등이 먹지 않게
+  });
+  input.addEventListener("blur", () => finish(true));
+  roomName.textContent = "";
+  roomName.append(input);
+  input.focus();
+  input.select();
+}
+roomName.addEventListener("click", editRoomName);
+roomName.addEventListener("keydown", (e) => {
+  if ((e.key === "Enter" || e.key === " ") && e.target === roomName) { e.preventDefault(); editRoomName(); }
+});
 
 // 방마다 화면 가운데에 오도록 위치를 옮깁니다. (rooms.js의 offset)
 function setOrigin(r) {
@@ -934,6 +991,27 @@ function buyRoom(r) {
   toast(`${r.name}이 열렸어요. 상점에서 가구를 사서 꾸며 보세요.`);
 }
 
+// 같은 방 개수 (원래 방 포함)와 다음에 살 추가 방 id (더 못 사면 null)
+const roomCopyCount = (base) => (ownsRoom(base) ? 1 : 0) + save.ownedRooms.filter((id) => id.startsWith(base.id + "~")).length;
+function nextCopyId(base) {
+  if (!ownsRoom(base)) return null;
+  for (let n = 2; n <= ROOM_COPY_MAX; n++) if (!save.ownedRooms.includes(`${base.id}~${n}`)) return `${base.id}~${n}`;
+  return null;
+}
+
+// 가진 방을 하나 더 사기 (따로 꾸미는 방)
+function buyRoomCopy(base) {
+  const id = nextCopyId(base);
+  const price = roomCopyPrice(base);
+  if (!id || save.coins < price) return;
+  save.coins -= price;
+  save.ownedRooms.push(id);
+  Save.save(save);
+  updateCoins();
+  setRoom(id);
+  toast(`새 방(${room.name})이 생겼어요. 상점에서 가구를 사서 꾸며 보세요.`);
+}
+
 // 위에 올린 작은 물건을 받침 가구의 윗면 높이에 맞춥니다.
 // (가구 높이를 바꾼 뒤 예전 저장 데이터의 물건이 뜨거나 묻히지 않게) 바뀐 게 있으면 true
 function settleItems() {
@@ -997,8 +1075,9 @@ function saveLayout(opts) {
 }
 
 function changeRoom(step) {
-  const i = ROOMS.indexOf(room);
-  setRoom(ROOMS[(i + step + ROOMS.length) % ROOMS.length].id);
+  const list = roomList(save.ownedRooms);
+  const i = list.indexOf(room);
+  setRoom(list[(i + step + list.length) % list.length].id);
 }
 
 byId("room-prev").addEventListener("click", () => changeRoom(-1));
@@ -4795,7 +4874,7 @@ retireItems();
 function migratePianoLayouts(layouts) {
   let moved = false;
   for (const [key, list] of Object.entries(layouts || {})) {
-    const r = ROOMS.find((q) => q.id === key) || {};
+    const r = roomById(key) || {};
     for (const p of list || []) {
       if (p.id !== "piano") continue;
       const odd = ((p.rot != null ? p.rot : p.flip ? 1 : 0) & 1) === 1;
@@ -4978,7 +5057,7 @@ function furnName(id) {
 // 가지고 있는 개수 (보관함 + 모든 방에 놓인 것)
 function ownedCount(id) {
   let n = save.inventory[id] || 0;
-  for (const r of ROOMS) {
+  for (const r of roomList(save.ownedRooms)) {
     const list = r.id === room.id ? items : (save.layouts[r.id] || r.layout);
     n += list.filter((p) => p.id === id).length;
   }
@@ -5081,12 +5160,13 @@ function buyStyle(kind, st) {
   save.ownedStyles.push(st.id);
   updateCoins();
   useStyle(kind, st);
-  toast(`${withObject(st.name)} 샀어요. ${room.name}에 적용했어요.`);
+  toast(`${withObject(st.name)} 샀어요. ${roomLabel()}에 적용했어요.`);
 }
 
-// 방 상품
+// 방 상품: 방마다 원래 방, 더 산 방, (더 살 수 있으면) "하나 더" 카드
 function renderRooms() {
-  for (const r of ROOMS) {
+  const list = roomList(save.ownedRooms);
+  list.forEach((r, i) => {
     let btn;
     if (!ownsRoom(r)) {
       btn = makeButton("구매", () => confirmBuy(r.name, r.price, makeRoomPreview(r), () => { buyRoom(r); renderShop(); }, "열까요?"));
@@ -5096,9 +5176,21 @@ function renderRooms() {
     } else {
       btn = makeButton("가 보기", () => { setRoom(r.id); renderShop(); });
     }
-    const meta = ownsRoom(r) ? (r.price ? "<span>보유</span>" : "<span>기본</span>") : priceHtml(r.price);
-    shopList.append(makeCard(makeRoomPreview(r), r.name, meta, btn));
-  }
+    const meta = !ownsRoom(r) ? priceHtml(r.price) : r.base ? "<span>추가 방</span>" : r.price ? "<span>보유</span>" : "<span>기본</span>";
+    const renamed = roomLabel(r) !== r.name ? `<span>${r.name}</span>` : ""; // 이름을 바꿨으면 원래 이름도
+    shopList.append(makeCard(makeRoomPreview(r), roomLabel(r), renamed + meta, btn));
+
+    // 같은 방의 마지막 카드 뒤에 "하나 더" 카드 (가진 방이고 ROOM_COPY_MAX개보다 적을 때)
+    const base = roomById(r.base || r.id);
+    const after = list[i + 1];
+    if (after && after.base === base.id) return;
+    if (!nextCopyId(base)) return;
+    const price = roomCopyPrice(base);
+    const buy = makeButton("구매", () => confirmBuy(base.name, price, makeRoomPreview(base), () => { buyRoomCopy(base); renderShop(); }, "하나 더 살까요?"));
+    buy.dataset.price = price;
+    shopList.append(makeCard(makeRoomPreview(base), `${base.name} 하나 더`,
+      priceHtml(price) + `<span>${roomCopyCount(base)}/${ROOM_COPY_MAX}개 보유</span>`, buy));
+  });
 }
 
 // 글자 그림 미리보기 (캐릭터, 반려동물)
@@ -5635,15 +5727,19 @@ window.addEventListener("pagehide", earn);
 // 친구의 공개 정보(방 배치, 캐릭터, 반려동물, 사는 곳)로 잠시 방을 바꿔 그립니다.
 // 구경하는 동안에는 저장·코인·타이머가 멈추고, 돌아오면 내 데이터로 되돌아갑니다.
 function visitSave(snap) {
-  const roomId = ROOMS.some((r) => r.id === snap.roomId) ? snap.roomId : "studio";
+  const roomId = roomById(snap.roomId) ? snap.roomId : "studio";
   // 친구가 가진 방 전부 (예전 정보에는 지금 방만 있음)
-  const rooms = Object.assign({}, snap.rooms || {}, { [roomId]: { layout: snap.layout, styles: snap.styles } });
-  const ids = ROOMS.map((r) => r.id).filter((id) => rooms[id]);
+  const here = (snap.rooms || {})[roomId] || {};
+  const rooms = Object.assign({}, snap.rooms || {}, { [roomId]: { layout: snap.layout, styles: snap.styles, name: here.name } });
+  const ids = roomList(Object.keys(rooms)).map((r) => r.id).filter((id) => rooms[id]);
   return Object.assign(Save.defaults(), {
     roomId,
     ownedRooms: ids,
     layouts: Object.fromEntries(ids.map((id) => [id, Array.isArray(rooms[id].layout) ? rooms[id].layout : []])),
     roomStyles: Object.fromEntries(ids.map((id) => [id, rooms[id].styles || {}])),
+    // 친구가 바꾼 방 이름 (글자만, 길이 제한)
+    roomNames: Object.fromEntries(ids.filter((id) => typeof rooms[id].name === "string" && rooms[id].name.trim())
+      .map((id) => [id, rooms[id].name.trim().slice(0, ROOM_NAME_MAX)])),
     lampOn: snap.lampOn !== false,
     look: snap.look || {},
     pet: snap.pet || null,
@@ -5681,13 +5777,13 @@ function startVisit(friend, snap) {
 function renderVisitRooms() {
   const box = byId("visit-rooms");
   box.innerHTML = "";
-  const list = ROOMS.filter((r) => save.ownedRooms.includes(r.id));
+  const list = roomList(save.ownedRooms).filter((r) => save.ownedRooms.includes(r.id));
   box.hidden = list.length < 2;
   for (const r of list) {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "visit-room" + (r.id === room.id ? " active" : "");
-    b.textContent = r.name;
+    b.textContent = roomLabel(r);
     b.addEventListener("click", () => visitRoom(r.id));
     box.append(b);
   }
