@@ -761,6 +761,10 @@ button:disabled {
   font-size: 13px;
   text-align: center;
 }
+#room-name { max-width: 8em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* 긴 이름은 …로 */
+#room-name.editable { cursor: pointer; border-radius: 6px; }
+#room-name.editable:hover { background: rgba(0, 0, 0, 0.05); }
+.room-name-input { box-sizing: border-box; width: 6em; padding: 2px 4px; font: inherit; text-align: center; }
 
 .hint,
 .placeholder {
