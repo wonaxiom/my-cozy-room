@@ -1136,7 +1136,7 @@ const Cafe = (() => {
   function renderResult() {
     statusEl.textContent = "";
     const r = lastResult;
-    body.append(hero(r.over ? "게임 오버" : r.best && r.sales ? "최고 매출 달성!" : "오늘 영업 끝"));
+    body.append(hero(r.over ? CAFE_OVER_TEXT : r.best && r.sales ? "최고 매출 달성!" : "오늘 영업 끝"));
     const box = el("div", "cafe-result");
     const dl = el("dl", "cafe-result-list");
     for (const [k, v] of [["난이도", r.mode], ["매출", r.sales], ["손님", `${r.served}명`], ["놓친 손님", `${r.missed}명`], ["실수", `${r.strikes}/${r.lives}`], ["받은 코인", r.coins]]) {
