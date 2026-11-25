@@ -822,9 +822,8 @@ const OUTLINE = "#3a2a24";
 function drawItemOutline(item) {
   const u = 1 / RES;
   const shapes = [];
-  for (const [dx, dy, dz, w, d, h, c] of partsOf(item)) {
+  for (const [dx, dy, dz, w, d, h] of partsOf(item)) {
     if (w < 0.05 || d < 0.05) continue; // 면에 붙인 얇은 무늬는 빼기
-    if (colorOf(c).startsWith("rgba")) continue; // 비쳐 보이는 유리는 테두리 없이 (뒤의 진한 색이 비치지 않게)
     const x = item.x + dx, y = item.y + dy, z = item.z + dz;
     shapes.push([
       [x, y, z + h], [x + w, y, z + h], [x + w, y, z],

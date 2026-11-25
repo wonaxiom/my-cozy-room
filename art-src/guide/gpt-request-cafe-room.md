@@ -1,23 +1,17 @@
 # 카페 방 꾸미기 가구·벽 장식 GPT 요청문 (2026-11)
 
-방을 카페처럼 꾸미는 가구 중 임시로 만든 것을 그림으로 바꾸기 위한 요청문입니다.
-- 가구: 카페 미니게임 그림이 없어서 지금은 상자(`parts`)로 만듦
-- 벽 장식: 카페 가게 배경의 정면 그림을 기울여 만들어서 두께가 없고 입체감이 약함
+방을 카페처럼 꾸미는 가구 중 카페 미니게임에 그림이 없던 것을 받기 위한 요청문입니다.
+- 가구: 처음에는 상자(`parts`)로 만들었던 것
+- 벽 장식: 처음에는 카페 가게 배경의 정면 그림을 기울여 만들어서 두께가 없고 입체감이 약했던 것
 
 GPT 프로젝트 지침([gpt-project-instructions.md](gpt-project-instructions.md))이 들어 있다는 기준으로, 공통 규칙은 빼고 적었습니다.
 
 | 요청 | 내용 | 첨부 그림 | 상태 |
 |---|---|---|---|
-| 1 | 카페 가구 6칸 (카운터, 원형 테이블, 의자, 바 스툴, 케이크 진열장, 원두 자루) | `art-src/cafe/gpt-furniture-iso.webp`, `art-src/guide/size-ref.png` | 그림 대기 |
-| 2 | 카페 벽 장식 3칸 (메뉴판, 행잉 화분, 꽃병 선반) | `art-src/guide/cafe-wall-ref.png`, `art-src/cafe/gpt-furniture-iso.webp` | 그림 대기 |
+| 1 | 카페 가구 6칸 (카운터, 원형 테이블, 의자, 바 스툴, 케이크 진열장, 원두 자루) | `art-src/cafe/gpt-furniture-iso.webp`, `art-src/guide/size-ref.png` | 완료 |
+| 2 | 카페 벽 장식 3칸 (메뉴판, 행잉 화분, 꽃병 선반) | `art-src/guide/cafe-wall-ref.png`, `art-src/cafe/gpt-furniture-iso.webp` | 완료 |
 
-## 받은 뒤 넣는 방법
-
-1. 원본 시트를 `art-src/cafe/`에 넣습니다.
-2. `art-src/tools/cafe_furniture.py`의 `ITEMS`에 가구 id, 시트, 칸, ver.세밀 폭을 적고 실행합니다.
-3. `data.js`의 해당 가구에서 `parts`를 지우고 `image`, `imageSimple`, `hires: true`를 적습니다.
-   - 그림 가구는 앞면이 오른쪽 아래를 봅니다. 의자는 `seat.back`을 그림에 맞게 고칩니다.
-4. 벽 장식은 `WALL_ITEMS`(배경에서 잘라 기울이는 목록)에서 빼고 `ITEMS`에 넣습니다. `data.js`의 `rightWallArt: true`는 그대로 둡니다.
+> 요청 1, 2 모두 게임에 넣었습니다 (2026-11-25). 원본은 `art-src/cafe/gpt-room-furniture.webp`(가구), `gpt-room-wall.webp`(벽 장식, 체크무늬 배경을 지움)이고, `art-src/tools/cafe_furniture.py`의 `ITEMS`로 아래 폭에 맞춰 줄였습니다.
 
 | 가구 id | 이름 | size (가로, 세로, 높이) | ver.세밀 폭 |
 |---|---|---|---|

@@ -4,13 +4,13 @@
 # 실행: 저장소 맨 위 폴더에서  python3 art-src/tools/cafe_furniture.py
 import os
 import sys
-from collections import deque
 
 import numpy as np
 from PIL import Image
 
 sys.path.insert(0, os.path.dirname(__file__))
-from cafe_proc import cells_of, pixelize  # noqa: E402
+from cafe_proc import SRC, alpha_mask, pixelize, spans  # noqa: E402
+from japanese_proc import clear_checker  # noqa: E402
 
 OUT = "img/furn/"
 
@@ -51,75 +51,37 @@ ITEMS = {
     # 쟁반, 휴지통
     "cafeTray": ("gpt-small.webp", 17.5, 0, 1, 22),
     "cafeTrash": ("gpt-small.webp", 17.5, 0, 0, 14),
+    # 방 꾸미기용으로 따로 받은 카페 가구 (gpt-room-furniture.webp, 앞면이 오른쪽 아래)
+    "cafeCounter": ("gpt-room-furniture.webp", 11, 0, 0, 67),
+    "cafeRoundTable": ("gpt-room-furniture.webp", 11, 0, 1, 38),
+    "cafeChair": ("gpt-room-furniture.webp", 11, 0, 2, 29),
+    "cafeBarStool": ("gpt-room-furniture.webp", 11, 0, 3, 24),
+    "cakeShowcase": ("gpt-room-furniture.webp", 11, 0, 4, 50),
+    "coffeeBeanSack": ("gpt-room-furniture.webp", 11, 0, 5, 24),
+    # 카페 벽 장식 (gpt-room-wall.webp, 오른쪽 벽에 걸린 모습. GPT가 그려 넣은 체크무늬 배경을 지움)
+    "cafeMenuBoard": ("gpt-room-wall.webp", 11, 0, 0, 45),
+    "cafeHangingPlant": ("gpt-room-wall.webp", 11, 0, 1, 19),
+    "cafeFlowerShelf": ("gpt-room-wall.webp", 11, 0, 2, 24),
 }
 
-# 벽 장식: 카페 가게 배경(gpt-bg.webp)에서 잘라 낸 정면 그림을 오른쪽 벽 각도(가로 2칸에 세로 1칸)로 기울임
-# 가구 id: (자를 범위 [왼쪽, 위, 오른쪽, 아래], ver.세밀 앞면 폭)
-# 그림 폭 = 앞면 폭 + 2 (data.js size의 벽 따라 길이 + 1) × 2.4 근처
-WALL_ITEMS = {
-    "cafeMenuBoard": ((740, 20, 1290, 350), 46),
-    "cafeHangingPlant": ((302, 16, 480, 320), 22),
-    "cafeFlowerShelf": ((1315, 80, 1525, 255), 27),
-}
+# 체크무늬 배경을 지워야 하는 시트
+CHECKER = {"gpt-room-wall.webp"}
 
 
-def wall_mask(c):
-    """가게 벽(살구색, 그림자 포함)을 바깥에서부터 지우고, 가장 큰 덩어리와 비슷한 크기의 덩어리만 남김"""
-    h, w = c.shape[:2]
-    r, g, b = c[:, :, 0], c[:, :, 1], c[:, :, 2]
-    wall = (r > 212) & (r - b > 68) & (r - b < 110) & (r - g > 28) & (r - g < 64) & (g > 150)
-    bg = np.zeros((h, w), bool)
-    q = deque()
-    for y in range(h):
-        for x in range(w):
-            if (y in (0, h - 1) or x in (0, w - 1)) and wall[y, x]:
-                bg[y, x] = True
-                q.append((y, x))
-    while q:
-        y, x = q.popleft()
-        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-            ny, nx = y + dy, x + dx
-            if 0 <= ny < h and 0 <= nx < w and wall[ny, nx] and not bg[ny, nx]:
-                bg[ny, nx] = True
-                q.append((ny, nx))
-    m = ~bg
-    # 덩어리 나누기 (빛줄기 자국 같은 작은 조각 지우기)
-    label = np.zeros((h, w), int)
-    sizes = [0]
-    for y in range(h):
-        for x in range(w):
-            if not m[y, x] or label[y, x]:
-                continue
-            n = len(sizes)
-            label[y, x] = n
-            q.append((y, x))
-            cnt = 0
-            while q:
-                cy, cx = q.popleft()
-                cnt += 1
-                for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                    ny, nx = cy + dy, cx + dx
-                    if 0 <= ny < h and 0 <= nx < w and m[ny, nx] and not label[ny, nx]:
-                        label[ny, nx] = n
-                        q.append((ny, nx))
-            sizes.append(cnt)
-    keep = [i for i, s in enumerate(sizes) if i and s >= max(sizes) * 0.02]
-    return np.isin(label, keep)
-
-
-def shear_right_wall(o):
-    """정면 그림을 오른쪽 벽 각도로: 오른쪽으로 2픽셀 갈 때마다 1픽셀 내려감"""
-    h, w = o.shape[:2]
-    out = np.zeros((h + (w + 1) // 2, w, 4), np.uint8)
-    for x in range(w):
-        dy = x // 2
-        out[dy:dy + h, x] = o[:, x]
+def cells_of(fname, p):
+    """시트를 줄과 칸으로 나눠 [(줄 번호, 칸 그림, 칸 마스크)] (cafe_proc.cells_of에 체크무늬 지우기를 더함)"""
+    a = np.array(Image.open(SRC + fname).convert("RGBA")).astype(int)
+    m = alpha_mask(a)
+    if fname in CHECKER:
+        m = clear_checker(a, m)
+    out = []
+    for r, (y0, y1) in enumerate(spans(m.any(1), int(p * 3))):
+        for x0, x1 in spans(m[y0:y1].any(0), int(p * 3)):
+            cm = m[y0:y1, x0:x1]
+            ys, xs = np.nonzero(cm)
+            out.append((r, a[y0 + ys.min():y0 + ys.max() + 1, x0 + xs.min():x0 + xs.max() + 1],
+                        cm[ys.min():ys.max() + 1, xs.min():xs.max() + 1]))
     return out
-
-
-def crop(o):
-    ys, xs = np.nonzero(o[:, :, 3])
-    return o[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
 
 
 def save_pair(name, detail, simple):
@@ -138,14 +100,6 @@ def main():
         _, a, m = cells[col]
         detail = pixelize(a, m, a.shape[1] / width)
         simple = pixelize(a, m, a.shape[1] / max(4, round(width / 3)))
-        save_pair(name, detail, simple)
-
-    bg = np.array(Image.open("art-src/cafe/gpt-bg.webp").convert("RGBA")).astype(int)
-    for name, ((x0, y0, x1, y1), width) in WALL_ITEMS.items():
-        c = bg[y0:y1, x0:x1]
-        m = wall_mask(c)
-        detail = crop(shear_right_wall(pixelize(c, m, c.shape[1] / width)))
-        simple = crop(shear_right_wall(pixelize(c, m, c.shape[1] / max(4, round(width / 3)))))
         save_pair(name, detail, simple)
 
 
