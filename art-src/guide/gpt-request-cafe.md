@@ -22,6 +22,7 @@ GPT 프로젝트 지침([gpt-project-instructions.md](gpt-project-instructions.m
 | 15 | 특별 손님 2명 (큰손 손님, 급한 손님) | `art-src/guide/cafe-guest-ref.png`, `art-src/outfit/santa_male.webp` | 먼저 |
 
 > 요청 1~6 모두 게임에 넣었습니다 (2026-11-22). 요청 4~6 원본은 `art-src/cafe/gpt-bg.webp`, `gpt-counter.webp`, `gpt-small.webp`입니다.
+> 요청 12~15도 넣었습니다 (2026-11-25). 원본은 `art-src/cafe/gpt-cups2.webp`, `gpt-cups-whip.webp`, `gpt-whip-can.png`, `gpt-guests.webp`이고, `cafe_proc.py`의 `FITS`로 줄마다 컵 폭(따뜻한 25, 아이스 22도트)에 맞춰 줄였습니다. 아이스 초코 휘핑은 크림 위에도 드리즐을 뿌린 그림을 골랐습니다.
 > 요청 7~11도 넣었습니다 (2026-11-22). 원본은 `art-src/cafe/gpt-brew-bg.webp`, `gpt-brew-machines.webp`, `gpt-cups-making.webp`, `gpt-hole.webp`, `gpt-ticket.png`입니다. (휴지통 그림 `trash.png`는 버리는 구멍으로 바꿔서 쓰지 않음) 원본은 `art-src/cafe/gpt-cups.webp`, `gpt-ingredients.webp`, `gpt-upgrades.webp`이고, 정리는 `art-src/tools/cafe_proc.py`로 했습니다.
 
 ## 공통 구성

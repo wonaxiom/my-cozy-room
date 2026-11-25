@@ -3,15 +3,17 @@
 // 카운터 너머로 손님이 들어와 주문하면, 컵을 꺼내고 머신으로 에스프레소를 내리고
 // 재료를 넣어 만든 뒤 손님을 눌러 건네줍니다.
 // 빨리 주면 팁, 오래 기다리게 하면 덜 내고, 시간이 다 되면 화내며 나갑니다.
+// 실수(화나서 나간 손님, 잘못 건넨 음료)가 쌓이면 영업이 일찍 끝납니다(게임 오버).
 // 판 매출은 코인으로 받고(하루 상한), 코인으로 메뉴와 장비를 늘립니다.
 // =============================================================
 
 const CAFE_ROUND_SECONDS = 90;  // 한 판 영업 시간
 const CAFE_SEATS = 3;           // 카운터 앞에 설 수 있는 손님 수
-// 난이도: 손님이 기다리는 시간(초), 빨리 건넸을 때 받는 팁, 하루에 받을 수 있는 코인(난이도마다 따로). 영업 전 화면에서 고름
+// 난이도: 손님이 기다리는 시간(초), 빨리 건넸을 때 받는 팁, 하루에 받을 수 있는 코인(난이도마다 따로),
+// 실수할 수 있는 횟수(lives번 실수하면 게임 오버). 영업 전 화면에서 고름
 const CAFE_MODES = [
-  { id: "normal", name: "보통", patience: 45, tip: 2, dailyMax: 80 },
-  { id: "hard", name: "어려움", patience: 35, tip: 3, dailyMax: 100 },
+  { id: "normal", name: "보통", patience: 45, tip: 2, dailyMax: 80, lives: 3 },
+  { id: "hard", name: "어려움", patience: 35, tip: 3, dailyMax: 100, lives: 3 },
 ];
 const CAFE_SHOT_SECONDS = [2.0, 1.3, 0.7]; // 커피 머신 단계별 에스프레소 내리는 시간
 // 기다림이 얼마나 남았을 때 건넸는지에 따라: 넉넉하면 팁, 조금 남았으면 덜 냄
@@ -27,15 +29,26 @@ const CAFE_INGREDIENTS = [
   { id: "vanilla", name: "바닐라", drop: "#efd9a0" },
   { id: "choco", name: "초코", drop: "#6b3f2a" },
   { id: "matcha", name: "녹차", drop: "#8fb36a" },
+  { id: "whip", name: "휘핑크림", drop: "#fffaf0" }, // 병 줄이 아니라 작업대 앞쪽에 놓임 (B.whip)
 ];
 
 // 메뉴: recipe는 넣어야 할 재료 (순서는 상관없음), unlock이 있으면 그 메뉴를 사야 나옴
+// whip이 있으면 가끔 휘핑크림을 올려 달라는 주문이 나옴 (그림 hot-메뉴-whip.png)
 const CAFE_MENU = [
   { id: "americano", name: "아메리카노", price: 4, recipe: ["shot", "water"] },
   { id: "latte", name: "카페라떼", price: 5, recipe: ["shot", "milk"] },
   { id: "vanilla", name: "바닐라 라떼", price: 6, recipe: ["shot", "milk", "vanilla"], unlock: 80 },
-  { id: "choco", name: "초코 라떼", price: 6, recipe: ["choco", "milk"], unlock: 120 },
-  { id: "matcha", name: "녹차 라떼", price: 7, recipe: ["matcha", "milk"], unlock: 160 },
+  { id: "choco", name: "초코 라떼", price: 6, recipe: ["choco", "milk"], unlock: 120, whip: true },
+  { id: "matcha", name: "녹차 라떼", price: 7, recipe: ["matcha", "milk"], unlock: 160, whip: true },
+];
+const CAFE_WHIP_CHANCE = 0.4;   // 휘핑크림을 올릴 수 있는 메뉴에서 휘핑크림까지 주문할 확률
+const CAFE_WHIP_PRICE = 1;      // 휘핑크림 값
+
+// 특별 손님: 외형이 정해진 손님 (그림 img/cafe/guest-id.png). 손님이 올 때 chance 확률로 이 손님이 옴 (같은 손님은 한 번에 한 명)
+// tipMul: 빨리 건넸을 때 팁 배수, midTip: 기다림이 30~60% 남았을 때도 기본 팁을 줌, patienceMul: 기다리는 시간 배수
+const CAFE_GUESTS = [
+  { id: "rich", name: "큰손 손님", chance: 0.12, tipMul: 3, midTip: true, patienceMul: 1, hello: "팁은 두둑이 줄게요" },
+  { id: "rush", name: "급한 손님", chance: 0.15, tipMul: 1, midTip: false, patienceMul: 0.6, hello: "빨리 좀 주세요!" },
 ];
 
 // 장비 업그레이드: level은 지금 단계, prices는 다음 단계로 올리는 가격
@@ -79,7 +92,8 @@ const Cafe = (() => {
   const todayCoins = (id) => daily().coins[id] || 0;
 
   const menuOpen = () => CAFE_MENU.filter((m) => !m.unlock || data().menu.includes(m.id));
-  const ingredientOpen = () => CAFE_INGREDIENTS.filter((g) => menuOpen().some((m) => m.recipe.includes(g.id)));
+  const ingredientOpen = () => CAFE_INGREDIENTS.filter((g) => menuOpen().some((m) => m.recipe.includes(g.id) || (g.id === "whip" && m.whip)));
+  const whipOpen = () => menuOpen().some((m) => m.whip);
   const shotSeconds = () => CAFE_SHOT_SECONDS[data().machine] || CAFE_SHOT_SECONDS[0];
   const mode = () => CAFE_MODES.find((m) => m.id === data().mode);
   const patience = () => mode().patience * (data().chair ? 1.3 : 1);
@@ -89,6 +103,8 @@ const Cafe = (() => {
   // ---- 그림 (img/cafe/, 정리 스크립트: art-src/tools/cafe_proc.py) ----
   // 그림 크기 [가로, 세로] (도트)
   const ART_SIZE = { hot: [25, 27], ice: [22, 30], ingredient: [20, 28], upgrade: [43, 45] };
+  const WHIP_ART = CAFE_MENU.filter((m) => m.whip).map((m) => m.id); // 휘핑크림 올린 컵 그림이 있는 음료
+  const GUEST_ART_H = 54; // 특별 손님 그림에서 모자를 뺀 키 (도트). 손님 키 GUEST_H에 맞춰 같은 배율로 키움
 
   // 목록·버튼용 <img>
   function art(file, size, scale) {
@@ -104,7 +120,8 @@ const Cafe = (() => {
   const cupArt = (temp, drink, scale) => art(`${temp}-${drink}`, ART_SIZE[temp], scale);
 
   // 캔버스용 그림 (처음 쓸 때 한 번 불러 둠)
-  const SCENE_ART = ["bg", "counter", "tray", "hole", "heart", "angry", "brew-bg", "ticket", "brew-machine1", "brew-machine2", "brew-machine3"];
+  const SCENE_ART = ["bg", "counter", "tray", "hole", "heart", "angry", "brew-bg", "ticket", "brew-machine1", "brew-machine2", "brew-machine3",
+    ...CAFE_GUESTS.map((k) => `guest-${k.id}`)];
   const MAKING = ["shot", "water", "milk"]; // 만드는 중인 컵 그림 (hot-shot.png 처럼)
   const images = {};
   function img(file) {
@@ -118,7 +135,9 @@ const Cafe = (() => {
   }
 
   // 지금 넣은 재료에 맞는 컵 그림: 완성 음료, 아니면 만드는 중(에스프레소만·물만·우유만), 아니면 가장 가까운 음료
+  // 휘핑크림은 음료를 정할 때 빼고 봄 (휘핑 그림은 cupFile에서 붙임)
   function drinkOf(adds) {
+    adds = adds.filter((x) => x !== "whip");
     const exact = CAFE_MENU.find((m) => sameRecipe(m.recipe, adds));
     if (exact) return exact.id;
     if (adds.length === 1 && MAKING.includes(adds[0])) return adds[0];
@@ -135,6 +154,11 @@ const Cafe = (() => {
   function sameRecipe(a, b) {
     return a.length === b.length && [...a].sort().join() === [...b].sort().join();
   }
+
+  // 손님이 주문한 재료와 값 (휘핑크림 주문이면 휘핑크림까지)
+  const orderRecipe = (g) => (g.whip ? [...g.menu.recipe, "whip"] : g.menu.recipe);
+  const orderPrice = (g) => g.menu.price + (g.whip ? CAFE_WHIP_PRICE : 0);
+  const orderFile = (g) => `${g.temp}-${g.menu.id}${g.whip ? "-whip" : ""}`;
 
   // ---- 손님 ----
   const pick = (list) => list[Math.floor(Math.random() * list.length)];
@@ -188,6 +212,7 @@ const Cafe = (() => {
     slot: { x: 22, y: 85 },         // 머신 안 컵 자리
     tray: { x: 62, y: 86 },         // 쟁반 위 컵 자리
     hole: { x: 124, y: 89 },        // 버리는 구멍
+    whip: { x: 94, y: 89 },         // 휘핑크림 통 (작업대 앞쪽, 쟁반과 버리는 구멍 사이)
     nav: { x: 0, y: 58, w: 19, h: 48 }, // 주문 화면으로 가는 탭 (도트)
   };
 
@@ -219,6 +244,8 @@ const Cafe = (() => {
       floats: [],         // 떠오르는 글자 (주문 화면)
       tip: "", tipUntil: 0,
       sales: 0, served: 0, missed: 0,
+      strikes: 0,         // 실수한 횟수 (mode().lives번이면 게임 오버)
+      overAt: 0,          // 게임 오버: 이 시각에 영업을 마감 (그동안 "게임 오버" 표시)
       last: now,
     };
   }
@@ -250,6 +277,16 @@ const Cafe = (() => {
     round.floats.push({ x, y, text, color, t0: Date.now() });
   }
 
+  // 실수 하나 (화나서 나간 손님, 잘못 건넨 음료). 다 쓰면 잠깐 "게임 오버"를 보여 주고 마감
+  function strike(why) {
+    if (round.overAt) return;
+    round.strikes += 1;
+    const left = mode().lives - round.strikes;
+    if (left > 0) return say(`${why} 실수 ${round.strikes}/${mode().lives}`);
+    round.overAt = Date.now() + 1800;
+    hover = null;
+  }
+
   // 캐릭터 그림의 빈 여백을 잘라 냄 (키를 맞추기 쉽게)
   function trimmed(c) {
     const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
@@ -279,20 +316,32 @@ const Cafe = (() => {
     const taken = round.guests.map((g) => g.spot);
     const free = SPOTS.map((_, i) => i).filter((i) => !taken.includes(i));
     if (!free.length) return;
-    const look = randomLook();
+    const kind = pickKind();
+    const menu = pick(menuOpen());
     round.guests.push({
       spot: pick(free),
-      look,
-      art: trimmed(makeHeroPreview(look)),
-      menu: pick(menuOpen()),
+      kind,             // 특별 손님 (CAFE_GUESTS) 또는 null
+      art: kind ? null : trimmed(makeHeroPreview(randomLook())), // 특별 손님은 정해진 그림
+      menu,
+      whip: !!menu.whip && Math.random() < CAFE_WHIP_CHANCE,
       temp: Math.random() < 0.5 ? "hot" : "ice",
       x: DOOR_X,
       state: "enter",   // enter(들어오는 중) / wait(주문하고 기다림) / leave(나가는 중)
       until: 0,
-      total: patience() * 1000,
+      total: patience() * (kind ? kind.patienceMul : 1) * 1000,
       mood: null,       // 나갈 때 표정: happy / angry
       wrongUntil: 0,    // "이게 아니에요" 보여 주는 동안
     });
+  }
+
+  // 이번 손님이 특별 손님인지 (이미 가게에 있는 특별 손님은 또 오지 않음)
+  function pickKind() {
+    let r = Math.random();
+    for (const k of CAFE_GUESTS) {
+      if (r < k.chance) return round.guests.some((g) => g.kind === k && g.state !== "leave") ? null : k;
+      r -= k.chance;
+    }
+    return null;
   }
 
   function leave(g, mood) {
@@ -305,11 +354,16 @@ const Cafe = (() => {
       const target = SPOTS[g.spot];
       if (g.state === "enter") {
         g.x = Math.min(target, g.x + WALK * dt);
-        if (g.x >= target) { g.state = "wait"; g.until = now + g.total; }
+        if (g.x >= target) {
+          g.state = "wait";
+          g.until = now + g.total;
+          if (g.kind) floatText(g.x, FEET_Y - 34, g.kind.hello, g.kind.id === "rich" ? "#9a7420" : "#c0463a");
+        }
       } else if (g.state === "wait" && now >= g.until) {
         round.missed += 1;
         floatText(g.x, FEET_Y - GUEST_H - 14, "흥! 너무 늦어요", "#c0463a");
         leave(g, "angry");
+        strike("손님이 화나서 나갔어요.");
       } else if (g.state === "leave") {
         g.x -= WALK * 1.2 * dt;
       }
@@ -358,14 +412,14 @@ const Cafe = (() => {
     tween(cup, B.tray.x, B.tray.y, 220, 6, () => { cup.at = "tray"; });
   }
 
-  function pour(id, bx) {
+  function pour(id, bx, by = B.bottleY) {
     const cup = round.cup;
     if (!cup) return say("선반에서 컵을 먼저 꺼내요.");
     if (cupBusy()) return say("컵이 머신에서 나올 때까지 기다려요.");
     if (cup.adds.includes(id) || round.drops.some((d) => d.id === id)) return say(`${ingName(id)}는 이미 넣었어요.`);
     round.lift[id] = Date.now() + 380;
     const g = CAFE_INGREDIENTS.find((x) => x.id === id);
-    const drop = { id, color: g.drop, x: bx, y: B.bottleY - 28 };
+    const drop = { id, color: g.drop, x: bx, y: by - 28 };
     tween(drop, B.tray.x, B.tray.y - 22, 320, 10, () => {
       round.drops = round.drops.filter((d) => d !== drop);
       if (round.cup === cup) cup.adds.push(id);
@@ -419,7 +473,7 @@ const Cafe = (() => {
     if (g.state !== "wait") return;
     if (!round.pickup.length) return say("제작 화면에서 음료를 만들어 픽업대로 보내요.");
     // 주문과 맞는 음료가 있으면 그것을, 없으면 고른 음료를 건넴
-    let i = round.pickup.findIndex((d) => d.temp === g.temp && sameRecipe(d.adds, g.menu.recipe));
+    let i = round.pickup.findIndex((d) => d.temp === g.temp && sameRecipe(d.adds, orderRecipe(g)));
     if (i < 0) i = round.sel;
     if (i == null) return say("이 손님 주문과 맞는 음료가 없어요.");
     const d = round.pickup.splice(i, 1)[0];
@@ -432,15 +486,20 @@ const Cafe = (() => {
   function judge(g, cup) {
     if (g.state !== "wait") return;
     const headY = FEET_Y - GUEST_H;
-    if (cup.temp !== g.temp || !sameRecipe(cup.adds, g.menu.recipe)) {
+    if (cup.temp !== g.temp || !sameRecipe(cup.adds, orderRecipe(g))) {
       g.until -= g.total * 0.2;
       g.wrongUntil = Date.now() + 1200;
       floatText(g.x, headY - 6, "이게 아니에요", "#c0463a");
+      strike("주문과 다른 음료예요.");
       return;
     }
+    // 빨리 주면 팁 (큰손 손님은 몇 배로, 조금 기다려도 기본 팁), 늦으면 덜 냄
     const left = (g.until - Date.now()) / g.total;
-    let pay = g.menu.price, note = "";
-    if (left > CAFE_TIP_OVER) { const tip = mode().tip; pay += tip; note = ` (팁 ${tip})`; }
+    const k = g.kind;
+    let pay = orderPrice(g), note = "", tip = 0;
+    if (left > CAFE_TIP_OVER) tip = mode().tip * (k ? k.tipMul : 1);
+    else if (left >= CAFE_LATE_UNDER && k && k.midTip) tip = mode().tip;
+    if (tip) { pay += tip; note = ` (팁 ${tip})`; }
     else if (left < CAFE_LATE_UNDER) { pay = Math.max(1, pay - CAFE_LATE_CUT); note = " (늦었어요)"; }
     round.sales += pay;
     round.served += 1;
@@ -450,7 +509,7 @@ const Cafe = (() => {
 
   // ---- 누를 수 있는 곳 (도트 좌표) ----
   function bottles() {
-    return ingredientOpen().filter((g) => g.id !== "shot").map((g, i) => ({ id: g.id, x: B.bottleX + i * 20 }));
+    return ingredientOpen().filter((g) => g.id !== "shot" && g.id !== "whip").map((g, i) => ({ id: g.id, x: B.bottleX + i * 20 }));
   }
   const u = (x, y, w, h) => ({ x: x * U, y: y * U, w: w * U, h: h * U }); // 제작 화면 칸 → 도트
 
@@ -463,6 +522,7 @@ const Cafe = (() => {
         { name: "커피 머신 (에스프레소)", ...u(2, 45, 40, 44), act: useMachine },
       ];
       for (const b of bottles()) list.push({ name: ingName(b.id), ...u(b.x - 10, B.bottleY - 28, 20, 28), act: () => pour(b.id, b.x) });
+      if (whipOpen()) list.push({ name: "휘핑크림", ...u(B.whip.x - 8, B.whip.y - 27, 16, 27), act: () => pour("whip", B.whip.x, B.whip.y) });
       list.push({ name: "버리기", ...u(110, 74, 28, 17), act: trashBrew });
       if (round.cup && !cupBusy()) list.push({ name: "픽업대로 보내기", ...u(B.tray.x - 14, B.tray.y - 28, 28, 30), act: send });
       return list;
@@ -474,14 +534,14 @@ const Cafe = (() => {
     round.pickup.forEach((d, i) => list.push({ name: "음료 고르기", x: PICKUP[i] - 13, y: BASE_Y - 32, w: 26, h: 33, act: () => pickSelect(i) }));
     for (const g of round.guests) {
       if (g.state !== "wait") continue;
-      list.push({ id: "guest", name: "손님에게 건네기", x: g.x - 18, y: FEET_Y - GUEST_H - 42, w: 36, h: COUNTER_Y - (FEET_Y - GUEST_H - 42), act: () => serve(g) });
+      list.push({ id: "guest", name: `${g.kind ? g.kind.name : "손님"}에게 건네기`, x: g.x - 18, y: FEET_Y - GUEST_H - 42, w: 36, h: COUNTER_Y - (FEET_Y - GUEST_H - 42), act: () => serve(g) });
     }
     return list;
   }
 
   // 누른 곳의 물건. 휴대폰처럼 손가락으로 누를 때는(pad) 물건에서 조금 벗어나도 가장 가까운 물건을 고름
   function hit(px, py, pad = 0) {
-    if (round.slide) return null;
+    if (round.slide || round.overAt) return null;
     const list = hotspots();
     for (let i = list.length - 1; i >= 0; i--) {
       const h = list[i];
@@ -518,12 +578,12 @@ const Cafe = (() => {
     if (round.slide && now - round.slide.t0 >= SLIDE_MS) round.slide = null;
     if (round.sel != null && round.sel >= round.pickup.length) round.sel = null;
 
-    if (now >= round.nextAt && now < round.endAt - 8000) {
+    if (!round.overAt && now >= round.nextAt && now < round.endAt - 8000) {
       spawn();
       const [a, b] = spawnGap();
       round.nextAt = now + (a + Math.random() * (b - a)) * 1000;
     }
-    if (now >= round.endAt) return finish();
+    if (now >= round.endAt || (round.overAt && now >= round.overAt)) return finish();
 
     updateHud(now);
     draw(now);
@@ -551,8 +611,9 @@ const Cafe = (() => {
   }
 
   function drawGuest(g, now) {
-    const c = g.art;
-    const s = GUEST_H / c.height;
+    const c = g.art || img(`guest-${g.kind.id}`);
+    if (!c) return;
+    const s = g.art ? GUEST_H / c.height : GUEST_H / GUEST_ART_H; // 특별 손님은 모자만큼 더 큼
     const w = c.width * s, h = c.height * s;
     const walking = g.state !== "wait";
     const bob = walking && Math.floor(now / 140) % 2 ? 1 : 0;
@@ -584,15 +645,26 @@ const Cafe = (() => {
       return;
     }
     if (g.state !== "wait") return;
-    const bw = 32, bh = 40, bx = Math.round(g.x - bw / 2), by = headY - bh - 5;
+    const extra = g.whip ? (g.temp === "ice" ? 8 : 1) : 0; // 휘핑크림 컵은 그만큼 키가 큼
+    const bw = 32, bh = 40 + extra, bx = Math.round(g.x - bw / 2), by = headY - bh - 5;
     bubble(bx, by, bw, bh);
-    drawImg(`${g.temp}-${g.menu.id}`, g.x, by + 33);
+    drawImg(orderFile(g), g.x, by + 33 + extra);
     const r = ratio(g, now);
     rect(bx + 3, by + bh - 5, bw - 6, 3, "#e4ded6");
     rect(bx + 3, by + bh - 5, Math.round((bw - 6) * r), 3, barColor(r));
   }
 
-  const cupFile = (cup) => `${cup.temp}-${drinkOf(cup.adds)}`;
+  // 컵 그림 이름. 휘핑크림을 넣었고 그 음료의 휘핑 그림이 있으면 휘핑 컵
+  function cupFile(cup) {
+    const d = drinkOf(cup.adds);
+    return `${cup.temp}-${d}${cup.adds.includes("whip") && WHIP_ART.includes(d) ? "-whip" : ""}`;
+  }
+  // 휘핑 그림이 없는 음료에 휘핑크림을 넣었을 때: 컵 위에 작은 글자로 알려 줌
+  const strayWhip = (cup) => cup.adds.includes("whip") && !WHIP_ART.includes(drinkOf(cup.adds));
+  function drawCup(cup, x, by) {
+    drawImg(cupFile(cup), x, by);
+    if (strayWhip(cup)) text("+휘핑", x, by - 32, "#a0785a", 6);
+  }
 
   function roundRect(x, y, w, h, r) {
     ctx.beginPath();
@@ -662,12 +734,12 @@ const Cafe = (() => {
     round.pickup.forEach((d, i) => {
       const lifted = round.sel === i;
       if (lifted) highlight({ x: PICKUP[i] - 14, y: BASE_Y - 36, w: 28, h: 37 });
-      drawImg(cupFile(d), PICKUP[i], BASE_Y - (lifted ? 4 : 0));
+      drawCup(d, PICKUP[i], BASE_Y - (lifted ? 4 : 0));
     });
     if (!round.pickup.length) text("픽업대", 140, BASE_Y - 12, "#a0785a", 7);
     drawImg("hole", O.hole.cx, O.hole.by);
 
-    for (const f of round.flying) if (f.zone === "order") drawImg(cupFile(f.cup), f.cup.x, f.cup.y);
+    for (const f of round.flying) if (f.zone === "order") drawCup(f.cup, f.cup.x, f.cup.y);
     for (const f of round.floats) {
       const t = (now - f.t0) / 1400;
       ctx.globalAlpha = 1 - t * t;
@@ -703,9 +775,13 @@ const Cafe = (() => {
     shadow(B.tray.x, B.tray.y + 2, 26);
     drawImg("tray", B.tray.x, B.tray.y + 2);
     drawImg("hole", B.hole.x, B.hole.y);
+    if (whipOpen()) {
+      shadow(B.whip.x, B.whip.y, 12);
+      drawImg("whip", B.whip.x, B.whip.y - ((round.lift.whip || 0) > now ? 3 : 0));
+    }
 
-    if (round.cup) drawImg(cupFile(round.cup), round.cup.x, round.cup.y);
-    for (const f of round.flying) if (f.zone === "brew") drawImg(cupFile(f.cup), f.cup.x, f.cup.y);
+    if (round.cup) drawCup(round.cup, round.cup.x, round.cup.y);
+    for (const f of round.flying) if (f.zone === "brew") drawCup(f.cup, f.cup.x, f.cup.y);
     for (const d of round.drops) {
       rect(Math.round(d.x) - 1, Math.round(d.y) - 1, 3, 3, "#3a2a24");
       rect(Math.round(d.x) - 1, Math.round(d.y), 3, 1, d.color);
@@ -736,7 +812,7 @@ const Cafe = (() => {
       const cx = B.tickets[i] + (r < 0.15 ? Math.round(Math.sin(now / 40)) : 0);
       const top = B.ticketTop;
       drawImg("ticket", cx, top + 39);
-      drawImg(`${g.temp}-${g.menu.id}`, cx, top + 33);
+      drawImg(orderFile(g), cx, top + 33);
       rect(cx - 10, top + 34, 20, 2, "#e4ded6");
       rect(cx - 10, top + 34, Math.round(20 * r), 2, barColor(r));
     });
@@ -758,15 +834,32 @@ const Cafe = (() => {
     ctx.globalAlpha = 1;
   }
 
+  // 게임 오버 (마감 전 잠깐)
+  function drawGameOver() {
+    ctx.fillStyle = "rgba(58, 42, 36, 0.35)";
+    ctx.fillRect(0, 0, W, H);
+    roundRect(W / 2 - 60, 78, 120, 40, 12);
+    ctx.fillStyle = "rgba(255, 250, 240, 0.97)"; ctx.fill();
+    ctx.lineWidth = 1; ctx.strokeStyle = "#c0463a"; ctx.stroke();
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillStyle = "#c0463a";
+    ctx.font = "bold 13px system-ui, sans-serif";
+    ctx.fillText("게임 오버", W / 2, 92);
+    ctx.fillStyle = "#7a5034";
+    ctx.font = "bold 7px system-ui, sans-serif";
+    ctx.fillText(`실수 ${round.strikes}번`, W / 2, 108);
+  }
+
   // 패널 제목줄: 매출과 남은 시간 (마지막 10초는 빨갛게)
   let hudText = "";
   function updateHud(now) {
     const left = Math.max(0, Math.ceil((round.endAt - now) / 1000));
-    const key = `${round.sales}|${left}`;
+    const key = `${round.sales}|${left}|${round.strikes}`;
     if (key === hudText) return;
     hudText = key;
     statusEl.innerHTML = `<span class="cafe-hud"><i class="coin"></i>${round.sales}</span>`
       + `<span class="cafe-hud${left <= 10 ? " hurry" : ""}">남은 ${left}초</span>`
+      + `<span class="cafe-hud lives" title="실수할 수 있는 횟수">${"♥".repeat(mode().lives - round.strikes)}${"♡".repeat(round.strikes)}</span>`
       + (data().mode === "hard" ? `<span class="cafe-hud hard">${mode().name}</span>` : "");
   }
 
@@ -799,13 +892,17 @@ const Cafe = (() => {
     const tip = round.tipUntil > now ? round.tip : hover ? hover.name : "";
     if (tip) text(tip, W / 2, H - 5, "#5a4636");
     drawBanner(now);
+    if (round.overAt) drawGameOver();
   }
 
   // ---- 시작과 끝 ----
   // 그림을 미리 불러 둠 (첫 손님이 올 때 그림이 비지 않게)
   function preload() {
     const files = [...SCENE_ART, ...CAFE_INGREDIENTS.map((g) => g.id)];
-    for (const t of ["hot", "ice"]) for (const d of ["empty", ...MAKING, ...CAFE_MENU.map((m) => m.id)]) files.push(`${t}-${d}`);
+    for (const t of ["hot", "ice"]) {
+      for (const d of ["empty", ...MAKING, ...CAFE_MENU.map((m) => m.id)]) files.push(`${t}-${d}`);
+      for (const d of WHIP_ART) files.push(`${t}-${d}-whip`);
+    }
     files.forEach(img);
   }
 
@@ -832,7 +929,8 @@ const Cafe = (() => {
     c.served += round.served;
     const best = round.sales > c.best;
     if (best) c.best = round.sales;
-    lastResult = { sales: round.sales, served: round.served, missed: round.missed, coins, best, mode: mode().name, dailyMax: mode().dailyMax };
+    lastResult = { sales: round.sales, served: round.served, missed: round.missed, coins, best, mode: mode().name, dailyMax: mode().dailyMax,
+      over: !!round.overAt, strikes: round.strikes, lives: mode().lives };
     round = null;
     if (coins) {
       save.coins += coins;
@@ -899,7 +997,8 @@ const Cafe = (() => {
     statusEl.textContent = "";
     const c = data();
     const intro = el("p", "cafe-text",
-      "손님이 주문하면 제작 화면에서 컵을 꺼내고, 에스프레소를 내리고, 재료를 넣어 픽업대로 보낸 뒤 손님을 눌러 건네요. 빨리 주면 팁을 받고, 너무 기다리게 하면 화내며 나가요.");
+      "손님이 주문하면 제작 화면에서 컵을 꺼내고, 에스프레소를 내리고, 재료를 넣어 픽업대로 보낸 뒤 손님을 눌러 건네요. 빨리 주면 팁을 받고, 너무 기다리게 하면 화내며 나가요. "
+      + `화나서 나간 손님과 잘못 건넨 음료는 실수예요. 실수가 ${mode().lives}번 쌓이면 영업이 끝나요.`);
     const start = el("button", "primary cafe-start", "영업 시작");
     start.type = "button";
     start.addEventListener("click", startRound);
@@ -965,10 +1064,12 @@ const Cafe = (() => {
       const row = el("div", "cafe-recipe");
       const name = el("span", "cafe-recipe-name");
       name.append(cupArt("hot", m.id, 1), document.createTextNode(`${m.name} ${m.price}`));
-      row.append(name, el("span", "", m.recipe.map(ingName).join(" + ")));
+      row.append(name, el("span", "", m.recipe.map(ingName).join(" + ") + (m.whip ? " (+ 휘핑크림)" : "")));
       box.append(row);
     }
     box.append(el("p", "cafe-note", "따뜻한 컵과 아이스 컵은 주문에 맞춰 골라요. 재료 순서는 상관없어요."));
+    if (whipOpen()) box.append(el("p", "cafe-note", `휘핑크림이 올라간 주문은 휘핑크림까지 넣어요. (+${CAFE_WHIP_PRICE}코인)`));
+    box.append(el("p", "cafe-note", "정장 입은 큰손 손님은 팁을 많이 주고, 휴대폰 든 급한 손님은 금방 화를 내요."));
     return box;
   }
 
@@ -978,7 +1079,7 @@ const Cafe = (() => {
     for (const m of menuOpen()) {
       const item = el("div", "cafe-grid-item");
       const info = el("div", "cafe-grid-info");
-      info.append(el("strong", "", `${m.name} ${m.price}`), el("span", "", m.recipe.map(ingName).join(" + ")));
+      info.append(el("strong", "", `${m.name} ${m.price}`), el("span", "", m.recipe.map(ingName).join(" + ") + (m.whip ? " (+휘핑)" : "")));
       item.append(cupArt("hot", m.id, 1), info);
       box.append(item);
     }
@@ -1019,13 +1120,14 @@ const Cafe = (() => {
   function renderResult() {
     statusEl.textContent = "";
     const r = lastResult;
-    body.append(hero(r.best && r.sales ? "최고 매출 달성!" : "오늘 영업 끝"));
+    body.append(hero(r.over ? "게임 오버" : r.best && r.sales ? "최고 매출 달성!" : "오늘 영업 끝"));
     const box = el("div", "cafe-result");
     const dl = el("dl", "cafe-result-list");
-    for (const [k, v] of [["난이도", r.mode], ["매출", r.sales], ["손님", `${r.served}명`], ["놓친 손님", `${r.missed}명`], ["받은 코인", r.coins]]) {
+    for (const [k, v] of [["난이도", r.mode], ["매출", r.sales], ["손님", `${r.served}명`], ["놓친 손님", `${r.missed}명`], ["실수", `${r.strikes}/${r.lives}`], ["받은 코인", r.coins]]) {
       dl.append(el("dt", "", k), el("dd", "", String(v)));
     }
     box.append(dl);
+    if (r.over) box.append(el("p", "cafe-note", `실수가 ${r.lives}번 쌓여서 영업을 일찍 마쳤어요. 그때까지의 매출은 받아요.`));
     if (r.coins < r.sales) box.append(el("p", "cafe-note", `${r.mode} 난이도 카페 코인은 하루 ${r.dailyMax}까지 받을 수 있어요.`));
     const row = el("div", "cafe-actions");
     const again = el("button", "primary", "다시 영업");

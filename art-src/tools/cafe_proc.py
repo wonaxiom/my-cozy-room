@@ -1,6 +1,7 @@
 # 카페 미니게임 그림 정리: GPT 시트에서 배경을 지우고 칸을 나눈 뒤 1도트 = 1픽셀로 줄입니다.
 # 원본: art-src/cafe/gpt-cups.webp, gpt-ingredients.webp, gpt-upgrades.webp, gpt-small.webp (칸 그림)
 #       art-src/cafe/gpt-bg.webp, gpt-counter.webp (가게 배경, 카운터)
+#       art-src/cafe/gpt-cups2.webp, gpt-cups-whip.webp, gpt-whip-can.png, gpt-guests.webp (요청 12~15, FITS)
 # 결과: img/cafe/*.png
 # 실행: 저장소 맨 위 폴더에서  python3 art-src/tools/cafe_proc.py
 import os
@@ -30,6 +31,29 @@ MAKING = ("gpt-cups-making.webp", [
     (["hot-shot", "hot-water", "hot-milk"], 25, (25, 27)),
     (["ice-shot", "ice-water", "ice-milk"], 22, (22, 30)),
 ])
+
+# 요청 12~15 그림: 시트마다 (파일, 줄마다 [칸 이름들, 맞추기, 칸 크기])
+# - 이름이 None인 칸은 쓰지 않음
+# - 맞추기 ("w" 폭 / "h" 키, 도트 수): 그 줄의 첫 칸을 이 크기로 맞추는 배율로 줄 전체를 줄임
+#   (GPT 시트는 줄마다 컵 크기가 조금씩 달라서 줄마다 맞춤. 한 줄 안의 그림끼리는 크기가 맞음)
+# - 칸 크기 [가로, 세로]: 바닥선을 칸 아래에 맞춰 넣음. 세로가 None이면 그 줄에서 가장 큰 그림에 맞춤,
+#   칸 크기가 None이면 그림 크기 그대로
+FITS = [
+    # 바닐라 라떼, 초코 라떼 (카페라떼 칸은 쓰지 않음). 컵 폭을 지금 컵과 같게 (첫 칸 카페라떼로 맞춤)
+    ("gpt-cups2.webp", [
+        ([None, "hot-vanilla", "hot-choco"], ("w", 25), (25, 27)),
+        ([None, "ice-vanilla", "ice-choco"], ("w", 22), (22, 30)),
+    ]),
+    # 휘핑크림 올린 컵. 아이스 초코는 크림 위에도 드리즐을 뿌린 셋째 칸을 씀
+    ("gpt-cups-whip.webp", [
+        (["hot-matcha-whip", "hot-choco-whip"], ("w", 25), (25, None)),
+        (["ice-matcha-whip", None, "ice-choco-whip"], ("w", 22), (22, None)),
+    ]),
+    # 휘핑크림 통 (재료 병과 같은 칸)
+    ("gpt-whip-can.png", [(["whip"], ("h", 25), (20, 28))]),
+    # 특별 손님 (큰손 손님, 급한 손님). 큰손 손님 키(모자 포함)로 맞춤
+    ("gpt-guests.webp", [(["guest-rich", "guest-rush"], ("h", 56), None)]),
+]
 
 # 배경: 파일, 결과 이름, 가로 도트 수 (세로는 비율대로). 흰 여백은 잘라 냄
 BACKGROUNDS = [
@@ -151,6 +175,26 @@ def main():
                 cell.save(OUT + name + ".png")
             print(fname, "칸 크기", (cw, ch), [n for n, _, _ in cells])
 
+
+    for fname, rows in FITS:
+        cells = cells_of(fname, 9)
+        for r, (names, (axis, dots), size) in enumerate(rows):
+            got = [c for c in cells if c[0] == r]
+            assert len(got) == len(names), (fname, r, len(got))
+            first = got[0][1]
+            p = (first.shape[1] if axis == "w" else first.shape[0]) / dots
+            row = [(n, pixelize(a, m, p)) for n, (_, a, m) in zip(names, got) if n]
+            for name, o in row:
+                if size is None:
+                    Image.fromarray(o).save(OUT + name + ".png")
+                    print(fname, name, "크기", (o.shape[1], o.shape[0]))
+                    continue
+                cw, ch = size
+                ch = ch or max(x.shape[0] for _, x in row)
+                cell = Image.new("RGBA", (cw, ch))
+                cell.alpha_composite(Image.fromarray(o), ((cw - o.shape[1]) // 2, ch - o.shape[0]))
+                cell.save(OUT + name + ".png")
+                print(fname, name, "칸", (cw, ch), "그림", (o.shape[1], o.shape[0]))
 
     for fname, name, tw in BACKGROUNDS:
         a = np.array(Image.open(SRC + fname).convert("RGBA")).astype(int)
