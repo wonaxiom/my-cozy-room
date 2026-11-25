@@ -41,6 +41,9 @@ const CAFE_MENU = [
   { id: "choco", name: "초코 라떼", price: 6, recipe: ["choco", "milk"], unlock: 120, whip: true },
   { id: "matcha", name: "녹차 라떼", price: 7, recipe: ["matcha", "milk"], unlock: 160, whip: true },
 ];
+// 게임 오버 표시: 문구, 보여 주는 시간(밀리초). 글자가 왼쪽부터 하나씩 튀어 오름
+const CAFE_OVER_TEXT = "Game Over";
+const CAFE_OVER_MS = 2200;
 const CAFE_WHIP_CHANCE = 0.4;   // 휘핑크림을 올릴 수 있는 메뉴에서 휘핑크림까지 주문할 확률
 const CAFE_WHIP_PRICE = 1;      // 휘핑크림 값
 
@@ -245,6 +248,7 @@ const Cafe = (() => {
       tip: "", tipUntil: 0,
       sales: 0, served: 0, missed: 0,
       strikes: 0,         // 실수한 횟수 (mode().lives번이면 게임 오버)
+      overStart: 0,       // 게임 오버가 된 시각 (글자 튀어 오르기 기준)
       overAt: 0,          // 게임 오버: 이 시각에 영업을 마감 (그동안 "게임 오버" 표시)
       last: now,
     };
@@ -283,7 +287,8 @@ const Cafe = (() => {
     round.strikes += 1;
     const left = mode().lives - round.strikes;
     if (left > 0) return say(`${why} 실수 ${round.strikes}/${mode().lives}`);
-    round.overAt = Date.now() + 1800;
+    round.overStart = Date.now();
+    round.overAt = round.overStart + CAFE_OVER_MS;
     hover = null;
   }
 
@@ -834,20 +839,31 @@ const Cafe = (() => {
     ctx.globalAlpha = 1;
   }
 
-  // 게임 오버 (마감 전 잠깐)
-  function drawGameOver() {
-    ctx.fillStyle = "rgba(58, 42, 36, 0.35)";
+  // 게임 오버 (마감 전 잠깐): 화면을 어둡게 하고, 글자가 왼쪽부터 하나씩 위로 튀어 오름 (0.9초마다 다시)
+  function drawGameOver(now) {
+    const t = now - round.overStart;
+    ctx.fillStyle = `rgba(58, 42, 36, ${Math.min(0.35, t / 600)})`;
     ctx.fillRect(0, 0, W, H);
-    roundRect(W / 2 - 60, 78, 120, 40, 12);
+    roundRect(W / 2 - 64, 76, 128, 44, 12);
     ctx.fillStyle = "rgba(255, 250, 240, 0.97)"; ctx.fill();
     ctx.lineWidth = 1; ctx.strokeStyle = "#c0463a"; ctx.stroke();
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillStyle = "#c0463a";
-    ctx.font = "bold 13px system-ui, sans-serif";
-    ctx.fillText("게임 오버", W / 2, 92);
+
+    const chars = [...CAFE_OVER_TEXT];
+    ctx.font = "bold 15px system-ui, sans-serif";
+    ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    const widths = chars.map((c) => ctx.measureText(c).width);
+    let x = W / 2 - widths.reduce((a, b) => a + b, 0) / 2;
+    chars.forEach((c, i) => {
+      const k = ((t - i * 60) % 900) / 300; // 글자마다 0.06초씩 늦게, 0.3초 동안 튀어 오름
+      const lift = t >= i * 60 && k < 1 ? Math.sin(k * Math.PI) * 5 : 0;
+      ctx.fillStyle = "#c0463a";
+      ctx.fillText(c, x, 94 - lift);
+      x += widths[i];
+    });
+    ctx.textAlign = "center";
     ctx.fillStyle = "#7a5034";
     ctx.font = "bold 7px system-ui, sans-serif";
-    ctx.fillText(`실수 ${round.strikes}번`, W / 2, 108);
+    ctx.fillText(`실수 ${round.strikes}번`, W / 2, 111);
   }
 
   // 패널 제목줄: 매출과 남은 시간 (마지막 10초는 빨갛게)
@@ -892,7 +908,7 @@ const Cafe = (() => {
     const tip = round.tipUntil > now ? round.tip : hover ? hover.name : "";
     if (tip) text(tip, W / 2, H - 5, "#5a4636");
     drawBanner(now);
-    if (round.overAt) drawGameOver();
+    if (round.overAt) drawGameOver(now);
   }
 
   // ---- 시작과 끝 ----
