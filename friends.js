@@ -237,7 +237,7 @@ const Friends = (() => {
   async function publish() {
     if (!db || visiting) return;
     const owned = (r) => !r.price || save.ownedRooms.includes(r.id);
-    const room = ROOMS.find((r) => r.id === save.roomId && owned(r)) || ROOMS[0];
+    const room = roomList(save.ownedRooms).find((r) => r.id === save.roomId && owned(r)) || ROOMS[0];
     const t = save.timer;
     const data = {
       name: (save.profile && save.profile.name) || "",
@@ -248,7 +248,7 @@ const Friends = (() => {
       layout: save.layouts[room.id] || room.layout,
       styles: save.roomStyles[room.id] || {},
       // 가진 방 전부 (친구가 놀러 와서 다른 방도 구경할 수 있게)
-      rooms: Object.fromEntries(ROOMS.filter(owned).map((r) => [r.id, { layout: save.layouts[r.id] || r.layout, styles: save.roomStyles[r.id] || {} }])),
+      rooms: Object.fromEntries(roomList(save.ownedRooms).filter(owned).map((r) => [r.id, { layout: save.layouts[r.id] || r.layout, styles: save.roomStyles[r.id] || {} }])),
       lampOn: save.lampOn,
       pianoV2: true, // 피아노 자리가 새 바닥 칸 기준임 (예전 정보는 구경할 때 맞춰 그림)
       timer: t.mode === "focus" && t.endAt ? { length: t.length, mode: "focus", endAt: t.endAt, remain: 0 } : null,
