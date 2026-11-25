@@ -67,6 +67,13 @@ ITEMS = {
 # 체크무늬 배경을 지워야 하는 시트
 CHECKER = {"gpt-room-wall.webp"}
 
+# GPT가 가로 2칸에 세로 1칸보다 완만하게 그린 그림: 줄이기 전에 기울기를 게임에 맞춤
+# - 벽 장식: 아래 테두리 기울기를 재서 세로로 밀어 오른쪽 벽 각도(0.5)로
+# - 상자 가구: 양쪽 옆면의 바닥선 기울기를 재서 옆면과 윗면을 다시 펼침. 값은 옆면 가운데를 늘려 더 높일 픽셀 수 (ver.세밀 기준)
+FIX_WALL = {"cafeMenuBoard", "cafeFlowerShelf"}
+FIX_BOX = {"cafeCounter": 8}  # 카운터를 바 스툴보다 조금 높게 (약 9칸 -> 12칸)
+ISO = 0.5  # 게임의 바닥선 기울기 (가로 2칸에 세로 1칸)
+
 
 def cells_of(fname, p):
     """시트를 줄과 칸으로 나눠 [(줄 번호, 칸 그림, 칸 마스크)] (cafe_proc.cells_of에 체크무늬 지우기를 더함)"""
@@ -84,6 +91,94 @@ def cells_of(fname, p):
     return out
 
 
+def column_edges(m):
+    """칸마다 그림의 맨 위, 맨 아래 줄 (빈 칸은 -1)"""
+    has = m.any(0)
+    top = np.where(has, m.argmax(0), -1)
+    bot = np.where(has, m.shape[0] - 1 - m[::-1].argmax(0), -1)
+    return top, bot
+
+
+def slope(bot, x0, x1):
+    xs = np.arange(int(x0), int(x1))
+    return np.polyfit(xs, bot[xs], 1)[0]
+
+
+def remap(a, m, src_row, h):
+    """칸마다 새 줄 -> 원래 줄 (src_row[x](새 줄들), 없으면 nan)로 다시 그림"""
+    W = m.shape[1]
+    oa = np.zeros((h, W, 4), int)
+    om = np.zeros((h, W), bool)
+    rows = np.arange(h)
+    for x in range(W):
+        src = src_row(x, rows)
+        ok = ~np.isnan(src)
+        r = np.clip(np.round(src[ok]).astype(int), 0, m.shape[0] - 1)
+        oa[rows[ok], x] = a[r, x]
+        om[rows[ok], x] = m[r, x]
+    ys, xs = np.nonzero(om)
+    y0 = ys.min()
+    return oa[y0:], om[y0:]
+
+
+def fix_wall(a, m):
+    """벽 장식: 아래 테두리 기울기 s를 ISO로 (오른쪽으로 갈수록 (ISO - s)만큼 더 내려감)"""
+    H, W = m.shape
+    _, bot = column_edges(m)
+    d = ISO - slope(bot, W * 0.15, W * 0.75)
+    pad = int(np.ceil(abs(d) * W)) + 2
+    return remap(a, m, lambda x, rows: np.where((rows - x * d >= 0) & (rows - x * d < H), rows - x * d, np.nan), H + pad)
+
+
+def fix_box(a, m, lift=0):
+    """상자 가구: 앞 모서리(가장 아래 칸)를 기준으로 왼쪽·오른쪽 옆면의 기울기를 ISO로 맞춤.
+    옆면은 칸마다 위로 올리고, 윗면은 앞 모서리와 뒤 모서리 사이를 늘려서 펼침.
+    lift: 옆면 가운데 줄을 이만큼 되풀이해 가구를 높임 (원본 픽셀)"""
+    H, W = m.shape
+    top, bot = column_edges(m)
+    xs = np.nonzero(m.any(0))[0]
+    xl, xr = xs.min(), xs.max()
+    c = int(np.median(np.nonzero(bot == bot.max())[0]))
+    sl = slope(bot, xl + (c - xl) * 0.4, xl + (c - xl) * 0.75)      # 왼쪽 옆면: 오른쪽으로 내려감
+    sr = -slope(bot, c + (xr - c) * 0.25, xr - (xr - c) * 0.25)     # 오른쪽 옆면: 오른쪽으로 올라감
+    dl, dr = ISO - sl, ISO - sr
+    yl = top[xl]                                   # 윗면 왼쪽 꼭짓점
+    yc = yl + sl * (c - xl)                        # 윗면 앞 꼭짓점
+    yb = bot[c]                                    # 바닥 앞 꼭짓점
+    xb = xl + (xr - c)                             # 윗면 뒤 꼭짓점
+
+    def front(x):  # 윗면 앞 모서리 줄, 올릴 양
+        return (yc + sl * (x - c), dl * (c - x)) if x < c else (yc - sr * (x - c), dr * (x - c))
+
+    def back(x):   # 윗면 뒤 모서리 올릴 양
+        return dl * (c - xl) + dr * (x - xl) if x <= xb else dr * (xr - c) + dl * (xr - x)
+
+    pad = int(np.ceil(max(back(x) for x in range(W)))) + lift + 2
+
+    def src_row(x, rows):
+        yf, sf = front(x)
+        sb = back(x) + lift
+        yt = top[x]
+        ym = yf + (yb - yc) * 0.5              # 옆면 가운데 줄 (여기를 되풀이)
+        r = rows - pad
+        out = np.full(len(rows), np.nan)
+        low = r >= ym - sf
+        out[low] = r[low] + sf
+        mid = (r >= ym - sf - lift) & ~low
+        out[mid] = ym
+        up = (r >= yf - sf - lift) & ~low & ~mid
+        out[up] = r[up] + sf + lift
+        side = low | mid | up
+        if yt >= 0 and yf > yt:
+            nt, nf = yt - sb, yf - sf - lift   # 새 윗면 범위
+            k = (nf - nt) / (yf - yt)
+            on = (r >= nt) & ~side
+            out[on] = yf - (nf - r[on]) / k
+        return out
+
+    return remap(a, m, src_row, H + pad)
+
+
 def save_pair(name, detail, simple):
     Image.fromarray(detail).save(OUT + name + ".png")
     Image.fromarray(simple).save(OUT + "s/" + name + ".png")
@@ -98,6 +193,10 @@ def main():
             sheets[(fname, p)] = cells_of(fname, p)
         cells = [c for c in sheets[(fname, p)] if c[0] == row]
         _, a, m = cells[col]
+        if name in FIX_WALL:
+            a, m = fix_wall(a, m)
+        if name in FIX_BOX:
+            a, m = fix_box(a, m, round(FIX_BOX[name] * a.shape[1] / width))
         detail = pixelize(a, m, a.shape[1] / width)
         simple = pixelize(a, m, a.shape[1] / max(4, round(width / 3)))
         save_pair(name, detail, simple)

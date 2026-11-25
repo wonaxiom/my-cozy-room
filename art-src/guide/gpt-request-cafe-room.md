@@ -12,18 +12,19 @@ GPT 프로젝트 지침([gpt-project-instructions.md](gpt-project-instructions.m
 | 2 | 카페 벽 장식 3칸 (메뉴판, 행잉 화분, 꽃병 선반) | `art-src/guide/cafe-wall-ref.png`, `art-src/cafe/gpt-furniture-iso.webp` | 완료 |
 
 > 요청 1, 2 모두 게임에 넣었습니다 (2026-11-25). 원본은 `art-src/cafe/gpt-room-furniture.webp`(가구), `gpt-room-wall.webp`(벽 장식, 체크무늬 배경을 지움)이고, `art-src/tools/cafe_furniture.py`의 `ITEMS`로 아래 폭에 맞춰 줄였습니다.
+> 카운터, 메뉴판, 꽃병 선반은 바닥선이 게임보다 완만하게(기울기 약 0.3) 그려져 있어서 `FIX_BOX`, `FIX_WALL`로 기울기를 0.5에 맞췄습니다. 카운터는 바 스툴보다 낮아서 옆면 가운데를 늘려 높였습니다.
 
 | 가구 id | 이름 | size (가로, 세로, 높이) | ver.세밀 폭 |
 |---|---|---|---|
-| `cafeCounter` | 카페 카운터 | 8, 20, 14 | 약 67 |
+| `cafeCounter` | 카페 카운터 | 6.5, 21.5, 13 | 약 67 |
 | `cafeRoundTable` | 카페 원형 테이블 | 8, 8, 11 | 약 38 |
 | `cafeChair` | 카페 의자 | 6, 6, 13 | 약 29 |
 | `cafeBarStool` | 바 스툴 | 5, 5, 10 | 약 24 |
 | `cakeShowcase` | 케이크 진열장 | 7, 14, 13 | 약 50 |
 | `coffeeBeanSack` | 원두 자루 | 5, 5, 6 | 약 24 |
-| `cafeMenuBoard` | 카페 메뉴판 (벽) | 18, 1, 10 | 약 45 |
+| `cafeMenuBoard` | 카페 메뉴판 (벽) | 18, 1, 11 | 약 45 |
 | `cafeHangingPlant` | 행잉 화분 (벽) | 7, 1, 12 | 약 19 |
-| `cafeFlowerShelf` | 꽃병 선반 (벽) | 9, 1, 7 | 약 24 |
+| `cafeFlowerShelf` | 꽃병 선반 (벽) | 9, 1, 6 | 약 24 |
 
 ---
 

@@ -1350,12 +1350,12 @@ const FURNITURE = {
   cafeTray: { name: "카페 쟁반", category: "prop", kind: "cafe", price: 20, size: [5, 4, 1], image: "img/furn/cafeTray.png", imageSimple: "img/furn/s/cafeTray.png", hires: true, small: true },
   cafeTrash: { name: "카페 휴지통", category: "prop", kind: "cafe", price: 30, size: [3, 2.8, 7], image: "img/furn/cafeTrash.png", imageSimple: "img/furn/s/cafeTrash.png", hires: true },
   // 카페 벽 장식 (오른쪽 벽에 걸린 그림 gpt-room-wall.webp)
-  cafeMenuBoard: { name: "카페 메뉴판", category: "prop", kind: "cafe", price: 80, size: [18, 1, 10], image: "img/furn/cafeMenuBoard.png", imageSimple: "img/furn/s/cafeMenuBoard.png", hires: true, type: "wall", rightWallArt: true },
+  cafeMenuBoard: { name: "카페 메뉴판", category: "prop", kind: "cafe", price: 80, size: [18, 1, 11], image: "img/furn/cafeMenuBoard.png", imageSimple: "img/furn/s/cafeMenuBoard.png", hires: true, type: "wall", rightWallArt: true },
   cafeHangingPlant: { name: "행잉 화분", category: "prop", kind: "cafe", price: 60, size: [7, 1, 12], image: "img/furn/cafeHangingPlant.png", imageSimple: "img/furn/s/cafeHangingPlant.png", hires: true, type: "wall", rightWallArt: true },
-  cafeFlowerShelf: { name: "꽃병 선반", category: "prop", kind: "cafe", price: 50, size: [9, 1, 7], image: "img/furn/cafeFlowerShelf.png", imageSimple: "img/furn/s/cafeFlowerShelf.png", hires: true, type: "wall", rightWallArt: true },
+  cafeFlowerShelf: { name: "꽃병 선반", category: "prop", kind: "cafe", price: 50, size: [9, 1, 6], image: "img/furn/cafeFlowerShelf.png", imageSimple: "img/furn/s/cafeFlowerShelf.png", hires: true, type: "wall", rightWallArt: true },
 
   // 카페 가구 (방 꾸미기용으로 따로 받은 그림 gpt-room-furniture.webp, 앞면이 오른쪽 아래)
-  cafeCounter: { name: "카페 카운터", category: "furniture", style: "cafe", price: 220, size: [8, 20, 14], surface: 14, image: "img/furn/cafeCounter.png", imageSimple: "img/furn/s/cafeCounter.png", hires: true },
+  cafeCounter: { name: "카페 카운터", category: "furniture", style: "cafe", price: 220, size: [6.5, 21.5, 13], surface: 12.5, image: "img/furn/cafeCounter.png", imageSimple: "img/furn/s/cafeCounter.png", hires: true },
   cafeRoundTable: { name: "카페 원형 테이블", category: "furniture", style: "cafe", price: 110, size: [8, 8, 11], surface: 11, use: "snack", image: "img/furn/cafeRoundTable.png", imageSimple: "img/furn/s/cafeRoundTable.png", hires: true },
   cafeChair: { name: "카페 의자", category: "furniture", style: "cafe", price: 80, size: [6, 6, 13], seat: { z: 6, back: "-x" }, use: "chair", image: "img/furn/cafeChair.png", imageSimple: "img/furn/s/cafeChair.png", hires: true },
   cafeBarStool: { name: "바 스툴", category: "furniture", style: "cafe", price: 70, size: [5, 5, 10], seat: { z: 10 }, image: "img/furn/cafeBarStool.png", imageSimple: "img/furn/s/cafeBarStool.png", hires: true },
