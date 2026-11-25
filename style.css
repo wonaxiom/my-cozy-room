@@ -1960,3 +1960,23 @@ body.pip #side-win-btn { display: none; }
 .cafe-result-list dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
 .cafe-actions { display: flex; gap: 6px; }
 
+/* 카페 일일 랭킹 */
+.cafe-rank-tabs { justify-content: flex-start; margin-bottom: 4px; }
+.cafe-rank-list { display: flex; flex-direction: column; gap: 1px; }
+.cafe-rank-row { display: grid; grid-template-columns: 28px 1fr auto; gap: 8px; padding: 2px 6px; border-radius: 6px; font-variant-numeric: tabular-nums; }
+.cafe-rank-row.first .cafe-rank-no { color: #b07a1c; font-weight: 700; }
+.cafe-rank-row.mine { background: #faf6f0; font-weight: 600; }
+.cafe-rank-no { color: var(--sub); text-align: right; }
+.cafe-rank-name { font-family: ui-monospace, Menlo, Consolas, monospace; letter-spacing: 2px; }
+.cafe-rank-score { text-align: right; }
+.cafe-rank-gap { padding-left: 20px; color: var(--sub); line-height: 1; }
+.cafe-entry { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; max-width: 280px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; }
+.cafe-entry .cafe-rank-list { align-self: stretch; }
+.cafe-entry-title { margin: 0; font-weight: 600; text-align: center; }
+.cafe-entry-slots { display: flex; gap: 8px; padding: 2px; border-radius: 8px; }
+.cafe-entry-slots:focus { outline: none; }
+.cafe-entry-cell { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.cafe-entry-arrow { padding: 0 10px; font-size: 10px; line-height: 18px; }
+.cafe-entry-letter { width: 36px; padding: 4px 0; font: 700 22px/1.2 ui-monospace, Menlo, Consolas, monospace; text-align: center; border-bottom: 2px solid var(--line); cursor: pointer; }
+.cafe-entry-cell.active .cafe-entry-letter { border-bottom-color: #7a5034; color: #7a5034; }
+
