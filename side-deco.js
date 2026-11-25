@@ -216,6 +216,10 @@ const SideDeco = (() => {
     return box;
   }
 
+  // 방 그림 양옆 빈 하늘에만 놓음: 방 벽이 화면 가로 약 14%~86%를 차지하므로 (game.js의 ROOM 72)
+  // 반짝이·별은 그 바깥에, 떨어지는 것(비·눈·꽃잎)은 그림 너비와 흔들림까지 빼고 왼쪽 0.5~5%, 오른쪽 90~96%에서 출발
+  const laneX = (i, n) => (i % 2 ? 0.5 + seq(i, n) * 4.5 : 90 + seq(i, n) * 6);
+
   function renderRoom(weather, night, december, newYear, art, pet) {
     const dot = Math.max(0.7, roomSky.parentElement.clientWidth / 400);
     roomSky.innerHTML = "";
@@ -225,22 +229,22 @@ const SideDeco = (() => {
     const grey = wet || snow || weather === "cloudy";
     if (night && !grey) {
       add(rpic("moon", dot, { left: "4%", top: "13%" }, "bob"));
-      [[3, 34], [13, 48], [92, 30], [86, 46], [95, 62]].forEach(([x, y], i) =>
+      [[3, 34], [7, 50], [92, 30], [89, 47], [95, 62]].forEach(([x, y], i) =>
         add(rpic(i % 2 ? "star" : "sparkS", dot, { left: `${x}%`, top: `${y}%`, animationDelay: `${i * 0.6}s` }, "twinkle")));
     } else {
       add(rpic(grey ? "rainCloud1" : "cloud1", dot, { left: "-3%", top: "11%" }, "drift"));
       add(rpic(grey ? "rainCloud2" : "cloud2", dot, { right: "1%", top: "13%", animationDelay: "-3s" }, "drift"));
-      if (!grey) [[4, 36], [93, 38], [10, 54]].forEach(([x, y], i) =>
+      if (!grey) [[4, 36], [93, 38], [6, 56]].forEach(([x, y], i) =>
         add(rpic(i % 2 ? "sparkS" : "sparkL", dot, { left: `${x}%`, top: `${y}%`, animationDelay: `${i * 0.7}s` }, "twinkle")));
     }
     if (wet || snow) {
       for (let i = 0; i < 8; i++) {
-        const left = i % 2 ? 1 + seq(i, 8) * 11 : 88 + seq(i, 8) * 10;
+        const left = laneX(i, 8);
         add(rpic(wet ? "drop" : i % 3 ? "snowS" : "snowL", dot, { left: `${left}%`, top: "20%", animationDelay: `${-seq(i + 3, 8) * (wet ? 1.2 : 5)}s` }, wet ? "fall" : "fall snowy"));
       }
     } else if (art && art.fall) {
       for (let i = 0; i < 6; i++) {
-        const left = i % 2 ? 1 + seq(i, 6) * 10 : 89 + seq(i, 6) * 9;
+        const left = laneX(i, 6);
         add(rpic(art.fall[i % 3 ? 0 : 1], dot, { left: `${left}%`, top: "20%", animationDelay: `${-seq(i + 3, 6) * 12}s` }, "fall petal"));
       }
     }
