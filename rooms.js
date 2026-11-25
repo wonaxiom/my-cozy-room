@@ -4,7 +4,7 @@
 // =============================================================
 //
 // shape    : 방 모양. "box"(네모난 방) / "attic"(삼각 지붕 다락방) / "round"(원형 탑방) / "train"(기차 객실)
-// width, depth : 바닥 크기 (기본 64 x 64)
+// width, depth : 바닥 크기 (기본 72 x 72, game.js의 ROOM)
 // offset   : 화면에서 방 위치를 옮기는 값 [좌우, 위아래] (방이 가운데 오도록)
 // price    : 방을 여는 가격 (0이면 처음부터 열려 있음)
 // colors   : 이 방의 틀 색 (벽 윗면, 모서리, 걸레받이, 창틀 등)
@@ -99,8 +99,8 @@ const ROOMS = [
     },
     wallpaper: "stoneBricks",
     floor: "darkWood",
-    windows: [{ style: "curtain", wall: "round", y1: 22, y2: 40, z1: 18, z2: 36 }],
-    clock: [28.6, 0.8, 35],
+    windows: [{ style: "curtain", wall: "round", y1: 25, y2: 45, z1: 18, z2: 36 }],
+    clock: [32.2, 0.9, 35],
     layout: [],
   },
   {
@@ -108,7 +108,7 @@ const ROOMS = [
     name: "기차 객실",
     shape: "train",
     price: 1500,
-    width: 64,
+    width: 72,
     depth: 28,
     wallHeight: 38,
     offset: [-18, 4],
@@ -124,9 +124,9 @@ const ROOMS = [
     windows: [],
     clock: null,
     decor: [
-      { id: "windowTrain", x: 5, y: 0, z: 10 },
-      { id: "windowTrain", x: 25, y: 0, z: 10 },
-      { id: "windowTrain", x: 45, y: 0, z: 10 },
+      { id: "windowTrain", x: 6, y: 0, z: 10 },
+      { id: "windowTrain", x: 28, y: 0, z: 10 },
+      { id: "windowTrain", x: 50, y: 0, z: 10 },
     ],
     layout: [],
   },
