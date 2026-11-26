@@ -68,10 +68,22 @@ ITEMS = {
 CHECKER = {"gpt-room-wall.webp"}
 
 # GPT가 가로 2칸에 세로 1칸보다 완만하게 그린 그림: 줄이기 전에 기울기를 게임에 맞춤
-# - 벽 장식: 아래 테두리 기울기를 재서 세로로 밀어 오른쪽 벽 각도(0.5)로
-# - 상자 가구: 양쪽 옆면의 바닥선 기울기를 재서 옆면과 윗면을 다시 펼침. 값은 옆면 가운데를 늘려 더 높일 픽셀 수 (ver.세밀 기준)
-FIX_WALL = {"cafeMenuBoard", "cafeFlowerShelf"}
-FIX_BOX = {"cafeCounter": 8}  # 카운터를 바 스툴보다 조금 높게 (약 9칸 -> 12칸)
+# - FIX_SHEAR: 판 하나로 된 그림(벽 장식, 입간판)을 칸마다 세로로 밀어 기울기를 맞춤
+#   값: (맞출 기울기, 재는 방법). 기울기 0.5는 오른쪽으로 내려감(오른쪽 벽), -0.5는 오른쪽으로 올라감(앞면이 오른쪽 아래)
+#   재는 방법 "edge"는 아래 테두리 전체, "feet"는 양쪽 끝 발(왼쪽·오른쪽 1/3에서 가장 아래 점)을 이은 선
+# - FIX_BOX: 상자 가구의 양쪽 옆면 바닥선 기울기를 재서 옆면과 윗면을 다시 펼침. 값은 옆면 가운데를 늘려 더 높일 픽셀 수 (ver.세밀 기준)
+FIX_SHEAR = {
+    "cafeMenuBoard": (0.5, "edge"),
+    "cafeFlowerShelf": (0.5, "edge"),
+    "cafeSign": (-0.5, "feet"),
+}
+FIX_BOX = {
+    "cafeCounter": 8,  # 카운터를 바 스툴보다 조금 높게 (약 9칸 -> 12칸)
+    "cafeCoffeeMachine": 0,
+    "espressoMachine": 0,
+    "cakeShowcase": 0,
+    "cafeArmchair": 0,
+}
 ISO = 0.5  # 게임의 바닥선 기울기 (가로 2칸에 세로 1칸)
 
 
@@ -121,13 +133,26 @@ def remap(a, m, src_row, h):
     return oa[y0:], om[y0:]
 
 
-def fix_wall(a, m):
-    """벽 장식: 아래 테두리 기울기 s를 ISO로 (오른쪽으로 갈수록 (ISO - s)만큼 더 내려감)"""
+def fix_shear(a, m, target, how):
+    """판 그림: 잰 기울기 s를 target으로 (오른쪽으로 갈수록 (target - s)만큼 더 내려감)"""
     H, W = m.shape
     _, bot = column_edges(m)
-    d = ISO - slope(bot, W * 0.15, W * 0.75)
+    if how == "edge":
+        s = slope(bot, W * 0.15, W * 0.75)
+    else:
+        third = W // 3
+        xl = int(np.argmax(bot[:third]))
+        xr = W - third + int(np.argmax(bot[W - third:]))
+        s = (bot[xr] - bot[xl]) / (xr - xl)
+    d = target - s
+    off = int(np.ceil(max(0, -d * W)))
     pad = int(np.ceil(abs(d) * W)) + 2
-    return remap(a, m, lambda x, rows: np.where((rows - x * d >= 0) & (rows - x * d < H), rows - x * d, np.nan), H + pad)
+
+    def src_row(x, rows):
+        src = rows - x * d - off
+        return np.where((src >= 0) & (src < H), src, np.nan)
+
+    return remap(a, m, src_row, H + pad)
 
 
 def fix_box(a, m, lift=0):
@@ -193,8 +218,8 @@ def main():
             sheets[(fname, p)] = cells_of(fname, p)
         cells = [c for c in sheets[(fname, p)] if c[0] == row]
         _, a, m = cells[col]
-        if name in FIX_WALL:
-            a, m = fix_wall(a, m)
+        if name in FIX_SHEAR:
+            a, m = fix_shear(a, m, *FIX_SHEAR[name])
         if name in FIX_BOX:
             a, m = fix_box(a, m, round(FIX_BOX[name] * a.shape[1] / width))
         detail = pixelize(a, m, a.shape[1] / width)

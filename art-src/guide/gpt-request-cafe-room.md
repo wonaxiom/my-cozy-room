@@ -12,7 +12,7 @@ GPT 프로젝트 지침([gpt-project-instructions.md](gpt-project-instructions.m
 | 2 | 카페 벽 장식 3칸 (메뉴판, 행잉 화분, 꽃병 선반) | `art-src/guide/cafe-wall-ref.png`, `art-src/cafe/gpt-furniture-iso.webp` | 완료 |
 
 > 요청 1, 2 모두 게임에 넣었습니다 (2026-11-25). 원본은 `art-src/cafe/gpt-room-furniture.webp`(가구), `gpt-room-wall.webp`(벽 장식, 체크무늬 배경을 지움)이고, `art-src/tools/cafe_furniture.py`의 `ITEMS`로 아래 폭에 맞춰 줄였습니다.
-> 카운터, 메뉴판, 꽃병 선반은 바닥선이 게임보다 완만하게(기울기 약 0.3) 그려져 있어서 `FIX_BOX`, `FIX_WALL`로 기울기를 0.5에 맞췄습니다. 카운터는 바 스툴보다 낮아서 옆면 가운데를 늘려 높였습니다.
+> 카운터, 케이크 진열장, 메뉴판, 꽃병 선반은 바닥선이 게임보다 완만하게(기울기 약 0.3) 그려져 있어서 `FIX_BOX`, `FIX_SHEAR`로 기울기를 0.5에 맞췄습니다. (예전에 받은 카페 커피 머신, 에스프레소 머신, 카페 안락의자, 입간판도 같이 맞춤) 카운터는 바 스툴보다 낮아서 옆면 가운데를 늘려 높였습니다.
 
 | 가구 id | 이름 | size (가로, 세로, 높이) | ver.세밀 폭 |
 |---|---|---|---|
